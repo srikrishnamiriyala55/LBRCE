@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.List;
 
 public interface TransferRequestRepository extends JpaRepository<TransferRequest, Long> {
+    long countByCurrentBoardingPointIdOrRequestedBoardingPointId(Long currentBoardingPointId, Long requestedBoardingPointId);
     List<TransferRequest> findByStudentId(Long studentId);
     Page<TransferRequest> findByCurrentBusIdOrRequestedBusId(Long currentBusId, Long requestedBusId, Pageable pageable);
     List<TransferRequest> findByStudentIdAndAcademicYearIdAndStatusIn(Long studentId, Long academicYearId, List<TransferStatus> statuses);

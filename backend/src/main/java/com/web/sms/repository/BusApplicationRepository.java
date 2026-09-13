@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import jakarta.persistence.LockModeType;
 
 public interface BusApplicationRepository extends JpaRepository<BusApplication, Long> {
+    long countByBoardingPointId(Long boardingPointId);
     List<BusApplication> findByStudentId(Long studentId);
     List<BusApplication> findByStudentIdAndAcademicYearId(Long studentId, Long academicYearId);
     List<BusApplication> findByBusId(Long busId);

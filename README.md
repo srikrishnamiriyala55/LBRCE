@@ -119,7 +119,8 @@ LBRCE/
 |       |   |   |   |   |-- StatusUpdateRequest.java        # Status/remarks update payload
 |       |   |   |   |   |-- StudentRegistrationRequest.java # Public student signup payload
 |       |   |   |   |   |-- TransferRequestDto.java         # Bus-transfer request payload
-|       |   |   |   |   `-- TransportReportFilter.java      # Report filter parameters
+|       |   |   |   |   |-- TransportReportFilter.java      # Report filter parameters
+|       |   |   |   |   `-- UpdateBoardingPointRequest.java # Boarding-point and fee edit payload
 |       |   |   |   `-- response/
 |       |   |   |       |-- ApplicationResponse.java       # Application API view
 |       |   |   |       |-- BoardingPointResponse.java     # Boarding-point API view
@@ -258,7 +259,8 @@ LBRCE/
 |       |   |   |-- AdminProfilePage.jsx             # Admin account information
 |       |   |   |-- AdminReportsPage.jsx             # Global reports and exports
 |       |   |   |-- AuditLogsPage.jsx                # Audit history viewer
-|       |   |   |-- BusManagementPage.jsx            # Bus and boarding-point management
+|       |   |   |-- BusManagementPage.jsx            # Bus fleet and In-charge assignment management
+|       |   |   |-- BoardingPointManagementPage.jsx  # Boarding-point fees, filters and actions
 |       |   |   |-- FeeManagementPage.jsx            # Organization fee records
 |       |   |   |-- InchargeManagementPage.jsx       # In-charge accounts and assignments
 |       |   |   |-- RouteManagementPage.jsx          # Route creation and status management

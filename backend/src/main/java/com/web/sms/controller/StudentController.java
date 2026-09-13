@@ -13,6 +13,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
@@ -102,6 +105,16 @@ public class StudentController {
     @GetMapping("/pass")
     public PassResponse getPass() {
         return passService.getStudentPass(getCurrentUser().getId());
+    }
+
+    @GetMapping("/pass/download")
+    public ResponseEntity<byte[]> downloadPass() {
+        PassResponse pass = passService.getStudentPass(getCurrentUser().getId());
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=bus-pass-" + pass.getRollNumber() + ".pdf")
+                .body(passService.generatePdf(getCurrentUser().getId()));
     }
 
     @PostMapping("/transfers")

@@ -11,6 +11,8 @@ public class PassResponse {
     private String rollNumber;
     private String branch;
     private Integer year;
+    private Integer semester;
+    private String phoneNumber;
     private String busNumber;
     private String routeName;
     private String boardingPoint;
@@ -30,12 +32,23 @@ public class PassResponse {
             r.setRollNumber(pass.getStudent().getRollNumber());
             r.setBranch(pass.getStudent().getBranch());
             r.setYear(pass.getStudent().getYear());
+            r.setSemester(pass.getStudent().getSemester());
+            r.setPhoneNumber(pass.getStudent().getPhoneNumber());
         }
         if(pass.getAllocation() != null) {
             if(pass.getAllocation().getBus() != null) {
-                r.setBusNumber(pass.getAllocation().getBus().getBusNumber());
-                if(pass.getAllocation().getBus().getRoute() != null) {
-                    r.setRouteName(pass.getAllocation().getBus().getRoute().getRouteName());
+                com.web.sms.entity.Bus bus = pass.getAllocation().getBus();
+                r.setBusNumber(bus.getBusNumber());
+                if(bus.getRoute() != null && bus.getRoute().getRouteName() != null
+                        && !bus.getRoute().getRouteName().isBlank()) {
+                    r.setRouteName(bus.getRoute().getRouteName());
+                } else if(bus.getStartingPoint() != null && !bus.getStartingPoint().isBlank()
+                        && bus.getEndingPoint() != null && !bus.getEndingPoint().isBlank()) {
+                    r.setRouteName(bus.getStartingPoint() + " - " + bus.getEndingPoint());
+                } else if(bus.getStartingPoint() != null && !bus.getStartingPoint().isBlank()) {
+                    r.setRouteName(bus.getStartingPoint());
+                } else if(bus.getEndingPoint() != null && !bus.getEndingPoint().isBlank()) {
+                    r.setRouteName(bus.getEndingPoint());
                 }
             }
             if(pass.getAllocation().getBoardingPoint() != null) {
@@ -63,6 +76,10 @@ public class PassResponse {
     public void setBranch(String branch) { this.branch = branch; }
     public Integer getYear() { return year; }
     public void setYear(Integer year) { this.year = year; }
+    public Integer getSemester() { return semester; }
+    public void setSemester(Integer semester) { this.semester = semester; }
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
     public String getBusNumber() { return busNumber; }
     public void setBusNumber(String busNumber) { this.busNumber = busNumber; }
     public String getRouteName() { return routeName; }

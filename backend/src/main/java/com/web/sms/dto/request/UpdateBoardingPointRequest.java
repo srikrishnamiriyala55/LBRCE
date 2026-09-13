@@ -5,9 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Min;
 
-public class CreateBoardingPointRequest {
-    @NotNull
-    private Long busId;
+public class UpdateBoardingPointRequest {
     @NotBlank
     private String stationName;
     @NotNull
@@ -16,8 +14,6 @@ public class CreateBoardingPointRequest {
     @Min(0)
     private Integer orderIndex;
 
-    public Long getBusId() { return busId; }
-    public void setBusId(Long busId) { this.busId = busId; }
     public String getStationName() { return stationName; }
     public void setStationName(String stationName) { this.stationName = stationName; }
     public Long getFeeAmount() { return feeAmount; }

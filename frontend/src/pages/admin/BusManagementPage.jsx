@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, MapPin } from 'lucide-react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import Modal from '../../components/common/Modal';
@@ -22,16 +22,6 @@ const BusManagementPage = () => {
     totalSeats: 50,
     startingPoint: '',
     endingPoint: ''
-  });
-
-  // Boarding Points Modal
-  const [bpModalOpen, setBpModalOpen] = useState(false);
-  const [selectedBusForBp, setSelectedBusForBp] = useState(null);
-  const [boardingPoints, setBoardingPoints] = useState([]);
-  const [bpForm, setBpForm] = useState({
-    stationName: '',
-    feeAmount: 5000,
-    orderIndex: 0
   });
 
   // Deactivate Confirm
@@ -132,39 +122,6 @@ const BusManagementPage = () => {
     catch (err) { addToast(err.response?.data?.message || 'Unassignment failed', 'error'); }
   };
 
-  const toggleBoardingPoint = async (point) => {
-    const next = point.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    try { await api.put(`/admin/boarding-points/${point.id}/status`, { status: next }); const res=await api.get(`/admin/buses/${selectedBusForBp.id}/boarding-points`);setBoardingPoints(res.data);addToast(`Boarding point ${next.toLowerCase()}`,'success'); }
-    catch(err){addToast(err.response?.data?.message||'Status update failed','error');}
-  };
-
-  const handleOpenBoardingPoints = async (bus) => {
-    setSelectedBusForBp(bus);
-    try {
-      const res = await api.get(`/admin/buses/${bus.id}/boarding-points`);
-      setBoardingPoints(res.data);
-      setBpModalOpen(true);
-    } catch (err) {
-      addToast('Failed to load boarding points', 'error');
-    }
-  };
-
-  const handleAddBoardingPoint = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post('/admin/boarding-points', {
-        busId: selectedBusForBp.id,
-        ...bpForm
-      });
-      addToast('Boarding point added', 'success');
-      setBpForm({ stationName: '', feeAmount: 5000, orderIndex: boardingPoints.length + 1 });
-      const res = await api.get(`/admin/buses/${selectedBusForBp.id}/boarding-points`);
-      setBoardingPoints(res.data);
-    } catch (err) {
-      addToast('Failed to add boarding point', 'error');
-    }
-  };
-
   const columns = [
     { key: 'busNumber', label: 'Bus Number', render: (row) => <span className="font-bold text-blue-900">{row.busNumber}</span> },
     { key: 'routeName', label: 'Route', render: (row) => row.routeName || 'Unassigned' },
@@ -177,9 +134,6 @@ const BusManagementPage = () => {
       label: 'Actions',
       render: (row) => (
         <div className="flex items-center gap-2">
-          <button onClick={() => handleOpenBoardingPoints(row)} className="p-1.5 text-blue-700 hover:bg-blue-50 rounded" title="Manage Boarding Points">
-            <MapPin size={16} />
-          </button>
           <button onClick={() => handleOpenBusModal(row)} className="p-1.5 text-gray-700 hover:bg-gray-100 rounded" title="Edit Bus">
             <Edit2 size={16} />
           </button>
@@ -279,50 +233,6 @@ const BusManagementPage = () => {
             <button type="submit" className="btn-primary">{editingBus ? 'Save Changes' : 'Create Bus'}</button>
           </div>
         </form>
-      </Modal>
-
-      {/* Boarding Points Modal */}
-      <Modal isOpen={bpModalOpen} onClose={() => setBpModalOpen(false)} title={`Boarding Points — Bus ${selectedBusForBp?.busNumber}`}>
-        <div className="space-y-6">
-          <div className="max-h-60 overflow-y-auto divide-y border rounded-lg">
-            {boardingPoints.length === 0 ? (
-              <p className="p-4 text-center text-gray-500 text-sm">No boarding points added yet.</p>
-            ) : (
-              boardingPoints.map((bp) => (
-                <div key={bp.id} className="p-3 flex justify-between items-center text-sm">
-                  <div>
-                    <span className="font-semibold text-gray-800">{bp.stationName}</span>
-                    <span className="text-xs text-gray-500 ml-2">Order: #{bp.orderIndex}</span>
-                  </div>
-                  <div className="flex items-center gap-3"><StatusBadge status={bp.status}/><span className="font-medium text-blue-700">₹{bp.feeAmount}</span><button type="button" onClick={()=>toggleBoardingPoint(bp)} className={bp.status==='ACTIVE'?'text-xs text-red-600':'text-xs text-green-700'}>{bp.status==='ACTIVE'?'Deactivate':'Activate'}</button></div>
-                </div>
-              ))
-            )}
-          </div>
-
-          <form onSubmit={handleAddBoardingPoint} className="border-t pt-4 space-y-3">
-            <h4 className="font-semibold text-sm text-gray-700">Add New Boarding Point</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <input
-                type="text"
-                placeholder="Station Name *"
-                required
-                className="input-field col-span-2 text-sm"
-                value={bpForm.stationName}
-                onChange={(e) => setBpForm({ ...bpForm, stationName: e.target.value })}
-              />
-              <input
-                type="number"
-                placeholder="Fee (₹) *"
-                required
-                className="input-field text-sm"
-                value={bpForm.feeAmount}
-                onChange={(e) => setBpForm({ ...bpForm, feeAmount: parseInt(e.target.value) || 0 })}
-              />
-            </div>
-            <button type="submit" className="btn-primary w-full text-sm">Add Station</button>
-          </form>
-        </div>
       </Modal>
 
       {/* Confirm Dialog */}

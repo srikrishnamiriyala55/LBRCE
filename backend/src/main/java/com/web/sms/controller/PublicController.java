@@ -19,6 +19,9 @@ public class PublicController {
 
     @GetMapping("/verify-pass")
     public PassResponse verifyPass(@RequestParam String token) {
-        return passService.verifyPass(token);
+        PassResponse response = passService.verifyPass(token);
+        // Phone numbers are included on the student's private pass, never in public verification.
+        response.setPhoneNumber(null);
+        return response;
     }
 }

@@ -170,6 +170,51 @@ public class AdminController {
         return boardingPointsRepo.findByBusId(busId).stream().map(BoardingPointResponse::fromBoardingPoint).toList();
     }
 
+    @GetMapping("/boarding-points")
+    public List<BoardingPointResponse> getAllBoardingPoints() {
+        return boardingPointsRepo.findAllByOrderByBusBusNumberAscOrderIndexAscStationNameAsc()
+                .stream().map(BoardingPointResponse::fromBoardingPoint).toList();
+    }
+
+    @PutMapping("/boarding-points/{id}")
+    @Transactional
+    public BoardingPointResponse updateBoardingPoint(@PathVariable Long id,
+                                                      @Valid @RequestBody UpdateBoardingPointRequest req) {
+        BoardingPoints point = boardingPointsRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Boarding point not found"));
+        String stationName = req.getStationName().trim();
+        if (!point.getStationName().equalsIgnoreCase(stationName)
+                && boardingPointsRepo.existsByBusIdAndStationNameIgnoreCase(point.getBus().getId(), stationName)) {
+            throw new com.web.sms.exception.BadRequestException("This boarding point already exists for the bus");
+        }
+        String oldValue = point.getStationName() + " / ₹" + point.getFeeAmount();
+        point.setStationName(stationName);
+        point.setFeeAmount(req.getFeeAmount());
+        point.setOrderIndex(req.getOrderIndex() == null ? 0 : req.getOrderIndex());
+        BoardingPoints saved = boardingPointsRepo.save(point);
+        auditService.log(getCurrentUser().getUsername(), "ADMIN", "BOARDING_POINT_UPDATED",
+                "BOARDING_POINT", String.valueOf(id), oldValue,
+                saved.getStationName() + " / ₹" + saved.getFeeAmount(), null);
+        return BoardingPointResponse.fromBoardingPoint(saved);
+    }
+
+    @DeleteMapping("/boarding-points/{id}")
+    @Transactional
+    public void deleteBoardingPoint(@PathVariable Long id) {
+        BoardingPoints point = boardingPointsRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Boarding point not found"));
+        long allocations = allocationRepo.countByBoardingPointId(id);
+        long applications = applicationRepo.countByBoardingPointId(id);
+        long transfers = transferRepo.countByCurrentBoardingPointIdOrRequestedBoardingPointId(id, id);
+        if (allocations + applications + transfers > 0) {
+            throw new com.web.sms.exception.BadRequestException(
+                    "Cannot delete a boarding point referenced by applications, allocations or transfers. Deactivate it instead.");
+        }
+        boardingPointsRepo.delete(point);
+        auditService.log(getCurrentUser().getUsername(), "ADMIN", "BOARDING_POINT_DELETED",
+                "BOARDING_POINT", String.valueOf(id), point.getStationName(), null, null);
+    }
+
     @GetMapping("/incharges")
     public List<Incharge> getIncharges() {
         return inchargeService.getAllIncharges();

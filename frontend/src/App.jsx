@@ -34,6 +34,7 @@ import InchargeProfilePage from './pages/incharge/InchargeProfilePage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import BusManagementPage from './pages/admin/BusManagementPage';
 import RouteManagementPage from './pages/admin/RouteManagementPage';
+import BoardingPointManagementPage from './pages/admin/BoardingPointManagementPage';
 import InchargeManagementPage from './pages/admin/InchargeManagementPage';
 import StudentManagementPage from './pages/admin/StudentManagementPage';
 import AdminApplicationsPage from './pages/admin/AdminApplicationsPage';
@@ -86,6 +87,7 @@ function App() {
           <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="buses" element={<BusManagementPage />} />
           <Route path="routes" element={<RouteManagementPage />} />
+          <Route path="boarding-points" element={<BoardingPointManagementPage />} />
           <Route path="incharges" element={<InchargeManagementPage />} />
           <Route path="students" element={<StudentManagementPage />} />
           <Route path="applications" element={<AdminApplicationsPage />} />

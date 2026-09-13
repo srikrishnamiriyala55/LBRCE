@@ -9,4 +9,5 @@ public interface BoardingPointsRepository extends JpaRepository<BoardingPoints, 
     List<BoardingPoints> findByRouteId(Long routeId);
     List<BoardingPoints> findByBusIdAndStatus(Long busId, EntityStatus status);
     boolean existsByBusIdAndStationNameIgnoreCase(Long busId, String stationName);
+    List<BoardingPoints> findAllByOrderByBusBusNumberAscOrderIndexAscStationNameAsc();
 }

@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import api from '../../utils/axios';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import StatusBadge from '../../components/common/StatusBadge';
+import { useToast } from '../../components/common/Toast';
 import { Download, Printer } from 'lucide-react';
 
 const BusPassPage = () => {
   const [pass, setPass] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const { addToast } = useToast();
 
   useEffect(() => {
     const fetchPass = async () => {
@@ -21,6 +24,26 @@ const BusPassPage = () => {
     };
     fetchPass();
   }, []);
+
+  const downloadPass = async () => {
+    setDownloading(true);
+    try {
+      const response = await api.get('/student/pass/download', { responseType: 'blob' });
+      const url = URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `bus-pass-${pass.rollNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      addToast('Bus pass downloaded successfully', 'success');
+    } catch (error) {
+      addToast(error.response?.data?.message || 'Unable to download bus pass', 'error');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (loading) return <LoadingSpinner />;
 
@@ -37,7 +60,10 @@ const BusPassPage = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex justify-end gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:flex sm:justify-end gap-3 mb-4">
+        <button disabled={downloading} onClick={downloadPass} className="btn-primary flex items-center justify-center gap-2 disabled:opacity-60">
+          <Download size={16} /> {downloading ? 'Downloading...' : 'Download PDF'}
+        </button>
         <button onClick={() => window.print()} className="btn-secondary flex items-center gap-2">
           <Printer size={16} /> Print
         </button>
@@ -70,6 +96,18 @@ const BusPassPage = () => {
               <p className="font-medium text-gray-900">{pass.rollNumber}</p>
             </div>
             <div>
+              <p className="text-xs text-gray-500 uppercase">Branch</p>
+              <p className="font-medium text-gray-900">{pass.branch || '-'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase">Year / Semester</p>
+              <p className="font-medium text-gray-900">{pass.year || '-'} / {pass.semester || '-'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase">Phone Number</p>
+              <p className="font-medium text-gray-900">{pass.phoneNumber || '-'}</p>
+            </div>
+            <div>
               <p className="text-xs text-gray-500 uppercase">Bus Number</p>
               <p className="font-medium text-gray-900">{pass.busNumber}</p>
             </div>
@@ -77,7 +115,7 @@ const BusPassPage = () => {
               <p className="text-xs text-gray-500 uppercase">Route</p>
               <p className="font-medium text-gray-900">{pass.routeName}</p>
             </div>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <p className="text-xs text-gray-500 uppercase">Boarding Point</p>
               <p className="font-medium text-gray-900">{pass.boardingPoint}</p>
             </div>
