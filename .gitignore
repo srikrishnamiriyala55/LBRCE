@@ -1,0 +1,25 @@
+# Frontend dependencies and production output
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# Backend build output and local Maven cache
+backend/target/
+backend/.maven-repo/
+
+# IDE and operating-system files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Runtime logs and temporary exports
+*.log
+*-report.xlsx
+*-report.pdf
+
+# Keep credentials and deployment secrets outside source control
+.env
+*.local.properties

@@ -1,0 +1,10 @@
+package com.web.sms.enums;
+public enum TransferStatus {
+    TRANSFER_REQUESTED,
+    OLD_INCHARGE_APPROVED,
+    OLD_INCHARGE_REJECTED,
+    NEW_INCHARGE_APPROVED,
+    NEW_INCHARGE_REJECTED,
+    TRANSFER_COMPLETED,
+    CANCELLED
+}

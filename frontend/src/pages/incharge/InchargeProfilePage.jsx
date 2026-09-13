@@ -1,0 +1,2 @@
+import React,{useEffect,useState} from 'react';import api from '../../utils/axios';
+export default function InchargeProfilePage(){const [p,setP]=useState({});useEffect(()=>{api.get('/incharge/profile').then(r=>setP(r.data))},[]);return <div className="card max-w-2xl"><h2 className="text-xl font-bold mb-5">In-Charge Profile</h2><div className="grid md:grid-cols-2 gap-4">{Object.entries(p).map(([k,v])=><div key={k}><div className="text-xs uppercase text-gray-500">{k.replace(/([A-Z])/g,' $1')}</div><div className="font-medium">{v||'—'}</div></div>)}</div></div>}
