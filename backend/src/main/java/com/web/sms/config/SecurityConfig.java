@@ -73,7 +73,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/student/**").hasRole("STUDENT")
                 .requestMatchers("/api/incharge/**").hasRole("INCHARGE")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .anyRequest().authenticated()
+                // All API authorization rules are declared above. Remaining paths serve the React SPA.
+                .anyRequest().permitAll()
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

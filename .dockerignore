@@ -1,0 +1,9 @@
+.git
+.idea
+.vscode
+backend/target
+backend/.maven-repo
+frontend/node_modules
+frontend/dist
+frontend/.env
+*.log

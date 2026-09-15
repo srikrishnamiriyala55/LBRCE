@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/public")
 public class PublicController {
@@ -15,6 +17,11 @@ public class PublicController {
 
     public PublicController(PassService passService) {
         this.passService = passService;
+    }
+
+    @GetMapping("/health")
+    public Map<String, String> health() {
+        return Map.of("status", "UP", "service", "LBRCE BTMS");
     }
 
     @GetMapping("/verify-pass")
