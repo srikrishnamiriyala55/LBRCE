@@ -12,6 +12,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
@@ -20,6 +21,15 @@ import java.time.LocalDateTime;
 @Configuration
 @ConditionalOnProperty(name = "btms.seed.enabled", havingValue = "true")
 public class DataInitializer {
+
+    @Value("${btms.seed.admin-password}")
+    private String seedAdminPassword;
+
+    @Value("${btms.seed.incharge-password}")
+    private String seedInchargePassword;
+
+    @Value("${btms.seed.student-password}")
+    private String seedStudentPassword;
 
     @Bean
     public CommandLineRunner initData(AdminRepository adminRepo,
@@ -34,11 +44,11 @@ public class DataInitializer {
                 admin.setAdminId("admin");
                 admin.setName("Chief Transport Administrator");
                 admin.setEmail("transport@lbrce.ac.in");
-                admin.setPassword(passwordEncoder.encode("admin123"));
+                admin.setPassword(passwordEncoder.encode(seedAdminPassword));
                 admin.setStatus("ACTIVE");
                 admin.setCreatedAt(LocalDateTime.now());
                 adminRepo.save(admin);
-                System.out.println(">>> Initialized default Admin: admin / admin123");
+                System.out.println(">>> Initialized default Admin account");
             }
 
             // 2. Seed Default Incharge if none exists
@@ -48,13 +58,13 @@ public class DataInitializer {
                 incharge.setName("Dr. K. Srinivas Rao");
                 incharge.setEmail("srinivas.k@lbrce.ac.in");
                 incharge.setPhoneNumber("9876543210");
-                incharge.setPassword(passwordEncoder.encode("incharge123"));
+                incharge.setPassword(passwordEncoder.encode(seedInchargePassword));
                 incharge.setDepartment("CSE");
                 incharge.setDesignation("Associate Professor & Transport Incharge");
                 incharge.setStatus("ACTIVE");
                 incharge.setCreatedAt(LocalDateTime.now());
                 inchargeRepo.save(incharge);
-                System.out.println(">>> Initialized default Incharge: T1001 / incharge123");
+                System.out.println(">>> Initialized default In-Charge account");
             }
 
             // 3. Seed Default Student if none exists
@@ -64,7 +74,7 @@ public class DataInitializer {
                 student.setName("Sri Krishna");
                 student.setEmail("21761a0501@lbrce.ac.in");
                 student.setPhoneNumber("9123456780");
-                student.setPassword(passwordEncoder.encode("student123"));
+                student.setPassword(passwordEncoder.encode(seedStudentPassword));
                 student.setBranch("CSE");
                 student.setYear(4);
                 student.setSemester(1);
@@ -74,7 +84,7 @@ public class DataInitializer {
                 student.setStatus("ACTIVE");
                 student.setCreatedAt(LocalDateTime.now());
                 studentRepo.save(student);
-                System.out.println(">>> Initialized default Student: 21761A0501 / student123");
+                System.out.println(">>> Initialized default Student account");
             }
 
             // 4. Seed Default Active Academic Year

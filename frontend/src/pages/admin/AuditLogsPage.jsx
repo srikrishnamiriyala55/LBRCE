@@ -43,7 +43,7 @@ const AuditLogsPage = () => {
     },
     { key: 'action', label: 'Action Perfomed', render: (row) => <span className="font-medium text-gray-900">{row.action}</span> },
     { key: 'entityType', label: 'Target Entity', render: (row) => `${row.entityType || '—'} #${row.entityId || ''}` },
-    { key: 'ipAddress', label: 'IP Address', render: (row) => row.ipAddress || '127.0.0.1' }
+    { key: 'ipAddress', label: 'IP Address', render: (row) => row.ipAddress || '—' }
   ];
 
   return (

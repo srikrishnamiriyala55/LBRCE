@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @Service
 public class FeeService {
 
-    @Value("${btms.payments.auto-confirm:false}")
+    @Value("${btms.payments.auto-confirm}")
     private boolean autoConfirmPayments;
 
     private final FeeRepository feeRepo;

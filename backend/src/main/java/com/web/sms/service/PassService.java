@@ -33,7 +33,7 @@ public class PassService {
     private final BusPassRepository passRepo;
     private final AcademicYearRepository academicYearRepo;
 
-    @Value("${btms.pass.verification-url:http://localhost:8089/api/public/verify-pass?token=}")
+    @Value("${btms.pass.verification-url}")
     private String verificationUrl;
 
     public PassService(BusPassRepository passRepo, AcademicYearRepository academicYearRepo) {

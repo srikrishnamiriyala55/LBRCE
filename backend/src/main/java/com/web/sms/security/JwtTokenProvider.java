@@ -7,19 +7,29 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
 public class JwtTokenProvider {
 
-    @Value("${jwt.secret:defaultSecretKeyWhichIsAtLeast32BytesLongForHmacSha256!}")
-    private String secret;
+    private final String secret;
+    private final long expiration;
 
-    @Value("${jwt.expiration:86400000}")
-    private long expiration;
+    public JwtTokenProvider(@Value("${jwt.secret}") String secret,
+                            @Value("${jwt.expiration}") long expiration) {
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalArgumentException("jwt.secret must contain at least 32 UTF-8 bytes");
+        }
+        if (expiration <= 0) {
+            throw new IllegalArgumentException("jwt.expiration must be greater than zero");
+        }
+        this.secret = secret;
+        this.expiration = expiration;
+    }
 
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     public String generateToken(UserPrincipal user) {

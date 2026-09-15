@@ -322,12 +322,19 @@ Set environment variables instead of committing credentials:
 DB_URL=jdbc:mysql://localhost:3306/btms?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Kolkata
 DB_USERNAME=your_database_user
 DB_PASSWORD=your_database_password
+SERVER_PORT=8089
 JWT_SECRET=use-a-long-random-secret-of-at-least-256-bits
 JWT_EXPIRATION=86400000
 CORS_ALLOWED_ORIGINS=http://localhost:3000
+CORS_MAX_AGE_SECONDS=3600
+BCRYPT_STRENGTH=10
 JPA_DDL_AUTO=validate
 PAYMENTS_AUTO_CONFIRM=false
 BTMS_SEED_ENABLED=false
+BTMS_SEED_ADMIN_PASSWORD=replace-only-when-local-seeding-is-enabled
+BTMS_SEED_INCHARGE_PASSWORD=replace-only-when-local-seeding-is-enabled
+BTMS_SEED_STUDENT_PASSWORD=replace-only-when-local-seeding-is-enabled
+PASS_VERIFICATION_URL=http://localhost:8089/api/public/verify-pass?token=
 ```
 
 `PAYMENTS_AUTO_CONFIRM` must remain `false` outside explicit local demonstrations. `BTMS_SEED_ENABLED` must remain `false` for a real college database.
@@ -356,11 +363,18 @@ npm install
 npm run dev
 ```
 
-The development UI runs at `http://localhost:3000` and proxies `/api` requests to the backend. For a separately hosted backend, configure:
+Frontend runtime and development values are maintained in `frontend/.env`. Copy `frontend/.env.example` when preparing another environment:
 
 ```env
-VITE_API_URL=https://your-api-host.example/api
+VITE_API_URL=/api
+VITE_DEV_HOST=localhost
+VITE_DEV_PORT=3000
+VITE_API_PROXY_TARGET=http://localhost:8089
+VITE_API_TIMEOUT_MS=15000
+VITE_TOAST_DURATION_MS=3000
 ```
+
+The development UI uses `VITE_DEV_HOST` and `VITE_DEV_PORT`, and proxies `/api` to `VITE_API_PROXY_TARGET`. For a separately hosted backend, set `VITE_API_URL` to its complete API URL.
 
 Create a production bundle with `npm run build`.
 
