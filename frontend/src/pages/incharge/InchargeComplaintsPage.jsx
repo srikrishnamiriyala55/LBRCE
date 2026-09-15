@@ -48,7 +48,7 @@ const InchargeComplaintsPage = () => {
   };
 
   const columns = [
-    { key: 'studentName', label: 'Student', render: (row) => row.student?.name || row.studentName },
+    { key: 'studentName', label: 'Student', render: (row) => <div><div className="font-medium">{row.studentName || '—'}</div><div className="text-xs text-gray-500">{row.rollNumber || ''}</div></div> },
     { key: 'subject', label: 'Subject' },
     { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },
     { key: 'actions', label: 'Actions', render: (row) => (

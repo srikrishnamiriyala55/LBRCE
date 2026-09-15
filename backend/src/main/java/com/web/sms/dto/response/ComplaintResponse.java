@@ -8,6 +8,8 @@ import java.time.LocalDateTime;
 public class ComplaintResponse {
     private Long id;
     private String busNumber;
+    private String studentName;
+    private String rollNumber;
     private ComplaintCategory category;
     private String subject;
     private String description;
@@ -19,6 +21,10 @@ public class ComplaintResponse {
     public static ComplaintResponse fromComplaint(Complaint c) {
         ComplaintResponse r = new ComplaintResponse();
         r.setId(c.getId());
+        if(c.getStudent() != null) {
+            r.setStudentName(c.getStudent().getName());
+            r.setRollNumber(c.getStudent().getRollNumber());
+        }
         if(c.getBus() != null) r.setBusNumber(c.getBus().getBusNumber());
         r.setCategory(c.getCategory());
         r.setSubject(c.getSubject());
@@ -34,6 +40,10 @@ public class ComplaintResponse {
     public void setId(Long id) { this.id = id; }
     public String getBusNumber() { return busNumber; }
     public void setBusNumber(String busNumber) { this.busNumber = busNumber; }
+    public String getStudentName() { return studentName; }
+    public void setStudentName(String studentName) { this.studentName = studentName; }
+    public String getRollNumber() { return rollNumber; }
+    public void setRollNumber(String rollNumber) { this.rollNumber = rollNumber; }
     public ComplaintCategory getCategory() { return category; }
     public void setCategory(ComplaintCategory category) { this.category = category; }
     public String getSubject() { return subject; }

@@ -16,7 +16,7 @@ public class Complaint {
     private Student student;
     
     @ManyToOne
-    @JoinColumn(name="bus_id")
+    @JoinColumn(name="bus_id", nullable=false)
     private Bus bus;
     
     @Enumerated(EnumType.STRING)
