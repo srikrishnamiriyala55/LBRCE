@@ -75,7 +75,8 @@ public class AuthService {
         student.setYear(request.getYear());
         student.setSemester(request.getSemester());
         student.setPassword(passwordEncoder.encode(request.getPassword()));
-        student.setStatus("PENDING");
+        // Account registration is immediate. Bus access still requires a separately approved application.
+        student.setStatus("ACTIVE");
         return StudentProfileResponse.fromStudent(studentRepository.save(student));
     }
 }

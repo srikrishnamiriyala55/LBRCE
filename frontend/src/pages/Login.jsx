@@ -64,7 +64,7 @@ const Login = () => {
       setPassword('');
       setRegistration({ rollNumber: '', name: '', email: '', phoneNumber: '', branch: '', year: '', semester: '', password: '', confirmPassword: '' });
       setIsRegistering(false);
-      setSuccess('Registration submitted successfully. An administrator must verify and activate your student account before you can sign in.');
+      setSuccess('Account created successfully. You can sign in now and submit a bus application for approval.');
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to create the account. Please try again.');
     } finally {
