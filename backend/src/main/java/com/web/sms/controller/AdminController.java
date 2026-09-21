@@ -50,6 +50,7 @@ public class AdminController {
     private final RouteRepository routeRepo;
     private final InchargeRepository inchargeRepo;
     private final TransportReportService reportService;
+    private final PassService passService;
 
     public AdminController(AdminService adminService,
                            BusService busService,
@@ -68,7 +69,8 @@ public class AdminController {
                            BusPassRepository passRepo, ComplaintRepository complaintRepo,
                            NotificationRepository notificationRepo, AdminRepository adminRepo,
                            ComplaintService complaintService, TransportAllocationRepository allocationRepo,
-                           RouteRepository routeRepo, InchargeRepository inchargeRepo, TransportReportService reportService) {
+                           RouteRepository routeRepo, InchargeRepository inchargeRepo, TransportReportService reportService,
+                           PassService passService) {
         this.adminService = adminService;
         this.busService = busService;
         this.routeService = routeService;
@@ -87,6 +89,7 @@ public class AdminController {
         this.allocationRepo=allocationRepo;
         this.routeRepo=routeRepo;this.inchargeRepo=inchargeRepo;
         this.reportService=reportService;
+        this.passService=passService;
     }
 
     private UserPrincipal getCurrentUser() {
@@ -292,6 +295,9 @@ public class AdminController {
 
     @GetMapping("/payments") public Page<PaymentResponse> payments(Pageable pageable){return paymentRepo.findAll(checked(pageable)).map(PaymentResponse::fromPayment);}
     @GetMapping("/passes") public Page<PassResponse> passes(Pageable pageable){return passRepo.findAll(checked(pageable)).map(PassResponse::fromBusPass);}
+    @GetMapping("/passes/{id}") public PassResponse pass(@PathVariable Long id){return passService.getPassForAdmin(id);}
+    @GetMapping("/passes/{id}/photo") public ResponseEntity<byte[]> passPhoto(@PathVariable Long id){return passService.passPhotoForAdmin(id);}
+    @GetMapping("/passes/{id}/download") public ResponseEntity<byte[]> downloadPass(@PathVariable Long id){PassResponse pass=passService.getPassForAdmin(id);return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=bus-pass-"+pass.getRollNumber()+".pdf").body(passService.generatePdfForAdmin(id));}
     @GetMapping("/complaints") public Page<ComplaintResponse> complaints(@RequestParam(required=false) com.web.sms.enums.ComplaintStatus status,Pageable pageable){return (status==null?complaintRepo.findAll(checked(pageable)):complaintRepo.findByStatus(status,checked(pageable))).map(ComplaintResponse::fromComplaint);}
     @PutMapping("/complaints/{id}/status") public ComplaintResponse complaintStatus(@PathVariable Long id,@Valid @RequestBody StatusUpdateRequest req){ComplaintResponse r=complaintService.updateComplaintStatus(id,req.getStatus(),req.getResponse(),getCurrentUser().getUsername());auditService.log(getCurrentUser().getUsername(),"ADMIN","COMPLAINT_STATUS_UPDATED","COMPLAINT",String.valueOf(id),null,req.getStatus(),null);return r;}
     @GetMapping("/notifications") public Page<NotificationResponse> notifications(Pageable pageable){return notificationRepo.findAll(checked(pageable)).map(NotificationResponse::fromNotification);}

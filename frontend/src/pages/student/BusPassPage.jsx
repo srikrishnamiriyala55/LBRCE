@@ -9,13 +9,20 @@ const BusPassPage = () => {
   const [pass, setPass] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState('');
   const { addToast } = useToast();
 
   useEffect(() => {
     const fetchPass = async () => {
       try {
         const res = await api.get('/student/pass');
-        if (res.data) setPass(res.data);
+        if (res.data) {
+          setPass(res.data);
+          if (res.data.photoAvailable) {
+            const photoResponse = await api.get('/student/pass/photo', { responseType: 'blob' });
+            setPhotoUrl(URL.createObjectURL(photoResponse.data));
+          }
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -24,6 +31,8 @@ const BusPassPage = () => {
     };
     fetchPass();
   }, []);
+
+  useEffect(() => () => { if (photoUrl) URL.revokeObjectURL(photoUrl); }, [photoUrl]);
 
   const downloadPass = async () => {
     setDownloading(true);
@@ -78,6 +87,11 @@ const BusPassPage = () => {
         </div>
         
         <div className="p-4 sm:p-6">
+          <div className="mb-5 flex justify-center">
+            {photoUrl
+              ? <img src={photoUrl} alt={`${pass.studentName} student`} className="h-32 w-28 rounded-lg border-2 border-blue-100 object-cover" />
+              : <div className="flex h-32 w-28 items-center justify-center rounded-lg border bg-gray-50 text-center text-xs text-gray-400">Photo unavailable</div>}
+          </div>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
             <div>
               <p className="text-sm text-gray-500">Pass Number</p>

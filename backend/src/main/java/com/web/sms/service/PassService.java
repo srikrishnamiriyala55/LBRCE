@@ -7,6 +7,9 @@ import com.web.sms.enums.PassStatus;
 import com.web.sms.exception.ResourceNotFoundException;
 import com.web.sms.repository.AcademicYearRepository;
 import com.web.sms.repository.BusPassRepository;
+import com.web.sms.repository.StudentRepository;
+import com.web.sms.entity.Student;
+import com.web.sms.exception.ForbiddenException;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.qrcode.QRCodeWriter;
@@ -22,6 +25,9 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
@@ -32,13 +38,16 @@ public class PassService {
 
     private final BusPassRepository passRepo;
     private final AcademicYearRepository academicYearRepo;
+    private final StudentRepository studentRepo;
 
     @Value("${btms.pass.verification-url}")
     private String verificationUrl;
 
-    public PassService(BusPassRepository passRepo, AcademicYearRepository academicYearRepo) {
+    public PassService(BusPassRepository passRepo, AcademicYearRepository academicYearRepo,
+                       StudentRepository studentRepo) {
         this.passRepo = passRepo;
         this.academicYearRepo = academicYearRepo;
+        this.studentRepo = studentRepo;
     }
 
     public PassResponse getStudentPass(Long studentId) {
@@ -58,6 +67,61 @@ public class PassService {
 
     public byte[] generatePdf(Long studentId) {
         BusPass entity = findActivePass(studentId);
+        return generatePdf(entity);
+    }
+
+    public PassResponse getPassForAdmin(Long passId) {
+        return PassResponse.fromBusPass(findPass(passId));
+    }
+
+    public PassResponse getPassForIncharge(Long passId, Long busId) {
+        return PassResponse.fromBusPass(requireBusAccess(findPass(passId), busId));
+    }
+
+    public byte[] generatePdfForAdmin(Long passId) {
+        return generatePdf(findPass(passId));
+    }
+
+    public byte[] generatePdfForIncharge(Long passId, Long busId) {
+        return generatePdf(requireBusAccess(findPass(passId), busId));
+    }
+
+    public ResponseEntity<byte[]> studentPhotoResponse(Long studentId) {
+        Student student = studentRepo.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        return photoResponse(student);
+    }
+
+    public ResponseEntity<byte[]> passPhotoForAdmin(Long passId) {
+        return photoResponse(findPass(passId).getStudent());
+    }
+
+    public ResponseEntity<byte[]> passPhotoForIncharge(Long passId, Long busId) {
+        return photoResponse(requireBusAccess(findPass(passId), busId).getStudent());
+    }
+
+    private BusPass findPass(Long passId) {
+        return passRepo.findById(passId).orElseThrow(() -> new ResourceNotFoundException("Bus pass not found"));
+    }
+
+    private BusPass requireBusAccess(BusPass pass, Long busId) {
+        if (pass.getAllocation() == null || pass.getAllocation().getBus() == null
+                || !pass.getAllocation().getBus().getId().equals(busId)) {
+            throw new ForbiddenException("This bus pass does not belong to your assigned bus");
+        }
+        return pass;
+    }
+
+    private ResponseEntity<byte[]> photoResponse(Student student) {
+        if (student == null || student.getPhotoData() == null || student.getPhotoData().length == 0) {
+            throw new ResourceNotFoundException("Student photo not found");
+        }
+        MediaType type = MediaType.parseMediaType(
+                student.getPhotoContentType() == null ? MediaType.IMAGE_JPEG_VALUE : student.getPhotoContentType());
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(type).body(student.getPhotoData());
+    }
+
+    private byte[] generatePdf(BusPass entity) {
         PassResponse pass = PassResponse.fromBusPass(entity);
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A5, 28, 28, 24, 24);
@@ -74,6 +138,15 @@ public class PassService {
             heading.setAlignment(Element.ALIGN_CENTER);
             heading.setSpacingAfter(14);
             document.add(heading);
+
+            if (entity.getStudent() != null && entity.getStudent().getPhotoData() != null
+                    && entity.getStudent().getPhotoData().length > 0) {
+                Image studentPhoto = Image.getInstance(entity.getStudent().getPhotoData());
+                studentPhoto.scaleToFit(90, 105);
+                studentPhoto.setAlignment(Element.ALIGN_CENTER);
+                studentPhoto.setSpacingAfter(10);
+                document.add(studentPhoto);
+            }
 
             PdfPTable table = new PdfPTable(2);
             table.setWidthPercentage(100);

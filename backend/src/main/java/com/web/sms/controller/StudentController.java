@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -82,9 +83,11 @@ public class StudentController {
         return busService.getBoardingPointsByBusId(busId);
     }
 
-    @PostMapping("/applications")
-    public ApplicationResponse submitApplication(@Valid @RequestBody BusApplicationRequest req) {
-        return applicationService.submitApplication(getCurrentUser().getId(), req);
+    @PostMapping(value="/applications", consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApplicationResponse submitApplication(
+            @Valid @RequestPart("application") BusApplicationRequest req,
+            @RequestPart("photo") MultipartFile photo) {
+        return applicationService.submitApplication(getCurrentUser().getId(), req, photo);
     }
 
     @GetMapping("/applications")
@@ -105,6 +108,11 @@ public class StudentController {
     @GetMapping("/pass")
     public PassResponse getPass() {
         return passService.getStudentPass(getCurrentUser().getId());
+    }
+
+    @GetMapping("/pass/photo")
+    public ResponseEntity<byte[]> getPassPhoto() {
+        return passService.studentPhotoResponse(getCurrentUser().getId());
     }
 
     @GetMapping("/pass/download")

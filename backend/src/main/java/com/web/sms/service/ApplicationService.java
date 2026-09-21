@@ -12,7 +12,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -49,13 +52,15 @@ public class ApplicationService {
     }
 
     @Transactional
-    public ApplicationResponse submitApplication(Long studentId, BusApplicationRequest req) {
+    public ApplicationResponse submitApplication(Long studentId, BusApplicationRequest req, MultipartFile photo) {
         Student student = studentRepo.findByIdForUpdate(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
 
         if (!"ACTIVE".equalsIgnoreCase(student.getStatus())) {
             throw new BadRequestException("Only active students can apply for transportation");
         }
+
+        storeStudentPhoto(student, photo);
 
         AcademicYear year = academicYearRepo.findByActiveTrue()
                 .orElseThrow(() -> new BadRequestException("No active academic year found in the system"));
@@ -109,6 +114,29 @@ public class ApplicationService {
         if (bus.getIncharge() != null) notificationService.createNotification(bus.getIncharge().getTeacherId(), "New Bus Application", "New student application received for your bus.", "APPLICATION");
 
         return ApplicationResponse.fromApplication(saved);
+    }
+
+    private void storeStudentPhoto(Student student, MultipartFile photo) {
+        if (photo == null || photo.isEmpty()) {
+            throw new BadRequestException("A recent student photo is required");
+        }
+        if (photo.getSize() > 2L * 1024 * 1024) {
+            throw new BadRequestException("Student photo must not exceed 2 MB");
+        }
+        byte[] bytes;
+        try {
+            bytes = photo.getBytes();
+        } catch (IOException exception) {
+            throw new BadRequestException("Unable to read the uploaded student photo");
+        }
+        boolean jpeg = bytes.length >= 3 && (bytes[0] & 0xff) == 0xff && (bytes[1] & 0xff) == 0xd8 && (bytes[2] & 0xff) == 0xff;
+        boolean png = bytes.length >= 8 && (bytes[0] & 0xff) == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4e && bytes[3] == 0x47;
+        if (!jpeg && !png) {
+            throw new BadRequestException("Student photo must be a valid JPEG or PNG image");
+        }
+        student.setPhotoData(bytes);
+        student.setPhotoContentType(jpeg ? MediaType.IMAGE_JPEG_VALUE : MediaType.IMAGE_PNG_VALUE);
+        studentRepo.save(student);
     }
 
     public Page<ApplicationResponse> getStudentApplications(Long studentId, Pageable pageable) {

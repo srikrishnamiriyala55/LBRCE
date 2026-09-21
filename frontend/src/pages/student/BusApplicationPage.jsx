@@ -12,6 +12,8 @@ const BusApplicationPage = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [eligibility, setEligibility] = useState(null);
+  const [photo, setPhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState('');
   const navigate = useNavigate();
   const { addToast } = useToast();
 
@@ -25,6 +27,10 @@ const BusApplicationPage = () => {
       .catch((err) => addToast(err.response?.data?.message || 'Failed to check application eligibility', 'error'))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => () => {
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+  }, [photoPreview]);
 
   const fetchBoardingPoints = async (busId) => {
     try {
@@ -48,14 +54,17 @@ const BusApplicationPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedBus || !selectedPoint) return;
+    if (!selectedBus || !selectedPoint || !photo) return;
     
     setSubmitting(true);
     try {
-      await api.post('/student/applications', {
-        busId: selectedBus,
-        boardingPointId: selectedPoint
-      });
+      const formData = new FormData();
+      formData.append('application', new Blob([JSON.stringify({
+        busId: Number(selectedBus),
+        boardingPointId: Number(selectedPoint)
+      })], { type: 'application/json' }));
+      formData.append('photo', photo);
+      await api.post('/student/applications', formData);
       addToast('Application submitted successfully', 'success');
       navigate('/student/applications');
     } catch (err) {
@@ -63,6 +72,24 @@ const BusApplicationPage = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handlePhotoChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      addToast('Select a JPEG or PNG photo', 'error');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      addToast('Student photo must not exceed 2 MB', 'error');
+      event.target.value = '';
+      return;
+    }
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhoto(file);
+    setPhotoPreview(URL.createObjectURL(file));
   };
 
   if (loading) return <LoadingSpinner />;
@@ -120,9 +147,16 @@ const BusApplicationPage = () => {
           </div>
         )}
 
+        <div>
+          <label htmlFor="studentPhoto" className="block text-sm font-medium text-gray-700 mb-1">Recent Student Photo *</label>
+          <input id="studentPhoto" type="file" accept="image/jpeg,image/png" onChange={handlePhotoChange} className="input-field" required />
+          <p className="mt-1 text-xs text-gray-500">JPEG or PNG only, maximum 2 MB. This photo will appear on your digital bus pass.</p>
+          {photoPreview && <img src={photoPreview} alt="Student preview" className="mt-3 h-32 w-28 rounded-lg border object-cover" />}
+        </div>
+
         <button 
           type="submit" 
-          disabled={!selectedBus || !selectedPoint || submitting}
+          disabled={!selectedBus || !selectedPoint || !photo || submitting}
           className="btn-primary w-full disabled:opacity-50"
         >
           {submitting ? 'Submitting...' : 'Submit Application'}

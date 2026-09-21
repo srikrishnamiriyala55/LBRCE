@@ -32,6 +32,8 @@ import com.web.sms.service.TransferService;
 import com.web.sms.service.InchargeOperationsService;
 import com.web.sms.service.NotificationService;
 import com.web.sms.service.TransportReportService;
+import com.web.sms.service.PassService;
+import com.web.sms.dto.response.PassResponse;
 import com.web.sms.dto.request.SeatAssignmentRequest;
 import com.web.sms.dto.response.InchargeStudentResponse;
 import jakarta.validation.Valid;
@@ -64,6 +66,7 @@ public class InchargeController {
     private final ComplaintRepository complaintRepo;
     private final NotificationService notificationService;
     private final TransportReportService reportService;
+    private final PassService passService;
 
     public InchargeController(InchargeService inchargeService,
                               ApplicationService applicationService,
@@ -75,7 +78,8 @@ public class InchargeController {
                               BusPassRepository passRepo,
                               AcademicYearRepository academicYearRepo,
                               TransferRequestRepository transferRepo, InchargeOperationsService operations,
-                              ComplaintRepository complaintRepo, NotificationService notificationService, TransportReportService reportService) {
+                              ComplaintRepository complaintRepo, NotificationService notificationService, TransportReportService reportService,
+                              PassService passService) {
         this.inchargeService = inchargeService;
         this.applicationService = applicationService;
         this.transferService = transferService;
@@ -90,6 +94,7 @@ public class InchargeController {
         this.complaintRepo = complaintRepo;
         this.notificationService = notificationService;
         this.reportService = reportService;
+        this.passService = passService;
     }
 
     private UserPrincipal getCurrentUser() {
@@ -158,7 +163,10 @@ public class InchargeController {
     public Page<com.web.sms.dto.response.FeeResponse> fees(Pageable pageable){return feeRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(),EntityStatus.ACTIVE,checked(pageable)).map(com.web.sms.dto.response.FeeResponse::fromFee);}
 
     @GetMapping("/passes")
-    public Page<Map<String,Object>> passes(Pageable pageable){return passRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(),EntityStatus.ACTIVE,checked(pageable)).map(p->{Map<String,Object> r=new LinkedHashMap<>();r.put("passNumber",p.getPassNumber());r.put("studentName",p.getStudent().getName());r.put("rollNumber",p.getStudent().getRollNumber());r.put("status",p.getStatus());r.put("validUntil",p.getValidUntil());return r;});}
+    public Page<PassResponse> passes(Pageable pageable){return passRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(),EntityStatus.ACTIVE,checked(pageable)).map(PassResponse::fromBusPass);}
+    @GetMapping("/passes/{id}") public PassResponse pass(@PathVariable Long id){return passService.getPassForIncharge(id,requireAssignedBus().getId());}
+    @GetMapping("/passes/{id}/photo") public ResponseEntity<byte[]> passPhoto(@PathVariable Long id){return passService.passPhotoForIncharge(id,requireAssignedBus().getId());}
+    @GetMapping("/passes/{id}/download") public ResponseEntity<byte[]> downloadPass(@PathVariable Long id){PassResponse pass=passService.getPassForIncharge(id,requireAssignedBus().getId());return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=bus-pass-"+pass.getRollNumber()+".pdf").body(passService.generatePdfForIncharge(id,requireAssignedBus().getId()));}
 
     @GetMapping("/reports")
     public DashboardResponse reports(){return operations.dashboard(requireAssignedBus());}

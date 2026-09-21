@@ -243,6 +243,8 @@ LBRCE/
 |       |   |   `-- Toast.jsx                        # Toast provider and notifications
 |       |   |-- layout/
 |       |   |   `-- DashboardLayout.jsx              # Shared navbar/sidebar page frame
+|       |   |-- passes/
+|       |   |   `-- PassViewerModal.jsx              # Role-scoped bus-pass preview and PDF download
 |       |   `-- reports/
 |       |       `-- TransportReportTable.jsx         # Filters, table and Excel/PDF downloads
 |       |-- contexts/

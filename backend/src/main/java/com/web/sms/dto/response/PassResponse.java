@@ -22,6 +22,7 @@ public class PassResponse {
     private PassStatus status;
     private String verificationToken;
     private String qrCodePath;
+    private boolean photoAvailable;
 
     public static PassResponse fromBusPass(BusPass pass) {
         PassResponse r = new PassResponse();
@@ -34,6 +35,7 @@ public class PassResponse {
             r.setYear(pass.getStudent().getYear());
             r.setSemester(pass.getStudent().getSemester());
             r.setPhoneNumber(pass.getStudent().getPhoneNumber());
+            r.setPhotoAvailable(pass.getStudent().getPhotoData() != null && pass.getStudent().getPhotoData().length > 0);
         }
         if(pass.getAllocation() != null) {
             if(pass.getAllocation().getBus() != null) {
@@ -98,4 +100,6 @@ public class PassResponse {
     public void setVerificationToken(String verificationToken) { this.verificationToken = verificationToken; }
     public String getQrCodePath() { return qrCodePath; }
     public void setQrCodePath(String qrCodePath) { this.qrCodePath = qrCodePath; }
+    public boolean isPhotoAvailable() { return photoAvailable; }
+    public void setPhotoAvailable(boolean photoAvailable) { this.photoAvailable = photoAvailable; }
 }
