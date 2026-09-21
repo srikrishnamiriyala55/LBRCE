@@ -12,23 +12,33 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [success, setSuccess] = useState('');
+  const [otpFlow, setOtpFlow] = useState(null);
+  const [otp, setOtp] = useState('');
   const [registration, setRegistration] = useState({
     rollNumber: '', name: '', email: '', phoneNumber: '', branch: '',
     year: '', semester: '', password: '', confirmPassword: ''
   });
   
-  const { login } = useAuth();
+  const { login, verifyLoginOtp } = useAuth();
   const navigate = useNavigate();
+
+  const navigateForRole = (user) => {
+    if (user.role === 'STUDENT') navigate('/student/dashboard');
+    else if (user.role === 'INCHARGE') navigate('/incharge/dashboard');
+    else if (user.role === 'ADMIN') navigate('/admin/dashboard');
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
     try {
-      const user = await login(rollNumber, password);
-      if (user.role === 'STUDENT') navigate('/student/dashboard');
-      else if (user.role === 'INCHARGE') navigate('/incharge/dashboard');
-      else if (user.role === 'ADMIN') navigate('/admin/dashboard');
+      const result = await login(rollNumber, password);
+      if (result.otpRequired) {
+        setOtp('');
+        setOtpFlow({ type: 'LOGIN', ...result.challenge });
+        setSuccess(`A verification code was sent to ${result.challenge.maskedEmail}.`);
+      } else navigateForRole(result.user);
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
@@ -59,18 +69,41 @@ const Login = () => {
       const { confirmPassword, ...payload } = registration;
       payload.year = Number(payload.year);
       payload.semester = Number(payload.semester);
-      await api.post('/auth/register/student', payload);
-      setRollNumber(payload.rollNumber.trim().toUpperCase());
-      setPassword('');
-      setRegistration({ rollNumber: '', name: '', email: '', phoneNumber: '', branch: '', year: '', semester: '', password: '', confirmPassword: '' });
-      setIsRegistering(false);
-      setSuccess('Account created successfully. You can sign in now and submit a bus application for approval.');
+      const response = await api.post('/auth/register/student', payload);
+      setOtp('');
+      setOtpFlow({ type: 'REGISTRATION', ...response.data });
+      setSuccess(`A verification code was sent to ${response.data.maskedEmail}.`);
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to create the account. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleOtpVerification = async (event) => {
+    event.preventDefault();
+    setError('');
+    setIsLoading(true);
+    try {
+      if (otpFlow.type === 'LOGIN') {
+        const user = await verifyLoginOtp(otpFlow.challengeId, otp);
+        navigateForRole(user);
+      } else {
+        await api.post('/auth/register/student/verify-otp', { challengeId: otpFlow.challengeId, otp });
+        const studentId = registration.rollNumber.trim().toUpperCase();
+        setRollNumber(studentId);
+        setPassword('');
+        setRegistration({ rollNumber: '', name: '', email: '', phoneNumber: '', branch: '', year: '', semester: '', password: '', confirmPassword: '' });
+        setOtpFlow(null);
+        setIsRegistering(false);
+        setSuccess('Email verified and account created. You can sign in now.');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'OTP verification failed.');
+    } finally { setIsLoading(false); }
+  };
+
+  const cancelOtp = () => { setOtpFlow(null); setOtp(''); setError(''); setSuccess(''); };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -81,7 +114,7 @@ const Login = () => {
             Lakireddy Bali Reddy College of Engineering
           </h1>
           <p className="text-sm text-gray-500 mt-2 font-medium">Bus Transportation Management System</p>
-          <p className="text-sm font-semibold text-gray-700 mt-3">{isRegistering ? 'Create Student Account' : 'Sign in to your account'}</p>
+          <p className="text-sm font-semibold text-gray-700 mt-3">{otpFlow ? 'Verify Email OTP' : isRegistering ? 'Create Student Account' : 'Sign in to your account'}</p>
         </div>
 
         {error && (
@@ -92,7 +125,15 @@ const Login = () => {
 
         {success && <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-500 text-green-700 text-sm">{success}</div>}
 
-        {!isRegistering ? <form onSubmit={handleLogin} className="space-y-5">
+        {otpFlow ? <form onSubmit={handleOtpVerification} className="space-y-5">
+          <div className="text-center text-sm text-gray-600">Enter the 6-digit code sent to <strong>{otpFlow.maskedEmail}</strong>. The code expires in 5 minutes.</div>
+          <div>
+            <label htmlFor="emailOtp" className="block text-sm font-medium text-gray-700 mb-1">Email OTP</label>
+            <input id="emailOtp" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength="6" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))} className="input-field text-center text-2xl tracking-[0.5em]" required autoFocus />
+          </div>
+          <button type="submit" disabled={isLoading || otp.length !== 6} className="w-full btn-primary py-3 flex justify-center items-center">{isLoading ? <Loader2 className="animate-spin" size={20} /> : 'Verify OTP'}</button>
+          <button type="button" disabled={isLoading} onClick={cancelOtp} className="w-full text-sm text-blue-700 hover:text-blue-900 flex justify-center items-center gap-2"><ArrowLeft size={16} /> Back</button>
+        </form> : !isRegistering ? <form onSubmit={handleLogin} className="space-y-5">
           <div>
             <label htmlFor="loginId" className="block text-sm font-medium text-gray-700 mb-1">Roll Number / User ID</label>
             <input

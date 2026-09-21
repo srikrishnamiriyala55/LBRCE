@@ -16,13 +16,22 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (rollNumber, password) => {
-    const response = await api.post('/auth/login', { rollNumber, password });
-    const { token, user } = response.data;
+  const storeSession = ({ token, user }) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
     return user;
+  };
+
+  const login = async (rollNumber, password) => {
+    const response = await api.post('/auth/login', { rollNumber, password });
+    if (response.data.otpRequired) return response.data;
+    return { otpRequired: false, user: storeSession(response.data.login) };
+  };
+
+  const verifyLoginOtp = async (challengeId, otp) => {
+    const response = await api.post('/auth/login/verify-otp', { challengeId, otp });
+    return storeSession(response.data);
   };
 
   const logout = () => {
@@ -36,7 +45,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, verifyLoginOtp, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
