@@ -38,6 +38,11 @@ public class DataInitializer {
                                      AcademicYearRepository academicYearRepo,
                                      PasswordEncoder passwordEncoder) {
         return args -> {
+            if (seedAdminPassword == null || seedAdminPassword.isBlank()
+                    || seedInchargePassword == null || seedInchargePassword.isBlank()
+                    || seedStudentPassword == null || seedStudentPassword.isBlank()) {
+                throw new IllegalStateException("All BTMS_SEED_*_PASSWORD environment variables are required when demo seeding is enabled");
+            }
             // 1. Seed Default Admin if none exists
             if (!adminRepo.existsByAdminId("admin")) {
                 Admin admin = new Admin();
