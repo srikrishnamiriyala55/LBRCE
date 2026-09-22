@@ -165,6 +165,32 @@ public class AdminController {
         return boardingPointsRepo.findByBusId(busId).stream().map(BoardingPointResponse::fromBoardingPoint).toList();
     }
 
+    @PutMapping("/buses/{busId}/boarding-points/order")
+    @Transactional
+    public List<BoardingPointResponse> reorderBoardingPoints(@PathVariable Long busId,
+            @Valid @RequestBody ReorderBoardingPointsRequest req) {
+        if (!busRepo.existsById(busId)) throw new ResourceNotFoundException("Bus not found");
+        List<BoardingPoints> points = boardingPointsRepo.findByBusIdForUpdate(busId);
+        List<Long> requestedIds = req.getBoardingPointIds();
+        java.util.Set<Long> requestedSet = new java.util.HashSet<>(requestedIds);
+        java.util.Set<Long> currentSet = points.stream().map(BoardingPoints::getId).collect(java.util.stream.Collectors.toSet());
+        if (requestedIds.size() != requestedSet.size() || !requestedSet.equals(currentSet)) {
+            throw new com.web.sms.exception.BadRequestException(
+                    "The order must contain every boarding point for this bus exactly once");
+        }
+        Map<Long, BoardingPoints> byId = points.stream().collect(java.util.stream.Collectors.toMap(BoardingPoints::getId, point -> point));
+        java.util.ArrayList<BoardingPoints> ordered = new java.util.ArrayList<>();
+        for (int index = 0; index < requestedIds.size(); index++) {
+            BoardingPoints point = byId.get(requestedIds.get(index));
+            point.setOrderIndex(index);
+            ordered.add(point);
+        }
+        boardingPointsRepo.saveAll(ordered);
+        auditService.log(getCurrentUser().getUsername(), "ADMIN", "BOARDING_POINTS_REORDERED",
+                "BUS", String.valueOf(busId), null, requestedIds.toString(), null);
+        return ordered.stream().map(BoardingPointResponse::fromBoardingPoint).toList();
+    }
+
     @GetMapping("/boarding-points")
     public List<BoardingPointResponse> getAllBoardingPoints() {
         return boardingPointsRepo.findAllByOrderByBusBusNumberAscOrderIndexAscStationNameAsc()
