@@ -194,7 +194,6 @@ public class AdminService {
             allocations.stream().filter(a -> a.getStatus() == EntityStatus.ACTIVE).forEach(a -> {
                 a.setStatus(EntityStatus.INACTIVE);
                 a.setDeactivatedAt(now);
-                a.setSeatNumber(null);
                 if (affectedBuses.stream().noneMatch(bus -> bus.getId().equals(a.getBus().getId()))) affectedBuses.add(a.getBus());
             });
             allocationRepo.saveAll(allocations);

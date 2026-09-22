@@ -32,7 +32,7 @@ Web application for managing LBRCE student bus applications, allocations, fees, 
 - Access only the bus assigned to the authenticated In-charge
 - View assigned-bus capacity and dashboard statistics
 - Approve or reject applications belonging to the assigned bus
-- View assigned students and manage unique seat numbers
+- View assigned students and their transport, fee, and pass status
 - Perform the old-bus release and new-bus acceptance stages of transfers
 - Manage complaints raised by students on the assigned bus
 - View assigned-bus fees, passes and notifications
@@ -118,7 +118,6 @@ LBRCE/
 |       |   |   |   |   |-- LoginRequest.java               # Login credentials payload
 |       |   |   |   |   |-- PaymentRequest.java             # Student payment payload
 |       |   |   |   |   |-- ReorderBoardingPointsRequest.java # Complete bus-stop sequence payload
-|       |   |   |   |   |-- SeatAssignmentRequest.java      # Seat assignment payload
 |       |   |   |   |   |-- StatusUpdateRequest.java        # Status/remarks update payload
 |       |   |   |   |   |-- StudentRegistrationRequest.java # Public student signup payload
 |       |   |   |   |   |-- TransferRequestDto.java         # Bus-transfer request payload
@@ -201,7 +200,7 @@ LBRCE/
 |       |   |       |-- BusServiceImpl.java            # Bus management implementation
 |       |   |       |-- ComplaintService.java          # Complaint ownership and lifecycle
 |       |   |       |-- FeeService.java                # Payments, fees and pass eligibility
-|       |   |       |-- InchargeOperationsService.java # Assigned-bus seat operations
+|       |   |       |-- InchargeOperationsService.java # Assigned-bus student operations
 |       |   |       |-- InchargeService.java           # In-charge service contract
 |       |   |       |-- InchargeServiceImpl.java       # In-charge account implementation
 |       |   |       |-- NotificationService.java       # Notification creation/read state
@@ -274,7 +273,7 @@ LBRCE/
 |       |   |   |-- InchargeLayout.jsx               # In-charge navigation configuration
 |       |   |   |-- InchargeProfilePage.jsx          # In-charge and assigned-bus profile
 |       |   |   |-- InchargeReportsPage.jsx          # Scoped reports and exports
-|       |   |   |-- StudentListPage.jsx              # Assigned students and seats
+|       |   |   |-- StudentListPage.jsx              # Assigned student details
 |       |   |   `-- TransferManagementPage.jsx       # Transfer release/acceptance decisions
 |       |   `-- student/
 |       |       |-- ApplicationHistoryPage.jsx       # Student application history
@@ -315,7 +314,7 @@ The repository does not contain database backups or ad-hoc SQL files. The backen
 
 `academic_year`, `admin`, `audit_log`, `boarding_points`, `bus`, `bus_application`, `bus_pass`, `complaint`, `fee`, `incharge`, `notification`, `payment`, `student`, `transfer_request`, and `transport_allocation`.
 
-Legacy authentication, faculty, registration, and transfer tables have been migrated into the current model and removed. Student account removal is implemented as a safe deactivation: active allocations are closed, seats are released, passes are revoked, and pending applications/transfers are cancelled while financial and audit history is retained.
+Legacy authentication, faculty, registration, and transfer tables have been migrated into the current model and removed. Student account removal is implemented as a safe deactivation: active allocations are closed, passes are revoked, and pending applications/transfers are cancelled while financial and audit history is retained.
 
 For local development, `JPA_DDL_AUTO=update` can create or update mapped tables. For staging and production, use `JPA_DDL_AUTO=validate` and apply reviewed, version-controlled migrations through the deployment process.
 

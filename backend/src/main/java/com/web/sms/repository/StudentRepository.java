@@ -34,7 +34,7 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     @Query(value="""
         SELECT s.id AS studentDbId, s.student_id AS rollNumber, s.name AS studentName,
           s.branch AS department, s.year AS studyYear, s.semester AS semester, s.status AS accountStatus,
-          b.bus_number AS busNumber, bp.station_name AS boardingPoint, ta.seat_number AS seatNumber,
+          b.bus_number AS busNumber, bp.station_name AS boardingPoint,
           COALESCE(f.total_amount,0) AS totalAmount, COALESCE(f.paid_amount,0) AS paidAmount,
           GREATEST(COALESCE(f.total_amount,0)-COALESCE(f.paid_amount,0),0) AS remainingAmount,
           CASE WHEN f.id IS NULL THEN 'NOT_ASSIGNED' WHEN COALESCE(f.paid_amount,0)=0 THEN 'UNPAID'

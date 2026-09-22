@@ -27,7 +27,7 @@ import java.util.List;
 @Service
 public class TransportReportService {
     private static final int EXPORT_LIMIT=10_000;
-    private static final String[] HEADERS={"Roll Number","Student Name","Department","Year","Semester","Account","Bus Number","Boarding Point","Seat","Total Fee","Paid","Remaining","Payment","Application","Transfer"};
+    private static final String[] HEADERS={"Roll Number","Student Name","Department","Year","Semester","Account","Bus Number","Boarding Point","Total Fee","Paid","Remaining","Payment","Application","Transfer"};
     private final StudentRepository students;
     public TransportReportService(StudentRepository students){this.students=students;}
 
@@ -44,7 +44,7 @@ public class TransportReportService {
             CellStyle header=wb.createCellStyle();header.setFillForegroundColor(IndexedColors.LIGHT_BLUE.getIndex());header.setFillPattern(FillPatternType.SOLID_FOREGROUND);org.apache.poi.ss.usermodel.Font hf=wb.createFont();hf.setBold(true);header.setFont(hf);header.setBorderBottom(BorderStyle.THIN);
             org.apache.poi.ss.usermodel.Row hr=sheet.createRow(1);for(int i=0;i<HEADERS.length;i++){Cell c=hr.createCell(i);c.setCellValue(HEADERS[i]);c.setCellStyle(header);}
             int n=2;for(TransportReportRow r:rows){org.apache.poi.ss.usermodel.Row row=sheet.createRow(n++);Object[] values=values(r);for(int i=0;i<values.length;i++){Cell c=row.createCell(i);Object v=values[i];if(v instanceof Number number)c.setCellValue(number.doubleValue());else c.setCellValue(text(v));}}
-            int[] widths={18,26,16,8,10,13,14,22,8,14,14,14,18,20,24};for(int i=0;i<widths.length;i++)sheet.setColumnWidth(i,widths[i]*256);
+            int[] widths={18,26,16,8,10,13,14,22,14,14,14,18,20,24};for(int i=0;i<widths.length;i++)sheet.setColumnWidth(i,widths[i]*256);
             wb.write(out);wb.dispose();return out.toByteArray();
         }catch(Exception e){throw new IllegalStateException("Unable to generate Excel report",e);}
     }
@@ -61,5 +61,5 @@ public class TransportReportService {
     private Page<TransportReportRow> query(Long scopeBusId,TransportReportFilter f,Pageable p){return students.transportReport(scopeBusId,clean(f.getBusNumber()),clean(f.getName()),clean(f.getRollNumber()),f.getYear(),f.getSemester(),upper(f.getPaymentStatus()),upper(f.getAccountStatus()),upper(f.getApplicationStatus()),upper(f.getTransferStatus()),clean(f.getDepartment()),f.getMinimumRemaining(),p);}
     private void validate(TransportReportFilter f){if(f.getYear()!=null&&(f.getYear()<1||f.getYear()>4))throw new BadRequestException("Year must be between 1 and 4");if(f.getSemester()!=null&&(f.getSemester()<1||f.getSemester()>8))throw new BadRequestException("Semester must be between 1 and 8");if(f.getMinimumRemaining()!=null&&f.getMinimumRemaining()<0)throw new BadRequestException("Minimum remaining amount cannot be negative");}
     private String clean(String s){return s==null||s.isBlank()?null:s.trim();}private String upper(String s){String v=clean(s);return v==null?null:v.toUpperCase();}private String text(Object o){return o==null?"-":String.valueOf(o);}
-    private Object[] values(TransportReportRow r){return new Object[]{r.getRollNumber(),r.getStudentName(),r.getDepartment(),r.getStudyYear(),r.getSemester(),r.getAccountStatus(),r.getBusNumber(),r.getBoardingPoint(),r.getSeatNumber(),r.getTotalAmount(),r.getPaidAmount(),r.getRemainingAmount(),r.getPaymentStatus(),r.getApplicationStatus(),r.getTransferStatus()};}
+    private Object[] values(TransportReportRow r){return new Object[]{r.getRollNumber(),r.getStudentName(),r.getDepartment(),r.getStudyYear(),r.getSemester(),r.getAccountStatus(),r.getBusNumber(),r.getBoardingPoint(),r.getTotalAmount(),r.getPaidAmount(),r.getRemainingAmount(),r.getPaymentStatus(),r.getApplicationStatus(),r.getTransferStatus()};}
 }

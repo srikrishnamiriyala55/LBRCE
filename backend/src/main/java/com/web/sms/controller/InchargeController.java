@@ -34,9 +34,7 @@ import com.web.sms.service.NotificationService;
 import com.web.sms.service.TransportReportService;
 import com.web.sms.service.PassService;
 import com.web.sms.dto.response.PassResponse;
-import com.web.sms.dto.request.SeatAssignmentRequest;
 import com.web.sms.dto.response.InchargeStudentResponse;
-import jakarta.validation.Valid;
 import com.web.sms.repository.ComplaintRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -202,11 +200,6 @@ public class InchargeController {
     public Page<InchargeStudentResponse> getStudents(@RequestParam(required=false) String search,@RequestParam(required=false) String branch,@RequestParam(required=false) Integer year,@RequestParam(required=false) Long boardingPointId,@RequestParam(required=false) String paymentStatus,@RequestParam(required=false) String passStatus,Pageable pageable) {
         return operations.students(requireAssignedBus(),search,branch,year,boardingPointId,paymentStatus,passStatus,checked(pageable));
     }
-
-    @PutMapping("/students/{allocationId}/seat")
-    public InchargeStudentResponse assignSeat(@PathVariable Long allocationId,@Valid @RequestBody SeatAssignmentRequest request){return operations.assignSeat(requireAssignedBus(),allocationId,request.getSeatNumber(),getCurrentUser().getUsername());}
-    @DeleteMapping("/students/{allocationId}/seat")
-    public void releaseSeat(@PathVariable Long allocationId){operations.releaseSeat(requireAssignedBus(),allocationId,getCurrentUser().getUsername());}
 
     @GetMapping("/transfers")
     public Page<TransferResponse> getTransfers(Pageable pageable) {

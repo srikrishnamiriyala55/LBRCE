@@ -37,7 +37,6 @@ public class TransportAllocation {
     private LocalDateTime deactivatedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private Integer seatNumber;
 
     @PrePersist
     void onCreate() { if (createdAt == null) createdAt = LocalDateTime.now(); }
@@ -66,6 +65,4 @@ public class TransportAllocation {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-    public Integer getSeatNumber() { return seatNumber; }
-    public void setSeatNumber(Integer seatNumber) { this.seatNumber = seatNumber; }
 }

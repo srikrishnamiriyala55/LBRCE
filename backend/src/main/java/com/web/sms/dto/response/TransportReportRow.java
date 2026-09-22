@@ -10,7 +10,6 @@ public interface TransportReportRow {
     String getAccountStatus();
     String getBusNumber();
     String getBoardingPoint();
-    Integer getSeatNumber();
     Long getTotalAmount();
     Long getPaidAmount();
     Long getRemainingAmount();
