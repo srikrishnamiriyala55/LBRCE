@@ -3,7 +3,9 @@ import com.web.sms.enums.EntityStatus;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name="boarding_points")
+@Table(name="boarding_points", uniqueConstraints = {
+        @UniqueConstraint(name="uk_boarding_point_bus_station", columnNames={"bus_id", "station_name"})
+})
 public class BoardingPoints {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -12,10 +14,6 @@ public class BoardingPoints {
     @ManyToOne
     @JoinColumn(name="bus_id", nullable=false)
     private Bus bus;
-    
-    @ManyToOne
-    @JoinColumn(name="route_id")
-    private Route route;
     
     @Column(nullable=false)
     private String stationName;
@@ -32,8 +30,6 @@ public class BoardingPoints {
     public void setId(Long id) { this.id = id; }
     public Bus getBus() { return bus; }
     public void setBus(Bus bus) { this.bus = bus; }
-    public Route getRoute() { return route; }
-    public void setRoute(Route route) { this.route = route; }
     public String getStationName() { return stationName; }
     public void setStationName(String stationName) { this.stationName = stationName; }
     public Long getFeeAmount() { return feeAmount; }

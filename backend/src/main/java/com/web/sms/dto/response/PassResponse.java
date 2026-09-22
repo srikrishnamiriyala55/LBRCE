@@ -14,7 +14,8 @@ public class PassResponse {
     private Integer semester;
     private String phoneNumber;
     private String busNumber;
-    private String routeName;
+    private String startingPoint;
+    private String endingPoint;
     private String boardingPoint;
     private String academicYear;
     private LocalDate validFrom;
@@ -41,17 +42,8 @@ public class PassResponse {
             if(pass.getAllocation().getBus() != null) {
                 com.web.sms.entity.Bus bus = pass.getAllocation().getBus();
                 r.setBusNumber(bus.getBusNumber());
-                if(bus.getRoute() != null && bus.getRoute().getRouteName() != null
-                        && !bus.getRoute().getRouteName().isBlank()) {
-                    r.setRouteName(bus.getRoute().getRouteName());
-                } else if(bus.getStartingPoint() != null && !bus.getStartingPoint().isBlank()
-                        && bus.getEndingPoint() != null && !bus.getEndingPoint().isBlank()) {
-                    r.setRouteName(bus.getStartingPoint() + " - " + bus.getEndingPoint());
-                } else if(bus.getStartingPoint() != null && !bus.getStartingPoint().isBlank()) {
-                    r.setRouteName(bus.getStartingPoint());
-                } else if(bus.getEndingPoint() != null && !bus.getEndingPoint().isBlank()) {
-                    r.setRouteName(bus.getEndingPoint());
-                }
+                r.setStartingPoint(bus.getStartingPoint());
+                r.setEndingPoint(bus.getEndingPoint());
             }
             if(pass.getAllocation().getBoardingPoint() != null) {
                 r.setBoardingPoint(pass.getAllocation().getBoardingPoint().getStationName());
@@ -84,8 +76,10 @@ public class PassResponse {
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
     public String getBusNumber() { return busNumber; }
     public void setBusNumber(String busNumber) { this.busNumber = busNumber; }
-    public String getRouteName() { return routeName; }
-    public void setRouteName(String routeName) { this.routeName = routeName; }
+    public String getStartingPoint() { return startingPoint; }
+    public void setStartingPoint(String startingPoint) { this.startingPoint = startingPoint; }
+    public String getEndingPoint() { return endingPoint; }
+    public void setEndingPoint(String endingPoint) { this.endingPoint = endingPoint; }
     public String getBoardingPoint() { return boardingPoint; }
     public void setBoardingPoint(String boardingPoint) { this.boardingPoint = boardingPoint; }
     public String getAcademicYear() { return academicYear; }

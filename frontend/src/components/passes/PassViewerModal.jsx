@@ -22,7 +22,8 @@ export default function PassViewerModal({ pass, photoUrl, onClose, onDownload, d
           {item('Student Name', pass.studentName)}{item('Roll Number', pass.rollNumber)}
           {item('Branch', pass.branch)}{item('Year / Semester', `${pass.year || '—'} / ${pass.semester || '—'}`)}
           {item('Phone Number', pass.phoneNumber)}{item('Bus Number', pass.busNumber)}
-          {item('Route', pass.routeName)}{item('Boarding Point', pass.boardingPoint)}
+          {item('Starting Point', pass.startingPoint)}{item('Ending Point', pass.endingPoint)}
+          {item('Boarding Point', pass.boardingPoint)}
           {item('Academic Year', pass.academicYear)}{item('Valid Until', pass.validUntil)}
         </div>
       </div>

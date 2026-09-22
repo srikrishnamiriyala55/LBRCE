@@ -44,8 +44,8 @@ In-charge authorization is enforced by the backend. Changing frontend URLs or re
 
 - Sign in with the assigned ID and password
 - View organization-wide dashboard statistics
-- Manage buses, routes and boarding points
-- Activate or deactivate routes and boarding points with relationship safety checks
+- Manage buses with starting/ending points and bus-specific boarding points
+- Activate or deactivate buses and boarding points with relationship safety checks
 - Create and manage In-charges and assign at most one bus per In-charge
 - Create, activate or deactivate student accounts
 - Review all applications, fees, payments, passes, transfers, complaints and notifications
@@ -71,7 +71,7 @@ Excel and PDF downloads use the active filters. A maximum of 10,000 records can 
 - Complaints require an active approved allocation.
 - Payments require an active allocation and cannot exceed the remaining fee balance.
 - A bus pass is generated when the student pays at least 50% of the applicable fee.
-- Active allocations prevent unsafe bus, route or boarding-point deactivation.
+- Active allocations prevent unsafe bus or boarding-point deactivation.
 - Sensitive administrative and workflow actions are recorded in the audit log.
 
 ## Project structure
@@ -113,7 +113,6 @@ LBRCE/
 |       |   |   |   |   |-- CreateBoardingPointRequest.java # Boarding-point payload
 |       |   |   |   |   |-- CreateBusRequest.java           # Bus creation/update payload
 |       |   |   |   |   |-- CreateInchargeRequest.java      # In-charge creation/update payload
-|       |   |   |   |   |-- CreateRouteRequest.java         # Route creation/update payload
 |       |   |   |   |   |-- CreateStudentRequest.java       # Admin student-creation payload
 |       |   |   |   |   |-- LoginRequest.java               # Login credentials payload
 |       |   |   |   |   |-- PaymentRequest.java             # Student payment payload
@@ -144,7 +143,7 @@ LBRCE/
 |       |   |   |   |-- Admin.java               # Admin account entity
 |       |   |   |   |-- AuditLog.java            # Security/business audit entity
 |       |   |   |   |-- BoardingPoints.java      # Bus boarding-point entity
-|       |   |   |   |-- Bus.java                 # Vehicle, route and capacity entity
+|       |   |   |   |-- Bus.java                 # Vehicle, endpoints and capacity entity
 |       |   |   |   |-- BusApplication.java      # Student bus application entity
 |       |   |   |   |-- BusPass.java             # Digital pass and verification entity
 |       |   |   |   |-- Complaint.java           # Complaint workflow entity
@@ -152,7 +151,6 @@ LBRCE/
 |       |   |   |   |-- Incharge.java            # In-charge account entity
 |       |   |   |   |-- Notification.java        # User notification entity
 |       |   |   |   |-- Payment.java             # Payment transaction entity
-|       |   |   |   |-- Route.java               # Transport route entity
 |       |   |   |   |-- Student.java             # Student account/profile entity
 |       |   |   |   |-- TransferRequest.java     # Two-stage transfer entity
 |       |   |   |   `-- TransportAllocation.java # Active student/bus allocation
@@ -184,7 +182,6 @@ LBRCE/
 |       |   |   |   |-- InchargeRepository.java           # In-charge queries and locks
 |       |   |   |   |-- NotificationRepository.java       # Notification queries
 |       |   |   |   |-- PaymentRepository.java            # Payment queries and locks
-|       |   |   |   |-- RouteRepository.java              # Route queries
 |       |   |   |   |-- StudentRepository.java            # Student and report queries
 |       |   |   |   |-- TransferRequestRepository.java    # Transfer queries and locks
 |       |   |   |   `-- TransportAllocationRepository.java # Allocation queries and locks
@@ -207,7 +204,6 @@ LBRCE/
 |       |   |       |-- InchargeServiceImpl.java       # In-charge account implementation
 |       |   |       |-- NotificationService.java       # Notification creation/read state
 |       |   |       |-- PassService.java               # Pass retrieval and verification
-|       |   |       |-- RouteService.java              # Route management logic
 |       |   |       |-- StudentService.java            # Student service contract
 |       |   |       |-- StudentServiceImpl.java        # Student profile and dashboard logic
 |       |   |       |-- TransferService.java           # Two-stage transfer workflow
@@ -267,7 +263,6 @@ LBRCE/
 |       |   |   |-- BoardingPointManagementPage.jsx  # Boarding-point fees, filters and actions
 |       |   |   |-- FeeManagementPage.jsx            # Organization fee records
 |       |   |   |-- InchargeManagementPage.jsx       # In-charge accounts and assignments
-|       |   |   |-- RouteManagementPage.jsx          # Route creation and status management
 |       |   |   `-- StudentManagementPage.jsx        # Student accounts and activation
 |       |   |-- incharge/
 |       |   |   |-- ApplicationManagementPage.jsx    # Assigned-bus approvals/rejections

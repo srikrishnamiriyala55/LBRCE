@@ -28,7 +28,6 @@ public class AdminController {
 
     private final AdminService adminService;
     private final BusService busService;
-    private final RouteService routeService;
     private final InchargeService inchargeService;
     private final ApplicationService applicationService;
     private final TransferService transferService;
@@ -47,14 +46,12 @@ public class AdminController {
     private final AdminRepository adminRepo;
     private final ComplaintService complaintService;
     private final TransportAllocationRepository allocationRepo;
-    private final RouteRepository routeRepo;
     private final InchargeRepository inchargeRepo;
     private final TransportReportService reportService;
     private final PassService passService;
 
     public AdminController(AdminService adminService,
                            BusService busService,
-                           RouteService routeService,
                            InchargeService inchargeService,
                            ApplicationService applicationService,
                            TransferService transferService,
@@ -69,11 +66,10 @@ public class AdminController {
                            BusPassRepository passRepo, ComplaintRepository complaintRepo,
                            NotificationRepository notificationRepo, AdminRepository adminRepo,
                            ComplaintService complaintService, TransportAllocationRepository allocationRepo,
-                           RouteRepository routeRepo, InchargeRepository inchargeRepo, TransportReportService reportService,
+                           InchargeRepository inchargeRepo, TransportReportService reportService,
                            PassService passService) {
         this.adminService = adminService;
         this.busService = busService;
-        this.routeService = routeService;
         this.inchargeService = inchargeService;
         this.applicationService = applicationService;
         this.transferService = transferService;
@@ -87,7 +83,7 @@ public class AdminController {
         this.auditService = auditService;
         this.paymentRepo=paymentRepo;this.passRepo=passRepo;this.complaintRepo=complaintRepo;this.notificationRepo=notificationRepo;this.adminRepo=adminRepo;this.complaintService=complaintService;
         this.allocationRepo=allocationRepo;
-        this.routeRepo=routeRepo;this.inchargeRepo=inchargeRepo;
+        this.inchargeRepo=inchargeRepo;
         this.reportService=reportService;
         this.passService=passService;
     }
@@ -126,26 +122,9 @@ public class AdminController {
     @DeleteMapping("/buses/{id}/incharge")
     public BusResponse unassignIncharge(@PathVariable Long id){return adminService.unassignIncharge(id,getCurrentUser().getUsername());}
 
-    @PutMapping("/routes/{id}/status") @Transactional public Route routeStatus(@PathVariable Long id,@Valid @RequestBody StatusUpdateRequest req){Route r=routeRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("Route not found"));EntityStatus next=parseEntityStatus(req.getStatus());if(next!=EntityStatus.ACTIVE&&busRepo.countByRouteIdAndStatus(id,EntityStatus.ACTIVE)>0)throw new com.web.sms.exception.BadRequestException("Cannot deactivate a route assigned to active buses");r.setStatus(next);routeRepo.save(r);auditService.log(getCurrentUser().getUsername(),"ADMIN","ROUTE_STATUS_UPDATED","ROUTE",String.valueOf(id),null,next.name(),null);return r;}
-
     @PutMapping("/boarding-points/{id}/status") @Transactional public BoardingPointResponse boardingStatus(@PathVariable Long id,@Valid @RequestBody StatusUpdateRequest req){BoardingPoints p=boardingPointsRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("Boarding point not found"));EntityStatus next=parseEntityStatus(req.getStatus());if(next!=EntityStatus.ACTIVE&&allocationRepo.countByBoardingPointIdAndStatus(id,EntityStatus.ACTIVE)>0)throw new com.web.sms.exception.BadRequestException("Cannot deactivate a boarding point used by active students");p.setStatus(next);boardingPointsRepo.save(p);auditService.log(getCurrentUser().getUsername(),"ADMIN","BOARDING_POINT_STATUS_UPDATED","BOARDING_POINT",String.valueOf(id),null,next.name(),null);return BoardingPointResponse.fromBoardingPoint(p);}
 
     @PutMapping("/incharges/{id}/status") @Transactional public Map<String,Object> inchargeStatus(@PathVariable Long id,@Valid @RequestBody StatusUpdateRequest req){Incharge i=inchargeService.getInchargeById(id);String next=req.getStatus().toUpperCase();if(!java.util.Set.of("ACTIVE","INACTIVE").contains(next))throw new com.web.sms.exception.BadRequestException("Status must be ACTIVE or INACTIVE");if("INACTIVE".equals(next)&&!busRepo.findByInchargeId(id).isEmpty())throw new com.web.sms.exception.BadRequestException("Unassign this In-Charge from their bus before deactivation");i.setStatus(next);inchargeRepo.save(i);auditService.log(getCurrentUser().getUsername(),"ADMIN","INCHARGE_STATUS_UPDATED","INCHARGE",String.valueOf(id),null,next,null);return Map.of("id",id,"status",next);}
-
-    @GetMapping("/routes")
-    public List<Route> getRoutes() {
-        return routeRepo.findAll();
-    }
-
-    @PostMapping("/routes")
-    public Route createRoute(@Valid @RequestBody CreateRouteRequest req) {
-        Route r=routeService.createRoute(req);auditService.log(getCurrentUser().getUsername(),"ADMIN","ROUTE_CREATED","ROUTE",String.valueOf(r.getId()),null,r.getRouteName(),null);return r;
-    }
-
-    @PutMapping("/routes/{id}")
-    public Route updateRoute(@PathVariable Long id, @Valid @RequestBody CreateRouteRequest req) {
-        Route r=routeService.updateRoute(id, req);auditService.log(getCurrentUser().getUsername(),"ADMIN","ROUTE_UPDATED","ROUTE",String.valueOf(id),null,r.getRouteName(),null);return r;
-    }
 
     @PostMapping("/boarding-points")
     public BoardingPointResponse createBoardingPoint(@Valid @RequestBody CreateBoardingPointRequest req) {
@@ -156,7 +135,6 @@ public class AdminController {
 
         BoardingPoints bp = new BoardingPoints();
         bp.setBus(bus);
-        bp.setRoute(bus.getRoute());
         bp.setStationName(req.getStationName().trim());
         bp.setFeeAmount(req.getFeeAmount());
         bp.setOrderIndex(req.getOrderIndex() != null ? req.getOrderIndex() : 0);

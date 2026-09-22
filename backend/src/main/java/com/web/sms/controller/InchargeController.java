@@ -143,7 +143,8 @@ public class InchargeController {
         if (bus == null) {
             DashboardResponse res = new DashboardResponse();
             res.put("busNumber", "Not Assigned");
-            res.put("routeName", "N/A");
+            res.put("startingPoint", "N/A");
+            res.put("endingPoint", "N/A");
             res.put("totalCapacity", 0);
             res.put("totalStudents", 0);
             res.put("pendingApplications", 0);

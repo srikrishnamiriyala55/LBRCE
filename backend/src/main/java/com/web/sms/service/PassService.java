@@ -158,7 +158,8 @@ public class PassService {
             addRow(table, "Branch", pass.getBranch());
             addRow(table, "Year / Semester", value(pass.getYear()) + " / " + value(pass.getSemester()));
             addRow(table, "Bus Number", pass.getBusNumber());
-            addRow(table, "Route", pass.getRouteName());
+            addRow(table, "Starting Point", pass.getStartingPoint());
+            addRow(table, "Ending Point", pass.getEndingPoint());
             addRow(table, "Boarding Point", pass.getBoardingPoint());
             addRow(table, "Academic Year", pass.getAcademicYear());
             addRow(table, "Validity", value(pass.getValidFrom()) + " to " + value(pass.getValidUntil()));

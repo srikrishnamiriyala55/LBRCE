@@ -9,7 +9,6 @@ import { useToast } from '../../components/common/Toast';
 
 const BusManagementPage = () => {
   const [buses, setBuses] = useState([]);
-  const [routes, setRoutes] = useState([]);
   const [incharges, setIncharges] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -18,7 +17,6 @@ const BusManagementPage = () => {
   const [editingBus, setEditingBus] = useState(null);
   const [busForm, setBusForm] = useState({
     busNumber: '',
-    routeId: '',
     totalSeats: 50,
     startingPoint: '',
     endingPoint: ''
@@ -32,7 +30,6 @@ const BusManagementPage = () => {
 
   useEffect(() => {
     fetchBuses();
-    fetchRoutes();
     api.get('/admin/incharges').then(r => setIncharges(r.data)).catch(() => {});
   }, []);
 
@@ -48,21 +45,11 @@ const BusManagementPage = () => {
     }
   };
 
-  const fetchRoutes = async () => {
-    try {
-      const res = await api.get('/admin/routes');
-      setRoutes(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const handleOpenBusModal = (bus = null) => {
     if (bus) {
       setEditingBus(bus);
       setBusForm({
         busNumber: bus.busNumber,
-        routeId: bus.routeId || '',
         totalSeats: bus.totalSeats || 50,
         startingPoint: bus.startingPoint || '',
         endingPoint: bus.endingPoint || ''
@@ -71,7 +58,6 @@ const BusManagementPage = () => {
       setEditingBus(null);
       setBusForm({
         busNumber: '',
-        routeId: routes.length > 0 ? routes[0].id : '',
         totalSeats: 50,
         startingPoint: '',
         endingPoint: 'LBRCE Campus'
@@ -124,8 +110,8 @@ const BusManagementPage = () => {
 
   const columns = [
     { key: 'busNumber', label: 'Bus Number', render: (row) => <span className="font-bold text-blue-900">{row.busNumber}</span> },
-    { key: 'routeName', label: 'Route', render: (row) => row.routeName || 'Unassigned' },
-    { key: 'routeEndpoints', label: 'Start -> Destination', render: (row) => `${row.startingPoint || 'N/A'} → ${row.endingPoint || 'LBRCE'}` },
+    { key: 'startingPoint', label: 'Starting Point', render: (row) => row.startingPoint || 'N/A' },
+    { key: 'endingPoint', label: 'Ending Point', render: (row) => row.endingPoint || 'N/A' },
     { key: 'capacity', label: 'Capacity / Occupied', render: (row) => `${row.occupiedSeats || 0} / ${row.totalSeats || 0} seats` },
     { key: 'inchargeName', label: 'In-Charge', render: row => row.inchargeName || 'Unassigned' },
     { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },
@@ -178,20 +164,6 @@ const BusManagementPage = () => {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Route</label>
-            <select
-              className="input-field"
-              value={busForm.routeId}
-              onChange={(e) => setBusForm({ ...busForm, routeId: e.target.value })}
-            >
-              <option value="">-- Select Route --</option>
-              {routes.filter(r => r.status === 'ACTIVE').map((r) => (
-                <option key={r.id} value={r.id}>{r.routeName} ({r.startingPoint} - {r.endingPoint})</option>
-              ))}
-            </select>
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Total Seats *</label>
@@ -206,11 +178,12 @@ const BusManagementPage = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Starting Point</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Starting Point *</label>
               <input
                 type="text"
                 placeholder="e.g. Vijayawada Bus Stand"
                 className="input-field"
+                required
                 value={busForm.startingPoint}
                 onChange={(e) => setBusForm({ ...busForm, startingPoint: e.target.value })}
               />
@@ -218,11 +191,12 @@ const BusManagementPage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Destination / Ending Point</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Destination / Ending Point *</label>
             <input
               type="text"
               placeholder="e.g. LBRCE Campus, Mylavaram"
               className="input-field"
+              required
               value={busForm.endingPoint}
               onChange={(e) => setBusForm({ ...busForm, endingPoint: e.target.value })}
             />

@@ -77,7 +77,6 @@ export default function BoardingPointManagementPage() {
 
   const columns = [
     { key:'busNumber', label:'Bus Number', render:row => <span className="font-bold text-blue-900">{row.busNumber}</span> },
-    { key:'routeName', label:'Route', render:row => row.routeName || '—' },
     { key:'stationName', label:'Boarding Point' },
     { key:'orderIndex', label:'Order', render:row => row.orderIndex ?? 0 },
     { key:'feeAmount', label:'Annual Fee', render:row => `₹${Number(row.feeAmount || 0).toLocaleString('en-IN')}` },

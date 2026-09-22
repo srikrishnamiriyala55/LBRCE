@@ -7,7 +7,8 @@ import java.time.LocalDateTime;
 public class ApplicationResponse {
     private Long id;
     private String busNumber;
-    private String routeName;
+    private String startingPoint;
+    private String endingPoint;
     private String boardingPointName;
     private String academicYear;
     private ApplicationStatus status;
@@ -21,7 +22,10 @@ public class ApplicationResponse {
         ApplicationResponse r = new ApplicationResponse();
         r.setId(app.getId());
         if(app.getBus() != null) r.setBusNumber(app.getBus().getBusNumber());
-        if(app.getBus() != null && app.getBus().getRoute() != null) r.setRouteName(app.getBus().getRoute().getRouteName());
+        if(app.getBus() != null) {
+            r.setStartingPoint(app.getBus().getStartingPoint());
+            r.setEndingPoint(app.getBus().getEndingPoint());
+        }
         if(app.getBoardingPoint() != null) r.setBoardingPointName(app.getBoardingPoint().getStationName());
         if(app.getAcademicYear() != null) r.setAcademicYear(app.getAcademicYear().getYearName());
         r.setStatus(app.getStatus());
@@ -36,8 +40,10 @@ public class ApplicationResponse {
     public void setId(Long id) { this.id = id; }
     public String getBusNumber() { return busNumber; }
     public void setBusNumber(String busNumber) { this.busNumber = busNumber; }
-    public String getRouteName() { return routeName; }
-    public void setRouteName(String routeName) { this.routeName = routeName; }
+    public String getStartingPoint() { return startingPoint; }
+    public void setStartingPoint(String startingPoint) { this.startingPoint = startingPoint; }
+    public String getEndingPoint() { return endingPoint; }
+    public void setEndingPoint(String endingPoint) { this.endingPoint = endingPoint; }
     public String getBoardingPointName() { return boardingPointName; }
     public void setBoardingPointName(String boardingPointName) { this.boardingPointName = boardingPointName; }
     public String getAcademicYear() { return academicYear; }

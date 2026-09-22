@@ -89,9 +89,6 @@ public class StudentServiceImpl implements StudentService {
                 response.put("busNumber", alloc.getBus().getBusNumber());
                 response.put("startingPoint", alloc.getBus().getStartingPoint());
                 response.put("endingPoint", alloc.getBus().getEndingPoint());
-                if (alloc.getBus().getRoute() != null) {
-                    response.put("routeName", alloc.getBus().getRoute().getRouteName());
-                }
                 if (alloc.getBoardingPoint() != null) {
                     response.put("boardingPoint", alloc.getBoardingPoint().getStationName());
                 }

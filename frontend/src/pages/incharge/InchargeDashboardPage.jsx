@@ -28,7 +28,7 @@ const InchargeDashboardPage = () => {
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
         <h2 className="text-xl font-bold text-gray-800">Assigned Bus: {stats?.busNumber || 'N/A'}</h2>
-        <p className="text-gray-500 mt-1">Route: {stats?.routeName || (stats?.startingPoint && stats?.endingPoint ? `${stats.startingPoint} → ${stats.endingPoint}` : 'N/A')}</p>
+        <p className="text-gray-500 mt-1">{stats?.startingPoint && stats?.endingPoint ? `${stats.startingPoint} → ${stats.endingPoint}` : 'Starting and ending points unavailable'}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

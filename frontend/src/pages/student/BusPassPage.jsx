@@ -126,8 +126,12 @@ const BusPassPage = () => {
               <p className="font-medium text-gray-900">{pass.busNumber}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase">Route</p>
-              <p className="font-medium text-gray-900">{pass.routeName}</p>
+              <p className="text-xs text-gray-500 uppercase">Starting Point</p>
+              <p className="font-medium text-gray-900">{pass.startingPoint || '-'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase">Ending Point</p>
+              <p className="font-medium text-gray-900">{pass.endingPoint || '-'}</p>
             </div>
             <div className="sm:col-span-2">
               <p className="text-xs text-gray-500 uppercase">Boarding Point</p>

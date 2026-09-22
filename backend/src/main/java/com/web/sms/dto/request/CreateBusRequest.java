@@ -7,17 +7,16 @@ import jakarta.validation.constraints.Min;
 public class CreateBusRequest {
     @NotBlank
     private String busNumber;
-    private Long routeId;
     @NotNull
     @Min(1)
     private Integer totalSeats;
+    @NotBlank
     private String startingPoint;
+    @NotBlank
     private String endingPoint;
 
     public String getBusNumber() { return busNumber; }
     public void setBusNumber(String busNumber) { this.busNumber = busNumber; }
-    public Long getRouteId() { return routeId; }
-    public void setRouteId(Long routeId) { this.routeId = routeId; }
     public Integer getTotalSeats() { return totalSeats; }
     public void setTotalSeats(Integer totalSeats) { this.totalSeats = totalSeats; }
     public String getStartingPoint() { return startingPoint; }

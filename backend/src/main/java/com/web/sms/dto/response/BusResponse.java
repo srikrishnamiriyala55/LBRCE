@@ -6,7 +6,6 @@ import com.web.sms.enums.EntityStatus;
 public class BusResponse {
     private Long id;
     private String busNumber;
-    private String routeName;
     private String startingPoint;
     private String endingPoint;
     private Integer totalSeats;
@@ -19,7 +18,6 @@ public class BusResponse {
         BusResponse r = new BusResponse();
         r.setId(b.getId());
         r.setBusNumber(b.getBusNumber());
-        if(b.getRoute() != null) r.setRouteName(b.getRoute().getRouteName());
         r.setStartingPoint(b.getStartingPoint());
         r.setEndingPoint(b.getEndingPoint());
         r.setTotalSeats(b.getTotalSeats());
@@ -34,8 +32,6 @@ public class BusResponse {
     public void setId(Long id) { this.id = id; }
     public String getBusNumber() { return busNumber; }
     public void setBusNumber(String busNumber) { this.busNumber = busNumber; }
-    public String getRouteName() { return routeName; }
-    public void setRouteName(String routeName) { this.routeName = routeName; }
     public String getStartingPoint() { return startingPoint; }
     public void setStartingPoint(String startingPoint) { this.startingPoint = startingPoint; }
     public String getEndingPoint() { return endingPoint; }

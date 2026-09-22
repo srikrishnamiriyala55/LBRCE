@@ -54,7 +54,7 @@ const StudentDashboardPage = () => {
           value={data?.busNumber || 'Not Assigned'} 
           icon={Bus} 
           color="blue" 
-          subtitle={data?.routeName}
+          subtitle={data?.startingPoint && data?.endingPoint ? `${data.startingPoint} → ${data.endingPoint}` : undefined}
         />
         <DashboardCard 
           title="Boarding Point" 

@@ -14,14 +14,12 @@ public class Bus {
     private String busNumber;
     
     @ManyToOne
-    @JoinColumn(name="route_id")
-    private Route route;
-    
-    @ManyToOne
     @JoinColumn(name="incharge_id")
     private Incharge incharge;
     
+    @Column(nullable=false)
     private String startingPoint;
+    @Column(nullable=false)
     private String endingPoint;
     private Integer totalSeats;
     private Integer availableSeats;
@@ -36,8 +34,6 @@ public class Bus {
     public void setId(Long id) { this.id = id; }
     public String getBusNumber() { return busNumber; }
     public void setBusNumber(String busNumber) { this.busNumber = busNumber; }
-    public Route getRoute() { return route; }
-    public void setRoute(Route route) { this.route = route; }
     public Incharge getIncharge() { return incharge; }
     public void setIncharge(Incharge incharge) { this.incharge = incharge; }
     public String getStartingPoint() { return startingPoint; }

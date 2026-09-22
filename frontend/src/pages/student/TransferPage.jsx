@@ -78,7 +78,7 @@ const TransferPage = () => {
         <h2 className="text-xl font-bold mb-4">Request Bus Transfer</h2>
         {eligible ? (
           <div className="mb-4 rounded bg-blue-50 p-3 text-sm text-blue-900">
-            Current Bus: <b>{dashboard.busNumber}</b> · Route: {dashboard.routeName || `${dashboard.startingPoint || ''} – ${dashboard.endingPoint || ''}`} · Boarding Point: {dashboard.boardingPoint || 'N/A'}
+            Current Bus: <b>{dashboard.busNumber}</b> · {dashboard.startingPoint || 'N/A'} → {dashboard.endingPoint || 'N/A'} · Boarding Point: {dashboard.boardingPoint || 'N/A'}
           </div>
         ) : <p className="mb-4 text-sm text-amber-700">Transfer is available only after an approved active bus assignment.</p>}
         {allocated && dashboard?.hasActiveTransfer && <p className="mb-4 text-sm text-amber-700">You already have a transfer request in progress. Wait for a decision or cancel it before creating another.</p>}
@@ -88,7 +88,7 @@ const TransferPage = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">New Bus</label>
               <select className="input-field" required value={formData.requestedBusId} onChange={handleBusChange}>
                 <option value="">Select Bus</option>
-                {buses.filter(b => b.busNumber !== dashboard?.busNumber).map(b => <option key={b.id} value={b.id}>{b.busNumber} — {b.routeName || `${b.startingPoint} to ${b.endingPoint}`}</option>)}
+                {buses.filter(b => b.busNumber !== dashboard?.busNumber).map(b => <option key={b.id} value={b.id}>{b.busNumber} — {b.startingPoint} to {b.endingPoint}</option>)}
               </select>
             </div>
             <div>

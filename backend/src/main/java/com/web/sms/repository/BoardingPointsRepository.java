@@ -6,7 +6,6 @@ import java.util.List;
 
 public interface BoardingPointsRepository extends JpaRepository<BoardingPoints, Long> {
     List<BoardingPoints> findByBusId(Long busId);
-    List<BoardingPoints> findByRouteId(Long routeId);
     List<BoardingPoints> findByBusIdAndStatus(Long busId, EntityStatus status);
     boolean existsByBusIdAndStationNameIgnoreCase(Long busId, String stationName);
     List<BoardingPoints> findAllByOrderByBusBusNumberAscOrderIndexAscStationNameAsc();

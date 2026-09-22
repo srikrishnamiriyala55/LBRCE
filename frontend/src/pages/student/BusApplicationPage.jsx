@@ -112,7 +112,7 @@ const BusApplicationPage = () => {
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Select Bus & Route</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Select Bus</label>
           <select 
             className="input-field"
             value={selectedBus}
@@ -122,7 +122,7 @@ const BusApplicationPage = () => {
             <option value="">-- Choose a Bus --</option>
             {buses.map(bus => (
               <option key={bus.id} value={bus.id}>
-                {bus.busNumber} - {bus.routeName} ({bus.availableSeats} seats available)
+                {bus.busNumber} — {bus.startingPoint} to {bus.endingPoint} ({bus.availableSeats} seats available)
               </option>
             ))}
           </select>

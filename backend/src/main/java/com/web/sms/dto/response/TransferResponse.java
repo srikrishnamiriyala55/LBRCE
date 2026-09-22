@@ -15,8 +15,10 @@ public class TransferResponse {
     private String remarks;
     private String studentName;
     private String studentRollNumber;
-    private String currentRoute;
-    private String requestedRoute;
+    private String currentStartingPoint;
+    private String currentEndingPoint;
+    private String requestedStartingPoint;
+    private String requestedEndingPoint;
     private String oldInchargeName;
     private String newInchargeName;
     private LocalDateTime oldInchargeDecisionAt;
@@ -39,8 +41,14 @@ public class TransferResponse {
         r.setProcessedAt(t.getProcessedAt());
         r.setStudentName(t.getStudent().getName());
         r.setStudentRollNumber(t.getStudent().getRollNumber());
-        if (t.getCurrentBus() != null && t.getCurrentBus().getRoute() != null) r.setCurrentRoute(t.getCurrentBus().getRoute().getRouteName());
-        if (t.getRequestedBus() != null && t.getRequestedBus().getRoute() != null) r.setRequestedRoute(t.getRequestedBus().getRoute().getRouteName());
+        if (t.getCurrentBus() != null) {
+            r.setCurrentStartingPoint(t.getCurrentBus().getStartingPoint());
+            r.setCurrentEndingPoint(t.getCurrentBus().getEndingPoint());
+        }
+        if (t.getRequestedBus() != null) {
+            r.setRequestedStartingPoint(t.getRequestedBus().getStartingPoint());
+            r.setRequestedEndingPoint(t.getRequestedBus().getEndingPoint());
+        }
         if (t.getOldIncharge() != null) r.setOldInchargeName(t.getOldIncharge().getName());
         if (t.getNewIncharge() != null) r.setNewInchargeName(t.getNewIncharge().getName());
         r.setOldInchargeDecisionAt(t.getOldInchargeDecisionAt());
@@ -73,10 +81,14 @@ public class TransferResponse {
     public void setStudentName(String v) { studentName = v; }
     public String getStudentRollNumber() { return studentRollNumber; }
     public void setStudentRollNumber(String v) { studentRollNumber = v; }
-    public String getCurrentRoute() { return currentRoute; }
-    public void setCurrentRoute(String v) { currentRoute = v; }
-    public String getRequestedRoute() { return requestedRoute; }
-    public void setRequestedRoute(String v) { requestedRoute = v; }
+    public String getCurrentStartingPoint() { return currentStartingPoint; }
+    public void setCurrentStartingPoint(String v) { currentStartingPoint = v; }
+    public String getCurrentEndingPoint() { return currentEndingPoint; }
+    public void setCurrentEndingPoint(String v) { currentEndingPoint = v; }
+    public String getRequestedStartingPoint() { return requestedStartingPoint; }
+    public void setRequestedStartingPoint(String v) { requestedStartingPoint = v; }
+    public String getRequestedEndingPoint() { return requestedEndingPoint; }
+    public void setRequestedEndingPoint(String v) { requestedEndingPoint = v; }
     public String getOldInchargeName() { return oldInchargeName; }
     public void setOldInchargeName(String v) { oldInchargeName = v; }
     public String getNewInchargeName() { return newInchargeName; }

@@ -59,7 +59,7 @@ const AdminApplicationsPage = () => {
   const columns = [
     { key: 'appliedAt', label: 'Date', render: (row) => new Date(row.appliedAt || row.createdAt).toLocaleDateString() },
     { key: 'busNumber', label: 'Bus Number', render: (row) => <span className="font-bold text-blue-900">{row.busNumber}</span> },
-    { key: 'route', label: 'Route', render: (row) => row.routeName || '—' },
+    { key: 'journey', label: 'Start → End', render: (row) => `${row.startingPoint || '—'} → ${row.endingPoint || '—'}` },
     { key: 'boardingPoint', label: 'Boarding Point', render: (row) => row.boardingPointName || '—' },
     { key: 'academicYear', label: 'Academic Year', render: (row) => row.academicYear || '—' },
     { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },
