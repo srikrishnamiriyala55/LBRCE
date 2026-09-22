@@ -38,8 +38,6 @@ public class Student {
     private String parentName;
     private String parentPhoneNumber;
     private String emergencyContact;
-    private String photoPath;
-
     @JsonIgnore
     @Lob
     @Basic(fetch = FetchType.LAZY)
@@ -91,8 +89,6 @@ public class Student {
     public void setParentPhoneNumber(String parentPhoneNumber) { this.parentPhoneNumber = parentPhoneNumber; }
     public String getEmergencyContact() { return emergencyContact; }
     public void setEmergencyContact(String emergencyContact) { this.emergencyContact = emergencyContact; }
-    public String getPhotoPath() { return photoPath; }
-    public void setPhotoPath(String photoPath) { this.photoPath = photoPath; }
     public byte[] getPhotoData() { return photoData; }
     public void setPhotoData(byte[] photoData) { this.photoData = photoData; }
     public String getPhotoContentType() { return photoContentType; }

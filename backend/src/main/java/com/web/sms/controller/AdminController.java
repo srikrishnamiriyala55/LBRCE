@@ -265,20 +265,8 @@ public class AdminController {
     }
 
     @PutMapping("/students/{id}/status")
-    @Transactional
     public StudentProfileResponse updateStudentStatus(@PathVariable Long id, @Valid @RequestBody StatusUpdateRequest req) {
-        Student student = studentRepo.findByIdForUpdate(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-        String next = req.getStatus().trim().toUpperCase();
-        if (!java.util.Set.of("ACTIVE", "INACTIVE").contains(next)) {
-            throw new com.web.sms.exception.BadRequestException("Student status must be ACTIVE or INACTIVE");
-        }
-        String previous = student.getStatus();
-        student.setStatus(next);
-        Student saved = studentRepo.save(student);
-        auditService.log(getCurrentUser().getUsername(), "ADMIN", "STUDENT_STATUS_UPDATED", "STUDENT",
-                String.valueOf(id), previous, next, null);
-        return StudentProfileResponse.fromStudent(saved);
+        return adminService.updateStudentStatus(id, req.getStatus(), getCurrentUser().getUsername());
     }
 
     @GetMapping("/applications")

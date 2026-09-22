@@ -25,6 +25,9 @@ public class Notification {
     
     private LocalDateTime createdAt;
 
+    @PrePersist
+    void onCreate() { if (createdAt == null) createdAt = LocalDateTime.now(); }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getRecipientRollNumber() { return recipientRollNumber; }

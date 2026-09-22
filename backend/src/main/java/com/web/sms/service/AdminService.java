@@ -177,6 +177,63 @@ public class AdminService {
     }
 
     @Transactional
+    public StudentProfileResponse updateStudentStatus(Long studentId, String requestedStatus, String actor) {
+        Student student = studentRepo.findByIdForUpdate(studentId)
+                .orElseThrow(() -> new com.web.sms.exception.ResourceNotFoundException("Student not found"));
+        String next = requestedStatus == null ? "" : requestedStatus.trim().toUpperCase();
+        if (!java.util.Set.of("ACTIVE", "INACTIVE").contains(next)) {
+            throw new BadRequestException("Student status must be ACTIVE or INACTIVE");
+        }
+        String previous = student.getStatus();
+        if (next.equalsIgnoreCase(previous)) return StudentProfileResponse.fromStudent(student);
+
+        if ("INACTIVE".equals(next)) {
+            LocalDateTime now = LocalDateTime.now();
+            List<Bus> affectedBuses = new java.util.ArrayList<>();
+            List<com.web.sms.entity.TransportAllocation> allocations = allocationRepo.findByStudentId(studentId);
+            allocations.stream().filter(a -> a.getStatus() == EntityStatus.ACTIVE).forEach(a -> {
+                a.setStatus(EntityStatus.INACTIVE);
+                a.setDeactivatedAt(now);
+                a.setSeatNumber(null);
+                if (affectedBuses.stream().noneMatch(bus -> bus.getId().equals(a.getBus().getId()))) affectedBuses.add(a.getBus());
+            });
+            allocationRepo.saveAll(allocations);
+
+            List<com.web.sms.entity.BusPass> passes = passRepo.findByStudentId(studentId);
+            passes.stream().filter(p -> p.getStatus() == PassStatus.ACTIVE).forEach(p -> {
+                p.setStatus(PassStatus.REVOKED);
+                p.setRevokedAt(now);
+            });
+            passRepo.saveAll(passes);
+
+            List<com.web.sms.entity.BusApplication> applications = applicationRepo.findByStudentId(studentId);
+            applications.stream().filter(a -> a.getStatus() == ApplicationStatus.PENDING || a.getStatus() == ApplicationStatus.UNDER_REVIEW)
+                    .forEach(a -> { a.setStatus(ApplicationStatus.CANCELLED); a.setReviewedAt(now); a.setReviewedBy(actor); a.setRemarks("Student account deactivated"); });
+            applicationRepo.saveAll(applications);
+
+            List<com.web.sms.entity.TransferRequest> transfers = transferRepo.findByStudentId(studentId);
+            transfers.stream().filter(t -> java.util.Set.of(TransferStatus.TRANSFER_REQUESTED,
+                            TransferStatus.OLD_INCHARGE_APPROVED, TransferStatus.NEW_INCHARGE_APPROVED).contains(t.getStatus()))
+                    .forEach(t -> { t.setStatus(TransferStatus.CANCELLED); t.setProcessedAt(now); t.setRemarks("Student account deactivated"); });
+            transferRepo.saveAll(transfers);
+
+            allocationRepo.flush();
+            affectedBuses.forEach(bus -> {
+                long occupied = allocationRepo.countByBusIdAndStatus(bus.getId(), EntityStatus.ACTIVE);
+                bus.setAvailableSeats(Math.max(0, bus.getTotalSeats() - (int) occupied));
+                busRepo.save(bus);
+            });
+        }
+
+        student.setStatus(next);
+        Student saved = studentRepo.save(student);
+        auditService.log(actor, "ADMIN", "STUDENT_STATUS_UPDATED", "STUDENT",
+                String.valueOf(studentId), previous, next,
+                "INACTIVE".equals(next) ? "Active allocations, passes, applications and transfers were safely closed" : null);
+        return StudentProfileResponse.fromStudent(saved);
+    }
+
+    @Transactional
     public AcademicYear createAcademicYear(CreateAcademicYearRequest req) {
         if (academicYearRepo.findByYearName(req.getYearName()).isPresent()) {
             throw new BadRequestException("Academic year " + req.getYearName() + " already exists");

@@ -19,6 +19,7 @@ Thumbs.db
 *.log
 *-report.xlsx
 *-report.pdf
+tmp/
 
 # Keep credentials and deployment secrets outside source control
 .env

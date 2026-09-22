@@ -36,6 +36,11 @@ public class Fee {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    @PrePersist
+    void onCreate() { if (createdAt == null) createdAt = LocalDateTime.now(); }
+    @PreUpdate
+    void onUpdate() { updatedAt = LocalDateTime.now(); }
+
     public double getPaidPercentage() {
         if (totalAmount != null && totalAmount > 0) {
             return (paidAmount * 100.0) / totalAmount;

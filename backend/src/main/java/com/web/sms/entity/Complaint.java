@@ -39,6 +39,11 @@ public class Complaint {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    @PrePersist
+    void onCreate() { if (createdAt == null) createdAt = LocalDateTime.now(); }
+    @PreUpdate
+    void onUpdate() { updatedAt = LocalDateTime.now(); }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Student getStudent() { return student; }

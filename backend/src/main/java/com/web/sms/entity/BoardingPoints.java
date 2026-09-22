@@ -1,6 +1,7 @@
 package com.web.sms.entity;
 import com.web.sms.enums.EntityStatus;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name="boarding_points", uniqueConstraints = {
@@ -26,6 +27,14 @@ public class BoardingPoints {
     @Enumerated(EnumType.STRING)
     private EntityStatus status = EntityStatus.ACTIVE;
 
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    void onCreate() { createdAt = LocalDateTime.now(); }
+    @PreUpdate
+    void onUpdate() { updatedAt = LocalDateTime.now(); }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Bus getBus() { return bus; }
@@ -38,4 +47,6 @@ public class BoardingPoints {
     public void setOrderIndex(Integer orderIndex) { this.orderIndex = orderIndex; }
     public EntityStatus getStatus() { return status; }
     public void setStatus(EntityStatus status) { this.status = status; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
 }
