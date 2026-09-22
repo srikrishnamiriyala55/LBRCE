@@ -131,11 +131,25 @@ public class AdminController {
         Bus bus = busRepo.findById(req.getBusId())
                 .orElseThrow(() -> new ResourceNotFoundException("Bus not found with id: " + req.getBusId()));
         if(bus.getStatus()!=EntityStatus.ACTIVE)throw new com.web.sms.exception.BadRequestException("Boarding points can only be added to an active bus");
-        if(boardingPointsRepo.existsByBusIdAndStationNameIgnoreCase(bus.getId(),req.getStationName().trim()))throw new com.web.sms.exception.BadRequestException("This boarding point already exists for the bus");
+        String stationName;
+        if (req.getExistingPointId() != null) {
+            BoardingPoints source = boardingPointsRepo.findById(req.getExistingPointId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Selected boarding point was not found"));
+            stationName = source.getStationName();
+        } else {
+            if (req.getStationName() == null || req.getStationName().isBlank()) {
+                throw new com.web.sms.exception.BadRequestException("Select an available boarding point or enter a new point name");
+            }
+            stationName = req.getStationName().trim();
+            boardingPointsRepo.findFirstByStationNameIgnoreCase(stationName)
+                    .ifPresent(existing -> { throw new com.web.sms.exception.BadRequestException(
+                            "This boarding point name already exists. Select it from the available points list"); });
+        }
+        if(boardingPointsRepo.existsByBusIdAndStationNameIgnoreCase(bus.getId(),stationName))throw new com.web.sms.exception.BadRequestException("This boarding point already exists for the bus");
 
         BoardingPoints bp = new BoardingPoints();
         bp.setBus(bus);
-        bp.setStationName(req.getStationName().trim());
+        bp.setStationName(stationName);
         bp.setFeeAmount(req.getFeeAmount());
         bp.setOrderIndex(req.getOrderIndex() != null ? req.getOrderIndex() : 0);
         bp.setStatus(EntityStatus.ACTIVE);
