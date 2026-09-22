@@ -71,6 +71,15 @@ export default function BoardingPointManagementPage() {
     } catch (error) { addToast(error.response?.data?.message || 'Failed to save boarding point', 'error'); }
   };
 
+  const selectBoardingPoint = (value) => {
+    if (value === 'NEW' || !value) {
+      setForm({ ...form, pointSelection:value, stationName:'', feeAmount:'' });
+      return;
+    }
+    const selected = availablePoints.find(point => point.id === Number(value));
+    setForm({ ...form, pointSelection:value, stationName:'', feeAmount:selected?.feeAmount ?? '' });
+  };
+
   const toggleStatus = async point => {
     const status = point.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     try {
@@ -116,12 +125,12 @@ export default function BoardingPointManagementPage() {
 
     <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Boarding Point & Fee' : 'Add Boarding Point'}>
       <form onSubmit={save} className="space-y-4">
-        <label className="block text-sm font-medium">Bus *<select required disabled={!!editing} className="input-field mt-1 disabled:bg-gray-100" value={form.busId} onChange={e => setForm({...form,busId:e.target.value,pointSelection:'',stationName:''})}><option value="">Select bus</option>{buses.map(bus => <option key={bus.id} value={bus.id}>{bus.busNumber} - {bus.startingPoint} to {bus.endingPoint}</option>)}</select></label>
+        <label className="block text-sm font-medium">Bus *<select required disabled={!!editing} className="input-field mt-1 disabled:bg-gray-100" value={form.busId} onChange={e => setForm({...form,busId:e.target.value,pointSelection:'',stationName:'',feeAmount:''})}><option value="">Select bus</option>{buses.map(bus => <option key={bus.id} value={bus.id}>{bus.busNumber} - {bus.startingPoint} to {bus.endingPoint}</option>)}</select></label>
         {editing ? <label className="block text-sm font-medium">Boarding Point *<input required maxLength="255" className="input-field mt-1" value={form.stationName} onChange={e => setForm({...form,stationName:e.target.value})}/></label> : <>
-          <label className="block text-sm font-medium">Boarding Point *<select required disabled={!form.busId} className="input-field mt-1 disabled:bg-gray-100" value={form.pointSelection} onChange={e => setForm({...form,pointSelection:e.target.value,stationName:''})}><option value="">Select available point</option>{availablePoints.map(point => <option key={point.id} value={point.id}>{point.stationName}</option>)}<option value="NEW">＋ Add new boarding point</option></select></label>
+          <label className="block text-sm font-medium">Boarding Point *<select required disabled={!form.busId} className="input-field mt-1 disabled:bg-gray-100" value={form.pointSelection} onChange={e => selectBoardingPoint(e.target.value)}><option value="">Select available point</option>{availablePoints.map(point => <option key={point.id} value={point.id}>{point.stationName} — ₹{Number(point.feeAmount || 0).toLocaleString('en-IN')}</option>)}<option value="NEW">＋ Add new boarding point</option></select></label>
           {form.pointSelection === 'NEW' && <label className="block text-sm font-medium">New Boarding Point Name *<input required maxLength="255" className="input-field mt-1" placeholder="Enter a unique point name" value={form.stationName} onChange={e => setForm({...form,stationName:e.target.value})}/><span className="mt-1 block text-xs text-gray-500">If this name already exists, select it from the dropdown instead.</span></label>}
         </>}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><label className="block text-sm font-medium">Annual Fee (₹) *<input required type="number" min="1" className="input-field mt-1" value={form.feeAmount} onChange={e => setForm({...form,feeAmount:e.target.value})}/></label><label className="block text-sm font-medium">Display Order<input type="number" min="0" className="input-field mt-1" value={form.orderIndex} onChange={e => setForm({...form,orderIndex:e.target.value})}/></label></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><label className="block text-sm font-medium">Annual Fee (₹) *<input required type="number" min="1" className="input-field mt-1" value={form.feeAmount} onChange={e => setForm({...form,feeAmount:e.target.value})}/><span className="mt-1 block text-xs text-gray-500">Existing-point fees are filled automatically and can be changed for this bus.</span></label><label className="block text-sm font-medium">Display Order<input type="number" min="0" className="input-field mt-1" value={form.orderIndex} onChange={e => setForm({...form,orderIndex:e.target.value})}/></label></div>
         <p className="text-xs text-gray-500">Fee changes apply to new applications. Existing approved fee records retain their recorded amount.</p>
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3"><button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Cancel</button><button className="btn-primary">{editing ? 'Save Changes' : 'Add Point'}</button></div>
       </form>
