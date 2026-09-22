@@ -41,7 +41,7 @@ const InchargeDashboardPage = () => {
         <DashboardCard title="Active Passes" value={stats?.activePasses || 0} icon={BadgeCheck} color="green" />
         <DashboardCard title="Fee Collected" value={`₹${stats?.collectedFee || 0}`} icon={CreditCard} color="green" />
       </div>
-      <div className="card"><h3 className="font-bold mb-3">Boarding Points</h3><div className="flex flex-wrap gap-2">{(stats?.boardingPoints||[]).map(p=><span key={p.id} className="rounded bg-blue-50 px-3 py-2 text-sm text-blue-800">{p.stationName}</span>)}</div></div>
+      <div className="card"><h3 className="font-bold mb-3">Boarding Points (Travel Order)</h3><div className="flex flex-wrap items-center gap-2">{[...(stats?.boardingPoints||[])].sort((a,b)=>(a.orderIndex??0)-(b.orderIndex??0)||a.stationName.localeCompare(b.stationName)).map((p,index)=><React.Fragment key={p.id}><span className="rounded bg-blue-50 px-3 py-2 text-sm text-blue-800"><strong>{index}</strong> · {p.stationName}</span>{index < (stats?.boardingPoints?.length||0)-1 && <span className="text-gray-400">→</span>}</React.Fragment>)}</div></div>
     </div>
   );
 };

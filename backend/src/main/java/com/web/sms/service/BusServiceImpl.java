@@ -101,7 +101,7 @@ public class BusServiceImpl implements BusService {
 
     @Override
     public List<BoardingPointResponse> getBoardingPointsByBusId(Long busId) {
-        return boardingPointsRepository.findByBusIdAndStatus(busId, EntityStatus.ACTIVE).stream()
+        return boardingPointsRepository.findByBusIdAndStatusOrderByOrderIndexAscStationNameAsc(busId, EntityStatus.ACTIVE).stream()
                 .map(BoardingPointResponse::fromBoardingPoint)
                 .collect(Collectors.toList());
     }

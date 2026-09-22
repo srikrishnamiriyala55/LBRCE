@@ -162,7 +162,7 @@ public class AdminController {
     @GetMapping("/buses/{busId}/boarding-points")
     public List<BoardingPointResponse> getBoardingPoints(@PathVariable Long busId) {
         if (!busRepo.existsById(busId)) throw new ResourceNotFoundException("Bus not found");
-        return boardingPointsRepo.findByBusId(busId).stream().map(BoardingPointResponse::fromBoardingPoint).toList();
+        return boardingPointsRepo.findByBusIdOrderByOrderIndexAscStationNameAsc(busId).stream().map(BoardingPointResponse::fromBoardingPoint).toList();
     }
 
     @PutMapping("/buses/{busId}/boarding-points/order")

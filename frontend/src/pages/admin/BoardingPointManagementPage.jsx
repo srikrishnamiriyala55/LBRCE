@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Edit2, Filter, MapPin, Plus, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Edit2, Filter, MapPin, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import Modal from '../../components/common/Modal';
@@ -17,6 +17,8 @@ export default function BoardingPointManagementPage() {
   const [editing, setEditing] = useState(null);
   const [manageBusId, setManageBusId] = useState('');
   const [reordering, setReordering] = useState(false);
+  const [orderDraft, setOrderDraft] = useState([]);
+  const [orderChanged, setOrderChanged] = useState(false);
   const [form, setForm] = useState({ busId: '', pointSelection: '', stationName: '', feeAmount: '', orderIndex: 0 });
   const { addToast } = useToast();
 
@@ -59,6 +61,14 @@ export default function BoardingPointManagementPage() {
     .filter(point => point.busId === Number(manageBusId))
     .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0) || a.stationName.localeCompare(b.stationName)),
   [points, manageBusId]);
+  const displayedPoints = useMemo(() => {
+    const byId = new Map(orderedPoints.map(point => [point.id, point]));
+    return orderDraft.map(id => byId.get(id)).filter(Boolean);
+  }, [orderedPoints, orderDraft]);
+  useEffect(() => {
+    setOrderDraft(orderedPoints.map(point => point.id));
+    setOrderChanged(false);
+  }, [manageBusId, points]);
 
   const open = (point = null, busId = null) => {
     const targetBusId = busId || buses[0]?.id || '';
@@ -69,18 +79,25 @@ export default function BoardingPointManagementPage() {
     setModalOpen(true);
   };
 
-  const movePoint = async (index, direction) => {
+  const movePoint = (index, direction) => {
     const destination = index + direction;
-    if (destination < 0 || destination >= orderedPoints.length || reordering) return;
-    const reordered = [...orderedPoints];
+    if (destination < 0 || destination >= displayedPoints.length || reordering) return;
+    const reordered = [...displayedPoints];
     [reordered[index], reordered[destination]] = [reordered[destination], reordered[index]];
+    setOrderDraft(reordered.map(point => point.id));
+    setOrderChanged(true);
+  };
+
+  const saveOrder = async () => {
+    if (!orderChanged || reordering) return;
     setReordering(true);
     try {
       const response = await api.put(`/admin/buses/${manageBusId}/boarding-points/order`, {
-        boardingPointIds: reordered.map(point => point.id)
+        boardingPointIds: orderDraft
       });
       const updated = new Map(response.data.map(point => [point.id, point]));
       setPoints(current => current.map(point => updated.get(point.id) || point));
+      setOrderChanged(false);
       addToast('Boarding-point order updated', 'success');
     } catch (error) {
       addToast(error.response?.data?.message || 'Failed to update boarding-point order', 'error');
@@ -153,22 +170,28 @@ export default function BoardingPointManagementPage() {
         </label>
         <button disabled={!manageBusId} onClick={() => open(null, Number(manageBusId))} className="btn-primary flex items-center justify-center gap-2 disabled:opacity-50"><Plus size={18}/> Add Point to This Bus</button>
       </div>
-      <p className="text-sm text-gray-500">The top point is order 0. Use the arrows to change the travel sequence; all order numbers are saved automatically.</p>
+      <div className="flex flex-col gap-3 rounded-lg bg-blue-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-blue-900"><strong>Travel sequence:</strong> the top point is order 0. Move points as many times as needed, then click <strong>Save Order</strong>.</p>
+        <div className="flex shrink-0 gap-2">
+          <button type="button" disabled={!orderChanged || reordering} onClick={() => { setOrderDraft(orderedPoints.map(point => point.id)); setOrderChanged(false); }} className="btn-secondary flex items-center gap-2 disabled:opacity-40"><RotateCcw size={16}/> Reset</button>
+          <button type="button" disabled={!orderChanged || reordering} onClick={saveOrder} className="btn-primary flex items-center gap-2 disabled:opacity-40"><Save size={16}/> {reordering ? 'Saving...' : 'Save Order'}</button>
+        </div>
+      </div>
       <div className="divide-y rounded-lg border">
-        {orderedPoints.map((point, index) => <div key={point.id} className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
+        {displayedPoints.map((point, index) => <div key={point.id} className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-blue-800">{index}</span>
             <div><p className="font-medium text-gray-900">{point.stationName}</p><p className="text-xs text-gray-500">₹{Number(point.feeAmount || 0).toLocaleString('en-IN')} · {point.status}</p></div>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-            <button type="button" disabled={index === 0 || reordering} onClick={() => movePoint(index, -1)} className="btn-secondary p-2 disabled:opacity-40" title="Move up"><ArrowUp size={16}/></button>
-            <button type="button" disabled={index === orderedPoints.length - 1 || reordering} onClick={() => movePoint(index, 1)} className="btn-secondary p-2 disabled:opacity-40" title="Move down"><ArrowDown size={16}/></button>
+            <button type="button" disabled={index === 0 || reordering} onClick={() => movePoint(index, -1)} className="btn-secondary flex items-center gap-1 px-3 py-2 disabled:opacity-40" title="Move this point earlier"><ArrowUp size={16}/> <span>Move Up</span></button>
+            <button type="button" disabled={index === displayedPoints.length - 1 || reordering} onClick={() => movePoint(index, 1)} className="btn-secondary flex items-center gap-1 px-3 py-2 disabled:opacity-40" title="Move this point later"><ArrowDown size={16}/> <span>Move Down</span></button>
             <button type="button" onClick={() => open(point)} className="p-2 text-blue-700" title="Edit point and fee"><Edit2 size={16}/></button>
             <button type="button" onClick={() => toggleStatus(point)} className={point.status === 'ACTIVE' ? 'text-xs text-amber-700' : 'text-xs text-green-700'}>{point.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</button>
             <button type="button" onClick={() => remove(point)} className="p-2 text-red-600" title="Delete unused point"><Trash2 size={16}/></button>
           </div>
         </div>)}
-        {!loading && !orderedPoints.length && <p className="p-6 text-center text-sm text-gray-500">No boarding points are assigned to this bus.</p>}
+        {!loading && !displayedPoints.length && <p className="p-6 text-center text-sm text-gray-500">No boarding points are assigned to this bus.</p>}
       </div>
     </div>
 

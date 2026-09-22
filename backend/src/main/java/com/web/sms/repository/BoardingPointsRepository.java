@@ -12,6 +12,8 @@ import jakarta.persistence.LockModeType;
 public interface BoardingPointsRepository extends JpaRepository<BoardingPoints, Long> {
     List<BoardingPoints> findByBusId(Long busId);
     List<BoardingPoints> findByBusIdAndStatus(Long busId, EntityStatus status);
+    List<BoardingPoints> findByBusIdOrderByOrderIndexAscStationNameAsc(Long busId);
+    List<BoardingPoints> findByBusIdAndStatusOrderByOrderIndexAscStationNameAsc(Long busId, EntityStatus status);
     boolean existsByBusIdAndStationNameIgnoreCase(Long busId, String stationName);
     Optional<BoardingPoints> findFirstByStationNameIgnoreCase(String stationName);
     List<BoardingPoints> findAllByOrderByBusBusNumberAscOrderIndexAscStationNameAsc();
