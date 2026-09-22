@@ -103,6 +103,7 @@ LBRCE/
 |       |   |   |   |-- AuthController.java     # Login and student registration
 |       |   |   |   |-- InchargeController.java # Assigned-bus In-charge endpoints
 |       |   |   |   |-- PublicController.java   # Public pass verification
+|       |   |   |   |-- SpaController.java      # React route fallback for production
 |       |   |   |   `-- StudentController.java  # Student REST endpoints
 |       |   |   |-- dto/
 |       |   |   |   |-- request/
@@ -116,6 +117,7 @@ LBRCE/
 |       |   |   |   |   |-- CreateStudentRequest.java       # Admin student-creation payload
 |       |   |   |   |   |-- LoginRequest.java               # Login credentials payload
 |       |   |   |   |   |-- PaymentRequest.java             # Student payment payload
+|       |   |   |   |   |-- ReorderBoardingPointsRequest.java # Complete bus-stop sequence payload
 |       |   |   |   |   |-- SeatAssignmentRequest.java      # Seat assignment payload
 |       |   |   |   |   |-- StatusUpdateRequest.java        # Status/remarks update payload
 |       |   |   |   |   |-- StudentRegistrationRequest.java # Public student signup payload
@@ -309,7 +311,11 @@ Create the database before starting the backend:
 CREATE DATABASE btms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-The repository does not contain database backup or manual SQL files. The backend connects to the existing `btms` schema through JPA.
+The repository does not contain database backups or ad-hoc SQL files. The backend connects to the configured schema through JPA. Production currently uses these 15 application tables:
+
+`academic_year`, `admin`, `audit_log`, `boarding_points`, `bus`, `bus_application`, `bus_pass`, `complaint`, `fee`, `incharge`, `notification`, `payment`, `student`, `transfer_request`, and `transport_allocation`.
+
+Legacy authentication, faculty, registration, and transfer tables have been migrated into the current model and removed. Student account removal is implemented as a safe deactivation: active allocations are closed, seats are released, passes are revoked, and pending applications/transfers are cancelled while financial and audit history is retained.
 
 For local development, `JPA_DDL_AUTO=update` can create or update mapped tables. For staging and production, use `JPA_DDL_AUTO=validate` and apply reviewed, version-controlled migrations through the deployment process.
 
