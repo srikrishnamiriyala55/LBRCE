@@ -39,12 +39,6 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (rollNumber, password) => {
     const response = await api.post('/auth/login', { rollNumber, password });
-    if (response.data.otpRequired) return response.data;
-    return { otpRequired: false, user: storeSession(response.data.login) };
-  };
-
-  const verifyLoginOtp = async (challengeId, otp) => {
-    const response = await api.post('/auth/login/verify-otp', { challengeId, otp });
     return storeSession(response.data);
   };
 
@@ -59,7 +53,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, verifyLoginOtp, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

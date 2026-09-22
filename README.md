@@ -5,7 +5,7 @@ Web application for managing LBRCE student bus applications, allocations, fees, 
 ## Technology
 
 - Backend: Java 21, Spring Boot 4.1.1, Spring MVC, Spring Security, Spring Data JPA and MySQL 8
-- Authentication: stateless JWT authentication, BCrypt password hashes, email OTP verification and role-based authorization
+- Authentication: stateless JWT authentication, BCrypt password hashes and role-based authorization
 - Frontend: React 18, Vite 5, React Router, Axios and Tailwind CSS
 - Responsive UI: mobile navigation, adaptive forms/cards/modals and horizontally scrollable data tables
 - Reports: Apache POI (`.xlsx`) and OpenPDF (`.pdf`)
@@ -15,7 +15,7 @@ Web application for managing LBRCE student bus applications, allocations, fees, 
 
 ### Student
 
-- Create a student account after validating a one-time code sent to the supplied email address
+- Create an active student account using the public registration form
 - View and update permitted profile fields
 - View active buses and boarding points
 - Submit one bus application for the active academic year
@@ -28,7 +28,7 @@ Web application for managing LBRCE student bus applications, allocations, fees, 
 
 ### In-charge
 
-- Complete email OTP verification after every successful ID/password login
+- Sign in with the assigned ID and password
 - Access only the bus assigned to the authenticated In-charge
 - View assigned-bus capacity and dashboard statistics
 - Approve or reject applications belonging to the assigned bus
@@ -42,7 +42,7 @@ In-charge authorization is enforced by the backend. Changing frontend URLs or re
 
 ### Admin
 
-- Complete email OTP verification after every successful ID/password login
+- Sign in with the assigned ID and password
 - View organization-wide dashboard statistics
 - Manage buses, routes and boarding points
 - Activate or deactivate routes and boarding points with relationship safety checks
@@ -116,7 +116,6 @@ LBRCE/
 |       |   |   |   |   |-- CreateRouteRequest.java         # Route creation/update payload
 |       |   |   |   |   |-- CreateStudentRequest.java       # Admin student-creation payload
 |       |   |   |   |   |-- LoginRequest.java               # Login credentials payload
-|       |   |   |   |   |-- OtpVerificationRequest.java     # Six-digit OTP verification payload
 |       |   |   |   |   |-- PaymentRequest.java             # Student payment payload
 |       |   |   |   |   |-- SeatAssignmentRequest.java      # Seat assignment payload
 |       |   |   |   |   |-- StatusUpdateRequest.java        # Status/remarks update payload
@@ -133,9 +132,7 @@ LBRCE/
 |       |   |   |       |-- FeeResponse.java               # Fee API view
 |       |   |   |       |-- InchargeStudentResponse.java   # Assigned-student view
 |       |   |   |       |-- LoginResponse.java             # JWT and user login result
-|       |   |   |       |-- LoginInitiationResponse.java   # Student login or staff OTP challenge
 |       |   |   |       |-- NotificationResponse.java      # Notification API view
-|       |   |   |       |-- OtpChallengeResponse.java      # OTP challenge ID, expiry and masked email
 |       |   |   |       |-- PageResponse.java              # Generic pagination view
 |       |   |   |       |-- PassResponse.java              # Digital bus-pass view
 |       |   |   |       |-- PaymentResponse.java           # Payment API view
@@ -154,9 +151,7 @@ LBRCE/
 |       |   |   |   |-- Fee.java                 # Student transport fee entity
 |       |   |   |   |-- Incharge.java            # In-charge account entity
 |       |   |   |   |-- Notification.java        # User notification entity
-|       |   |   |   |-- OtpChallenge.java        # Hashed, expiring email OTP challenge
 |       |   |   |   |-- Payment.java             # Payment transaction entity
-|       |   |   |   |-- PendingStudentRegistration.java # Verified-before-creation signup data
 |       |   |   |   |-- Route.java               # Transport route entity
 |       |   |   |   |-- Student.java             # Student account/profile entity
 |       |   |   |   |-- TransferRequest.java     # Two-stage transfer entity
@@ -188,9 +183,7 @@ LBRCE/
 |       |   |   |   |-- FeeRepository.java                # Fee queries and locks
 |       |   |   |   |-- InchargeRepository.java           # In-charge queries and locks
 |       |   |   |   |-- NotificationRepository.java       # Notification queries
-|       |   |   |   |-- OtpChallengeRepository.java       # OTP challenge and cooldown queries
 |       |   |   |   |-- PaymentRepository.java            # Payment queries and locks
-|       |   |   |   |-- PendingStudentRegistrationRepository.java # Pending signup queries
 |       |   |   |   |-- RouteRepository.java              # Route queries
 |       |   |   |   |-- StudentRepository.java            # Student and report queries
 |       |   |   |   |-- TransferRequestRepository.java    # Transfer queries and locks
@@ -208,13 +201,11 @@ LBRCE/
 |       |   |       |-- BusService.java                # Bus service contract
 |       |   |       |-- BusServiceImpl.java            # Bus management implementation
 |       |   |       |-- ComplaintService.java          # Complaint ownership and lifecycle
-|       |   |       |-- EmailService.java              # SMTP delivery of verification codes
 |       |   |       |-- FeeService.java                # Payments, fees and pass eligibility
 |       |   |       |-- InchargeOperationsService.java # Assigned-bus seat operations
 |       |   |       |-- InchargeService.java           # In-charge service contract
 |       |   |       |-- InchargeServiceImpl.java       # In-charge account implementation
 |       |   |       |-- NotificationService.java       # Notification creation/read state
-|       |   |       |-- OtpService.java                # OTP generation, hashing, expiry and attempt limits
 |       |   |       |-- PassService.java               # Pass retrieval and verification
 |       |   |       |-- RouteService.java              # Route management logic
 |       |   |       |-- StudentService.java            # Student service contract
@@ -341,15 +332,6 @@ JWT_EXPIRATION=86400000
 CORS_ALLOWED_ORIGINS=http://localhost:3000
 CORS_MAX_AGE_SECONDS=3600
 BCRYPT_STRENGTH=10
-OTP_EXPIRY_MINUTES=5
-OTP_MAX_ATTEMPTS=5
-OTP_RESEND_COOLDOWN_SECONDS=60
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USERNAME=your_sender_email
-MAIL_PASSWORD=your_email_provider_app_password
-MAIL_SMTP_AUTH=true
-MAIL_STARTTLS=true
 JPA_DDL_AUTO=validate
 PAYMENTS_AUTO_CONFIRM=false
 BTMS_SEED_ENABLED=false
