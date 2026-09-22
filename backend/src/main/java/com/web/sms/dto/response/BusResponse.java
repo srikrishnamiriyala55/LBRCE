@@ -12,6 +12,8 @@ public class BusResponse {
     private Integer availableSeats;
     private Integer occupiedSeats;
     private EntityStatus status;
+    private Long inchargeId;
+    private String inchargeTeacherId;
     private String inchargeName;
 
     public static BusResponse fromBus(Bus b, int occupied) {
@@ -24,7 +26,11 @@ public class BusResponse {
         r.setAvailableSeats(b.getAvailableSeats());
         r.setOccupiedSeats(occupied);
         r.setStatus(b.getStatus());
-        if(b.getIncharge() != null) r.setInchargeName(b.getIncharge().getName());
+        if(b.getIncharge() != null) {
+            r.setInchargeId(b.getIncharge().getId());
+            r.setInchargeTeacherId(b.getIncharge().getTeacherId());
+            r.setInchargeName(b.getIncharge().getName());
+        }
         return r;
     }
 
@@ -44,6 +50,10 @@ public class BusResponse {
     public void setOccupiedSeats(Integer occupiedSeats) { this.occupiedSeats = occupiedSeats; }
     public EntityStatus getStatus() { return status; }
     public void setStatus(EntityStatus status) { this.status = status; }
+    public Long getInchargeId() { return inchargeId; }
+    public void setInchargeId(Long inchargeId) { this.inchargeId = inchargeId; }
+    public String getInchargeTeacherId() { return inchargeTeacherId; }
+    public void setInchargeTeacherId(String inchargeTeacherId) { this.inchargeTeacherId = inchargeTeacherId; }
     public String getInchargeName() { return inchargeName; }
     public void setInchargeName(String inchargeName) { this.inchargeName = inchargeName; }
 }

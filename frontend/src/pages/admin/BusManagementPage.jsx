@@ -25,6 +25,8 @@ const BusManagementPage = () => {
   // Deactivate Confirm
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busToDelete, setBusToDelete] = useState(null);
+  const [assignmentBus, setAssignmentBus] = useState(null);
+  const [selectedInchargeId, setSelectedInchargeId] = useState('');
 
   const { addToast } = useToast();
 
@@ -94,11 +96,17 @@ const BusManagementPage = () => {
     }
   };
 
-  const assignIncharge = async (bus) => {
-    const choices = incharges.map(i => `${i.id}: ${i.teacherId} — ${i.name}`).join('\n');
-    const selected = window.prompt(`Enter In-Charge database ID:\n${choices}`);
-    if (!selected) return;
-    try { await api.put(`/admin/buses/${bus.id}/incharge`, { inchargeId: Number(selected) }); addToast('In-Charge assigned', 'success'); fetchBuses(); }
+  const assignedBusCount = (inchargeId) => buses.filter(bus => bus.inchargeId === inchargeId).length;
+
+  const openAssignment = (bus) => {
+    setAssignmentBus(bus);
+    setSelectedInchargeId(bus.inchargeId ? String(bus.inchargeId) : '');
+  };
+
+  const assignIncharge = async (event) => {
+    event.preventDefault();
+    if (!assignmentBus || !selectedInchargeId) return;
+    try { await api.put(`/admin/buses/${assignmentBus.id}/incharge`, { inchargeId: Number(selectedInchargeId) }); addToast('In-Charge assigned', 'success'); setAssignmentBus(null); await fetchBuses(); }
     catch (err) { addToast(err.response?.data?.message || 'Assignment failed', 'error'); }
   };
 
@@ -123,7 +131,7 @@ const BusManagementPage = () => {
           <button onClick={() => handleOpenBusModal(row)} className="p-1.5 text-gray-700 hover:bg-gray-100 rounded" title="Edit Bus">
             <Edit2 size={16} />
           </button>
-          <button onClick={() => assignIncharge(row)} className="text-xs text-blue-700 hover:underline">{row.inchargeName ? 'Change' : 'Assign'}</button>
+          <button onClick={() => openAssignment(row)} className="text-xs text-blue-700 hover:underline">{row.inchargeName ? 'Change' : 'Assign'}</button>
           {row.inchargeName && <button onClick={() => unassignIncharge(row)} className="text-xs text-red-600 hover:underline">Unassign</button>}
           <button onClick={() => { setBusToDelete(row); setConfirmOpen(true); }} className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Deactivate Bus">
             <Trash2 size={16} />
@@ -217,6 +225,31 @@ const BusManagementPage = () => {
         onConfirm={handleDeleteBus}
         onCancel={() => setConfirmOpen(false)}
       />
+
+      <Modal isOpen={Boolean(assignmentBus)} onClose={() => setAssignmentBus(null)} title="Assign In-Charge">
+        <form onSubmit={assignIncharge} className="space-y-4">
+          <p className="text-sm text-gray-600">Select an active In-charge for <strong>{assignmentBus?.busNumber}</strong>.</p>
+          <div>
+            <label htmlFor="inchargeAssignment" className="block text-sm font-medium text-gray-700 mb-1">In-Charge *</label>
+            <select id="inchargeAssignment" required className="input-field" value={selectedInchargeId} onChange={(event) => setSelectedInchargeId(event.target.value)}>
+              <option value="">Select In-Charge</option>
+              {incharges.map((incharge) => {
+                const count = assignedBusCount(incharge.id);
+                const isCurrent = assignmentBus?.inchargeId === incharge.id;
+                const unavailable = incharge.status !== 'ACTIVE' || (count > 0 && !isCurrent);
+                return <option key={incharge.id} value={incharge.id} disabled={unavailable}>
+                  {incharge.teacherId} — {incharge.name} ({count} {count === 1 ? 'bus' : 'buses'} assigned){incharge.status !== 'ACTIVE' ? ' — Inactive' : unavailable ? ' — Unavailable' : ''}
+                </option>;
+              })}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">An In-charge already assigned to another bus is shown but cannot be selected.</p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setAssignmentBus(null)} className="btn-secondary">Cancel</button>
+            <button type="submit" disabled={!selectedInchargeId} className="btn-primary disabled:opacity-50">Assign In-Charge</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
