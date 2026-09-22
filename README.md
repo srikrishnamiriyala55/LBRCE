@@ -15,10 +15,10 @@ Web application for managing LBRCE student bus applications, allocations, fees, 
 
 ### Student
 
-- Create an active student account using the public registration form
+- Create an active student account with complete personal, academic, parent and emergency-contact details
 - View and update permitted profile fields
 - View active buses and boarding points
-- Submit one bus application for the active academic year
+- Review/update the complete student profile and submit one bus application with a recent photo for the active academic year
 - Track application history and status
 - View fee balance and initiate an eligible payment
 - View the active digital bus pass after reaching the configured payment threshold

@@ -48,15 +48,23 @@ public class AuthService {
         String studentId = request.getRollNumber().trim().toUpperCase();
         String email = request.getEmail().trim().toLowerCase();
         validateNewStudent(studentId, email);
+        validateAcademicProgress(request.getYear(), request.getSemester());
 
         Student student = new Student();
         student.setRollNumber(studentId);
         student.setName(request.getName().trim());
         student.setEmail(email);
         student.setPhoneNumber(request.getPhoneNumber().trim());
+        student.setDob(request.getDob());
+        student.setGender(request.getGender());
+        student.setAddress(request.getAddress().trim());
         student.setBranch(request.getBranch().trim().toUpperCase());
         student.setYear(request.getYear());
         student.setSemester(request.getSemester());
+        student.setBloodGroup(request.getBloodGroup());
+        student.setParentName(request.getParentName().trim());
+        student.setParentPhoneNumber(request.getParentPhoneNumber().trim());
+        student.setEmergencyContact(request.getEmergencyContact().trim());
         student.setPassword(passwordEncoder.encode(request.getPassword()));
         student.setStatus("ACTIVE");
         Student saved = studentRepository.save(student);
@@ -69,6 +77,12 @@ public class AuthService {
         }
         if (studentRepository.existsByEmail(email)) {
             throw new BadRequestException("An account already exists for this email address");
+        }
+    }
+
+    private void validateAcademicProgress(Integer year, Integer semester) {
+        if (year == null || semester == null || (semester + 1) / 2 != year) {
+            throw new BadRequestException("Semester must correspond to the selected study year");
         }
     }
 

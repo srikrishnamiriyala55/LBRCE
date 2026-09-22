@@ -60,6 +60,7 @@ public class ApplicationService {
             throw new BadRequestException("Only active students can apply for transportation");
         }
 
+        updateStudentDetails(student, req);
         storeStudentPhoto(student, photo);
 
         AcademicYear year = academicYearRepo.findByActiveTrue()
@@ -137,6 +138,29 @@ public class ApplicationService {
         student.setPhotoData(bytes);
         student.setPhotoContentType(jpeg ? MediaType.IMAGE_JPEG_VALUE : MediaType.IMAGE_PNG_VALUE);
         studentRepo.save(student);
+    }
+
+    private void updateStudentDetails(Student student, BusApplicationRequest req) {
+        if ((req.getSemester() + 1) / 2 != req.getYear()) {
+            throw new BadRequestException("Semester must correspond to the selected study year");
+        }
+        String email = req.getEmail().trim().toLowerCase();
+        if (studentRepo.existsByEmailAndIdNot(email, student.getId())) {
+            throw new BadRequestException("Another student account already uses this email address");
+        }
+        student.setName(req.getName().trim());
+        student.setEmail(email);
+        student.setPhoneNumber(req.getPhoneNumber().trim());
+        student.setDob(req.getDob());
+        student.setGender(req.getGender());
+        student.setAddress(req.getAddress().trim());
+        student.setBranch(req.getBranch().trim().toUpperCase());
+        student.setYear(req.getYear());
+        student.setSemester(req.getSemester());
+        student.setBloodGroup(req.getBloodGroup());
+        student.setParentName(req.getParentName().trim());
+        student.setParentPhoneNumber(req.getParentPhoneNumber().trim());
+        student.setEmergencyContact(req.getEmergencyContact().trim());
     }
 
     public Page<ApplicationResponse> getStudentApplications(Long studentId, Pageable pageable) {

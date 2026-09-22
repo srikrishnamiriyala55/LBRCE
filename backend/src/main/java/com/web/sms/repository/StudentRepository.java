@@ -26,6 +26,7 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
 
     boolean existsByRollNumber(String rollNumber);
     boolean existsByEmail(String email);
+    boolean existsByEmailAndIdNot(String email, Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Student s where s.id=:id")

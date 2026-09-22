@@ -14,7 +14,8 @@ const Login = () => {
   const [success, setSuccess] = useState('');
   const [registration, setRegistration] = useState({
     rollNumber: '', name: '', email: '', phoneNumber: '', branch: '',
-    year: '', semester: '', password: '', confirmPassword: ''
+    year: '', semester: '', dob: '', gender: '', address: '', bloodGroup: '',
+    parentName: '', parentPhoneNumber: '', emergencyContact: '', password: '', confirmPassword: ''
   });
   
   const { login } = useAuth();
@@ -41,7 +42,8 @@ const Login = () => {
   };
 
   const updateRegistration = (event) => {
-    setRegistration((current) => ({ ...current, [event.target.name]: event.target.value }));
+    const { name, value } = event.target;
+    setRegistration((current) => ({ ...current, [name]: value, ...(name === 'year' ? { semester: '' } : {}) }));
   };
 
   const openRegistration = () => {
@@ -67,7 +69,7 @@ const Login = () => {
       const studentId = registration.rollNumber.trim().toUpperCase();
       setRollNumber(studentId);
       setPassword('');
-      setRegistration({ rollNumber: '', name: '', email: '', phoneNumber: '', branch: '', year: '', semester: '', password: '', confirmPassword: '' });
+      setRegistration({ rollNumber: '', name: '', email: '', phoneNumber: '', branch: '', year: '', semester: '', dob: '', gender: '', address: '', bloodGroup: '', parentName: '', parentPhoneNumber: '', emergencyContact: '', password: '', confirmPassword: '' });
       setIsRegistering(false);
       setSuccess('Account created successfully. You can sign in now.');
     } catch (err) {
@@ -79,7 +81,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className={`${isRegistering ? 'max-w-2xl' : 'max-w-md'} w-full bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-8`}>
+      <div className={`${isRegistering ? 'max-w-4xl' : 'max-w-md'} w-full bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-8`}>
         <div className="flex flex-col items-center mb-8 text-center">
           <img src="/logo.jpg" alt="LBRCE Logo" className="h-20 w-20 mb-4" />
           <h1 className="text-xl font-bold text-blue-800 uppercase">
@@ -154,12 +156,19 @@ const Login = () => {
             <div><label htmlFor="registerStudentId" className="block text-sm font-medium text-gray-700 mb-1">Student ID *</label><input id="registerStudentId" name="rollNumber" value={registration.rollNumber} onChange={updateRegistration} className="input-field uppercase" placeholder="e.g. 21761A0501" maxLength="30" required /></div>
             <div><label htmlFor="registerName" className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label><input id="registerName" name="name" value={registration.name} onChange={updateRegistration} className="input-field" placeholder="Student full name" maxLength="100" required /></div>
             <div><label htmlFor="registerEmail" className="block text-sm font-medium text-gray-700 mb-1">Email *</label><input id="registerEmail" type="email" name="email" value={registration.email} onChange={updateRegistration} className="input-field" placeholder="student@lbrce.ac.in" maxLength="120" required /></div>
-            <div><label htmlFor="registerPhone" className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label><input id="registerPhone" type="tel" name="phoneNumber" value={registration.phoneNumber} onChange={updateRegistration} className="input-field" placeholder="10-digit mobile number" minLength="10" maxLength="15" required /></div>
+            <div><label htmlFor="registerPhone" className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label><input id="registerPhone" type="tel" name="phoneNumber" value={registration.phoneNumber} onChange={updateRegistration} className="input-field" placeholder="10 to 15 digits" pattern="[0-9]{10,15}" required /></div>
+            <div><label htmlFor="registerDob" className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label><input id="registerDob" type="date" name="dob" value={registration.dob} max={new Date().toISOString().split('T')[0]} onChange={updateRegistration} className="input-field" required /></div>
+            <div><label htmlFor="registerGender" className="block text-sm font-medium text-gray-700 mb-1">Gender *</label><select id="registerGender" name="gender" value={registration.gender} onChange={updateRegistration} className="input-field" required><option value="">Select</option><option value="MALE">Male</option><option value="FEMALE">Female</option><option value="OTHER">Other</option></select></div>
             <div><label htmlFor="registerBranch" className="block text-sm font-medium text-gray-700 mb-1">Branch *</label><input id="registerBranch" name="branch" value={registration.branch} onChange={updateRegistration} className="input-field uppercase" placeholder="e.g. CSE" maxLength="50" required /></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><label htmlFor="registerYear" className="block text-sm font-medium text-gray-700 mb-1">Year *</label><select id="registerYear" name="year" value={registration.year} onChange={updateRegistration} className="input-field" required><option value="">Select</option>{[1,2,3,4].map(value => <option key={value} value={value}>{value}</option>)}</select></div>
-              <div><label htmlFor="registerSemester" className="block text-sm font-medium text-gray-700 mb-1">Semester *</label><select id="registerSemester" name="semester" value={registration.semester} onChange={updateRegistration} className="input-field" required><option value="">Select</option>{[1,2,3,4,5,6,7,8].map(value => <option key={value} value={value}>{value}</option>)}</select></div>
+              <div><label htmlFor="registerSemester" className="block text-sm font-medium text-gray-700 mb-1">Semester *</label><select id="registerSemester" name="semester" value={registration.semester} onChange={updateRegistration} className="input-field" disabled={!registration.year} required><option value="">Select</option>{registration.year && [Number(registration.year) * 2 - 1, Number(registration.year) * 2].map(value => <option key={value} value={value}>{value}</option>)}</select></div>
             </div>
+            <div><label htmlFor="registerBloodGroup" className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label><select id="registerBloodGroup" name="bloodGroup" value={registration.bloodGroup} onChange={updateRegistration} className="input-field" required><option value="">Select</option>{['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(value => <option key={value}>{value}</option>)}</select></div>
+            <div><label htmlFor="registerParentName" className="block text-sm font-medium text-gray-700 mb-1">Parent / Guardian Name *</label><input id="registerParentName" name="parentName" value={registration.parentName} onChange={updateRegistration} className="input-field" maxLength="100" required /></div>
+            <div><label htmlFor="registerParentPhone" className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number *</label><input id="registerParentPhone" type="tel" name="parentPhoneNumber" value={registration.parentPhoneNumber} onChange={updateRegistration} className="input-field" pattern="[0-9]{10,15}" placeholder="10 to 15 digits" required /></div>
+            <div><label htmlFor="registerEmergency" className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact *</label><input id="registerEmergency" type="tel" name="emergencyContact" value={registration.emergencyContact} onChange={updateRegistration} className="input-field" pattern="[0-9]{10,15}" placeholder="10 to 15 digits" required /></div>
+            <div className="sm:col-span-2"><label htmlFor="registerAddress" className="block text-sm font-medium text-gray-700 mb-1">Residential Address *</label><textarea id="registerAddress" name="address" value={registration.address} onChange={updateRegistration} className="input-field min-h-24" maxLength="500" required /></div>
             <div><label htmlFor="registerPassword" className="block text-sm font-medium text-gray-700 mb-1">Password *</label><input id="registerPassword" type={showPassword ? 'text' : 'password'} name="password" value={registration.password} onChange={updateRegistration} className="input-field" minLength="8" maxLength="72" autoComplete="new-password" required /></div>
             <div><label htmlFor="registerConfirmPassword" className="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label><input id="registerConfirmPassword" type={showPassword ? 'text' : 'password'} name="confirmPassword" value={registration.confirmPassword} onChange={updateRegistration} className="input-field" minLength="8" maxLength="72" autoComplete="new-password" required /></div>
           </div>
