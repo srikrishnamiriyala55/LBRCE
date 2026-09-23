@@ -22,7 +22,6 @@ const StudentProfilePage = () => {
         phoneNumber: res.data.phoneNumber || res.data.phone || '',
         address: res.data.address || '',
         parentPhoneNumber: res.data.parentPhoneNumber || '',
-        emergencyContact: res.data.emergencyContact || '',
       });
     } catch (err) {
       addToast('Failed to load profile', 'error');
@@ -95,14 +94,6 @@ const StudentProfilePage = () => {
             <input className="input-field" value={formData.parentPhoneNumber} onChange={(e) => setFormData({...formData, parentPhoneNumber: e.target.value})} />
           ) : (
             <p className="mt-1 text-gray-900 font-medium">{profile?.parentPhoneNumber || 'N/A'}</p>
-          )}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-500 mb-1">Emergency Contact</label>
-          {editing ? (
-            <input className="input-field" value={formData.emergencyContact} onChange={(e) => setFormData({...formData, emergencyContact: e.target.value})} />
-          ) : (
-            <p className="mt-1 text-gray-900 font-medium">{profile?.emergencyContact || 'N/A'}</p>
           )}
         </div>
       </div>

@@ -18,7 +18,6 @@ public class StudentProfileResponse {
     private String status;
     private String parentName;
     private String parentPhoneNumber;
-    private String emergencyContact;
 
     public static StudentProfileResponse fromStudent(Student s) {
         StudentProfileResponse r = new StudentProfileResponse();
@@ -37,7 +36,6 @@ public class StudentProfileResponse {
         r.setStatus(s.getStatus());
         r.setParentName(s.getParentName());
         r.setParentPhoneNumber(s.getParentPhoneNumber());
-        r.setEmergencyContact(s.getEmergencyContact());
         return r;
     }
 
@@ -71,6 +69,4 @@ public class StudentProfileResponse {
     public void setParentName(String parentName) { this.parentName = parentName; }
     public String getParentPhoneNumber() { return parentPhoneNumber; }
     public void setParentPhoneNumber(String parentPhoneNumber) { this.parentPhoneNumber = parentPhoneNumber; }
-    public String getEmergencyContact() { return emergencyContact; }
-    public void setEmergencyContact(String emergencyContact) { this.emergencyContact = emergencyContact; }
 }

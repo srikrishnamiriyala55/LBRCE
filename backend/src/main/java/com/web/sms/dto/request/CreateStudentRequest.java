@@ -1,23 +1,23 @@
 package com.web.sms.dto.request;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.*;
+import java.time.LocalDate;
 
 public class CreateStudentRequest {
-    @NotBlank private String rollNumber;
-    @NotBlank private String name;
-    @Email private String email;
-    private String phoneNumber;
-    @NotBlank private String password;
-    private String branch;
-    private Integer year;
-    private Integer semester;
-    private String gender;
-    private String address;
-    private String dob;
-    private String bloodGroup;
-    private String parentName;
-    private String parentPhoneNumber;
+    @NotBlank @Size(max=30) private String rollNumber;
+    @NotBlank @Size(max=100) private String name;
+    @NotBlank @Email @Size(max=120) private String email;
+    @NotBlank @Pattern(regexp="^[0-9]{10,15}$") private String phoneNumber;
+    @NotBlank @Size(min=8,max=72) private String password;
+    @NotBlank @Size(max=50) private String branch;
+    @NotNull @Min(1) @Max(4) private Integer year;
+    @NotNull @Min(1) @Max(8) private Integer semester;
+    @NotBlank @Pattern(regexp="MALE|FEMALE|OTHER") private String gender;
+    @NotBlank @Size(max=500) private String address;
+    @NotNull @Past private LocalDate dob;
+    @NotBlank @Pattern(regexp="A\\+|A-|B\\+|B-|AB\\+|AB-|O\\+|O-") private String bloodGroup;
+    @NotBlank @Size(max=100) private String parentName;
+    @NotBlank @Pattern(regexp="^[0-9]{10,15}$") private String parentPhoneNumber;
 
     public String getRollNumber() { return rollNumber; }
     public void setRollNumber(String rollNumber) { this.rollNumber = rollNumber; }
@@ -39,8 +39,8 @@ public class CreateStudentRequest {
     public void setGender(String gender) { this.gender = gender; }
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
-    public String getDob() { return dob; }
-    public void setDob(String dob) { this.dob = dob; }
+    public LocalDate getDob() { return dob; }
+    public void setDob(LocalDate dob) { this.dob = dob; }
     public String getBloodGroup() { return bloodGroup; }
     public void setBloodGroup(String bloodGroup) { this.bloodGroup = bloodGroup; }
     public String getParentName() { return parentName; }

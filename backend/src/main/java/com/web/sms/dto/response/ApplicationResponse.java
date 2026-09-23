@@ -6,6 +6,9 @@ import java.time.LocalDateTime;
 
 public class ApplicationResponse {
     private Long id;
+    private Long busId;
+    private Long boardingPointId;
+    private Long studentId;
     private String busNumber;
     private String startingPoint;
     private String endingPoint;
@@ -21,23 +24,29 @@ public class ApplicationResponse {
     public static ApplicationResponse fromApplication(BusApplication app) {
         ApplicationResponse r = new ApplicationResponse();
         r.setId(app.getId());
-        if(app.getBus() != null) r.setBusNumber(app.getBus().getBusNumber());
+        if(app.getBus() != null) { r.setBusId(app.getBus().getId()); r.setBusNumber(app.getBus().getBusNumber()); }
         if(app.getBus() != null) {
             r.setStartingPoint(app.getBus().getStartingPoint());
             r.setEndingPoint(app.getBus().getEndingPoint());
         }
-        if(app.getBoardingPoint() != null) r.setBoardingPointName(app.getBoardingPoint().getStationName());
+        if(app.getBoardingPoint() != null) { r.setBoardingPointId(app.getBoardingPoint().getId()); r.setBoardingPointName(app.getBoardingPoint().getStationName()); }
         if(app.getAcademicYear() != null) r.setAcademicYear(app.getAcademicYear().getYearName());
         r.setStatus(app.getStatus());
         r.setRemarks(app.getRemarks());
         r.setAppliedAt(app.getAppliedAt());
         r.setReviewedAt(app.getReviewedAt());
-        if (app.getStudent() != null) { r.setStudentName(app.getStudent().getName()); r.setRollNumber(app.getStudent().getRollNumber()); }
+        if (app.getStudent() != null) { r.setStudentId(app.getStudent().getId()); r.setStudentName(app.getStudent().getName()); r.setRollNumber(app.getStudent().getRollNumber()); }
         return r;
     }
     
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getBusId() { return busId; }
+    public void setBusId(Long v) { busId=v; }
+    public Long getBoardingPointId() { return boardingPointId; }
+    public void setBoardingPointId(Long v) { boardingPointId=v; }
+    public Long getStudentId() { return studentId; }
+    public void setStudentId(Long v) { studentId=v; }
     public String getBusNumber() { return busNumber; }
     public void setBusNumber(String busNumber) { this.busNumber = busNumber; }
     public String getStartingPoint() { return startingPoint; }

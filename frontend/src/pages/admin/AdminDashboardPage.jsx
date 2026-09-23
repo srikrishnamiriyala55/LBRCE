@@ -38,11 +38,10 @@ const AdminDashboardPage = () => {
         <DashboardCard title="Total Fee Collection" value={`₹${stats?.totalFeeCollection || 0}`} icon={CreditCard} color="green" />
         <DashboardCard title="Vacancy" value={stats?.vacancy || 0} icon={Users} color="yellow" />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card"><h3 className="font-semibold text-blue-900 mb-2">Students</h3><p>With transport: <b>{stats?.studentsWithTransportation||0}</b></p><p>Without transport: <b>{stats?.studentsWithoutTransportation||0}</b></p><p>Rejected applications: <b>{stats?.rejectedApplications||0}</b></p></div>
         <div className="card"><h3 className="font-semibold text-blue-900 mb-2">Transfers</h3><p>Waiting old In-Charge: <b>{stats?.transferRequested||0}</b></p><p>Waiting new In-Charge: <b>{stats?.waitingNewIncharge||0}</b></p><p>Completed: <b>{stats?.completedTransfers||0}</b></p></div>
         <div className="card"><h3 className="font-semibold text-blue-900 mb-2">Fees & Passes</h3><p>Expected: <b>₹{stats?.totalExpectedFees||0}</b></p><p>Pending: <b>₹{stats?.pendingFeeAmount||0}</b></p><p>Pass eligible: <b>{stats?.passEligibleStudents||0}</b></p></div>
-        <div className="card"><h3 className="font-semibold text-blue-900 mb-2">Complaints</h3><p>Open: <b>{stats?.openComplaints||0}</b></p><p>In progress: <b>{stats?.inProgressComplaints||0}</b></p><p>Resolved: <b>{stats?.resolvedComplaints||0}</b></p></div>
       </div>
     </div>
   );

@@ -42,7 +42,6 @@ const StudentDashboardPage = () => {
         <div className="flex flex-wrap gap-3">
           {data?.canApply && <Link to="/student/apply" className="btn-primary">Apply for Bus</Link>}
           {data?.canTransfer && <Link to="/student/transfers" className="btn-primary">Request Bus Transfer</Link>}
-          {data?.canComplain && <Link to="/student/complaints" className="btn-secondary">Raise Complaint</Link>}
           {data?.hasActiveApplication && data?.transportationStatus !== 'ALLOCATED' && <Link to="/student/applications" className="btn-secondary">Track Pending Application</Link>}
           {!data?.canApply && !data?.canTransfer && !data?.canComplain && !data?.hasActiveApplication && <p className="text-sm text-gray-500">No transportation action is currently available.</p>}
         </div>

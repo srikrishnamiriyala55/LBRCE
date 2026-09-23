@@ -1,127 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React,{useEffect,useState} from 'react';
+import {Edit2,Trash2} from 'lucide-react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import Pagination from '../../components/common/Pagination';
 import StatusBadge from '../../components/common/StatusBadge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import { useToast } from '../../components/common/Toast';
+import Modal from '../../components/common/Modal';
+import {useToast} from '../../components/common/Toast';
 
-const AdminApplicationsPage = () => {
-  const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [statusFilter, setStatusFilter] = useState('');
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [currentApp, setCurrentApp] = useState(null);
-  const [actionType, setActionType] = useState('');
-  const [remarks, setRemarks] = useState('');
-
-  const { addToast } = useToast();
-
-  useEffect(() => {
-    fetchApplications();
-  }, [page, statusFilter]);
-
-  const fetchApplications = async () => {
-    setLoading(true);
-    try {
-      const url = statusFilter
-        ? `/admin/applications?status=${statusFilter}&page=${page}&size=10`
-        : `/admin/applications?page=${page}&size=10`;
-      const res = await api.get(url);
-      setApplications(res.data.content || []);
-      setTotalPages(res.data.totalPages || 0);
-    } catch (err) {
-      addToast('Failed to load applications', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAction = async () => {
-    try {
-      if (actionType === 'APPROVE') {
-        await api.put(`/admin/applications/${currentApp.id}/approve`);
-        addToast('Application approved successfully', 'success');
-      } else {
-        await api.put(`/admin/applications/${currentApp.id}/reject`, remarks);
-        addToast('Application rejected', 'success');
-      }
-      setDialogOpen(false);
-      fetchApplications();
-    } catch (err) {
-      addToast(err.response?.data?.message || 'Action failed', 'error');
-    }
-  };
-
-  const columns = [
-    { key: 'appliedAt', label: 'Date', render: (row) => new Date(row.appliedAt || row.createdAt).toLocaleDateString() },
-    { key: 'busNumber', label: 'Bus Number', render: (row) => <span className="font-bold text-blue-900">{row.busNumber}</span> },
-    { key: 'journey', label: 'Start → End', render: (row) => `${row.startingPoint || '—'} → ${row.endingPoint || '—'}` },
-    { key: 'boardingPoint', label: 'Boarding Point', render: (row) => row.boardingPointName || '—' },
-    { key: 'academicYear', label: 'Academic Year', render: (row) => row.academicYear || '—' },
-    { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (row) => (
-        row.status === 'PENDING' ? (
-          <div className="flex gap-2">
-            <button
-              onClick={() => { setCurrentApp(row); setActionType('APPROVE'); setDialogOpen(true); }}
-              className="text-xs bg-green-100 text-green-700 hover:bg-green-200 px-2.5 py-1 rounded font-medium"
-            >
-              Approve
-            </button>
-            <button
-              onClick={() => { setCurrentApp(row); setActionType('REJECT'); setRemarks(''); setDialogOpen(true); }}
-              className="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2.5 py-1 rounded font-medium"
-            >
-              Reject
-            </button>
-          </div>
-        ) : (
-          <span className="text-xs text-gray-400 font-medium">Reviewed</span>
-        )
-      )
-    }
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">Transportation Applications</h2>
-          <p className="text-gray-500 text-sm">Review, approve, and track college-wide student bus applications</p>
-        </div>
-        <select
-          className="input-field w-auto"
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-        >
-          <option value="">All Applications</option>
-          <option value="PENDING">Pending Only</option>
-          <option value="APPROVED">Approved</option>
-          <option value="REJECTED">Rejected</option>
-        </select>
-      </div>
-
-      <div className="card">
-        <DataTable columns={columns} data={applications} loading={loading} />
-        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-      </div>
-
-      <ConfirmDialog
-        isOpen={dialogOpen}
-        title={`${actionType === 'APPROVE' ? 'Approve' : 'Reject'} Application`}
-        message={`Are you sure you want to ${actionType.toLowerCase()} this transportation application for Bus ${currentApp?.busNumber}?`}
-        onConfirm={handleAction}
-        onCancel={() => setDialogOpen(false)}
-      />
-    </div>
-  );
-};
-
-export default AdminApplicationsPage;
+export default function AdminApplicationsPage(){
+ const [rows,setRows]=useState([]),[buses,setBuses]=useState([]),[points,setPoints]=useState([]),[loading,setLoading]=useState(true),[page,setPage]=useState(0),[pages,setPages]=useState(0),[status,setStatus]=useState(''),[dialog,setDialog]=useState(false),[current,setCurrent]=useState(null),[action,setAction]=useState(''),[remarks,setRemarks]=useState(''),[editing,setEditing]=useState(null),[form,setForm]=useState({busId:'',boardingPointId:'',remarks:''});const {addToast}=useToast();
+ const load=async()=>{setLoading(true);try{const q=`page=${page}&size=10${status?`&status=${status}`:''}`;const [apps,busResponse]=await Promise.all([api.get(`/admin/applications?${q}`),api.get('/admin/buses')]);setRows(apps.data.content||[]);setPages(apps.data.totalPages||0);setBuses(busResponse.data||[]);}catch(e){addToast(e.response?.data?.message||'Failed to load applications','error')}finally{setLoading(false)}};useEffect(()=>{load()},[page,status]);
+ const decide=async()=>{try{if(action==='APPROVE')await api.put(`/admin/applications/${current.id}/approve`);else await api.put(`/admin/applications/${current.id}/reject`,remarks);addToast(action==='APPROVE'?'Application approved':'Application rejected','success');setDialog(false);load()}catch(e){addToast(e.response?.data?.message||'Action failed','error')}};
+ const openEdit=async row=>{try{const r=await api.get(`/admin/buses/${row.busId}/boarding-points`);setPoints(r.data||[]);setEditing(row);setForm({busId:String(row.busId),boardingPointId:String(row.boardingPointId),remarks:row.remarks||''})}catch(e){addToast('Unable to load boarding points','error')}};
+ const changeBus=async value=>{setForm({...form,busId:value,boardingPointId:''});if(!value){setPoints([]);return;}try{const r=await api.get(`/admin/buses/${value}/boarding-points`);setPoints((r.data||[]).filter(p=>p.status==='ACTIVE'));}catch(e){addToast('Unable to load boarding points','error')}};
+ const saveEdit=async e=>{e.preventDefault();try{await api.put(`/admin/applications/${editing.id}`,{busId:Number(form.busId),boardingPointId:Number(form.boardingPointId),remarks:form.remarks});addToast('Application updated','success');setEditing(null);load()}catch(error){addToast(error.response?.data?.message||'Application update failed','error')}};
+ const remove=async row=>{if(!window.confirm(`Delete the application for ${row.rollNumber} and ${row.busNumber}?`))return;try{await api.delete(`/admin/applications/${row.id}`);addToast('Application deleted','success');load()}catch(e){addToast(e.response?.data?.message||'Application deletion failed','error')}};
+ const editable=r=>['PENDING','UNDER_REVIEW'].includes(r.status),deletable=r=>!['APPROVED'].includes(r.status);
+ const columns=[{key:'appliedAt',label:'Date',render:r=>new Date(r.appliedAt).toLocaleDateString()},{key:'student',label:'Student',render:r=><div><div className="font-medium">{r.studentName||'—'}</div><div className="text-xs text-gray-500">{r.rollNumber||'—'}</div></div>},{key:'busNumber',label:'Bus',render:r=><span className="font-bold text-blue-900">{r.busNumber}</span>},{key:'boardingPointName',label:'Boarding Point'},{key:'academicYear',label:'Academic Year'},{key:'status',label:'Status',render:r=><StatusBadge status={r.status}/>},{key:'actions',label:'Actions',render:r=><div className="flex flex-wrap items-center gap-2">{editable(r)&&<><button onClick={()=>{setCurrent(r);setAction('APPROVE');setDialog(true)}} className="text-xs rounded bg-green-100 px-2 py-1 text-green-700">Approve</button><button onClick={()=>{setCurrent(r);setAction('REJECT');setRemarks('');setDialog(true)}} className="text-xs rounded bg-red-100 px-2 py-1 text-red-700">Reject</button><button title="Edit application" onClick={()=>openEdit(r)} className="p-1.5 text-blue-700"><Edit2 size={16}/></button></>}{deletable(r)&&<button title="Delete application" onClick={()=>remove(r)} className="p-1.5 text-red-600"><Trash2 size={16}/></button>}</div>}];
+ return <><div className="space-y-6"><div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3"><div><h2 className="text-2xl font-bold text-gray-800">Transportation Applications</h2><p className="text-sm text-gray-500">Review, correct and manage student bus applications</p></div><select className="input-field w-auto" value={status} onChange={e=>{setStatus(e.target.value);setPage(0)}}><option value="">All Applications</option><option>PENDING</option><option>UNDER_REVIEW</option><option>APPROVED</option><option>REJECTED</option><option>CANCELLED</option></select></div><div className="card"><DataTable columns={columns} data={rows} loading={loading}/><Pagination page={page} totalPages={pages} onPageChange={setPage}/></div></div><ConfirmDialog isOpen={dialog} title={`${action==='APPROVE'?'Approve':'Reject'} Application`} message={`Confirm ${action.toLowerCase()} for ${current?.rollNumber||'this student'}?`} onConfirm={decide} onCancel={()=>setDialog(false)}/><Modal isOpen={Boolean(editing)} onClose={()=>setEditing(null)} title="Edit Bus Application"><form onSubmit={saveEdit} className="space-y-4"><label className="block text-sm font-medium">Bus *<select required className="input-field mt-1" value={form.busId} onChange={e=>changeBus(e.target.value)}><option value="">Select bus</option>{buses.filter(b=>b.status==='ACTIVE').map(b=><option key={b.id} value={b.id}>{b.busNumber} — {b.startingPoint} to {b.endingPoint}</option>)}</select></label><label className="block text-sm font-medium">Boarding Point *<select required className="input-field mt-1" value={form.boardingPointId} onChange={e=>setForm({...form,boardingPointId:e.target.value})}><option value="">Select point</option>{points.map(p=><option key={p.id} value={p.id}>{p.stationName} — ₹{p.feeAmount}</option>)}</select></label><label className="block text-sm font-medium">Remarks<textarea maxLength="500" className="input-field mt-1" value={form.remarks} onChange={e=>setForm({...form,remarks:e.target.value})}/></label><div className="flex justify-end gap-3"><button type="button" className="btn-secondary" onClick={()=>setEditing(null)}>Cancel</button><button className="btn-primary">Save Changes</button></div></form></Modal></>;
+}

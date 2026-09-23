@@ -14,7 +14,7 @@ const BusApplicationPage = () => {
   const [eligibility, setEligibility] = useState(null);
   const [studentDetails, setStudentDetails] = useState({
     rollNumber: '', name: '', email: '', phoneNumber: '', dob: '', gender: '', address: '',
-    branch: '', year: '', semester: '', bloodGroup: '', parentName: '', parentPhoneNumber: '', emergencyContact: ''
+    branch: '', year: '', semester: '', bloodGroup: '', parentName: '', parentPhoneNumber: ''
   });
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState('');
@@ -33,7 +33,7 @@ const BusApplicationPage = () => {
           phoneNumber: profile.phoneNumber || '', dob: profile.dob || '', gender: profile.gender || '',
           address: profile.address || '', branch: profile.branch || '', year: profile.year || '',
           semester: profile.semester || '', bloodGroup: profile.bloodGroup || '', parentName: profile.parentName || '',
-          parentPhoneNumber: profile.parentPhoneNumber || '', emergencyContact: profile.emergencyContact || ''
+          parentPhoneNumber: profile.parentPhoneNumber || ''
         });
       })
       .catch((err) => addToast(err.response?.data?.message || 'Failed to check application eligibility', 'error'))
@@ -150,7 +150,6 @@ const BusApplicationPage = () => {
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label><select name="bloodGroup" value={studentDetails.bloodGroup} onChange={updateStudentDetails} className="input-field" required><option value="">Select</option>{['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(value => <option key={value}>{value}</option>)}</select></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Parent / Guardian Name *</label><input name="parentName" value={studentDetails.parentName} onChange={updateStudentDetails} className="input-field" maxLength="100" required /></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number *</label><input type="tel" name="parentPhoneNumber" value={studentDetails.parentPhoneNumber} onChange={updateStudentDetails} className="input-field" pattern="[0-9]{10,15}" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact *</label><input type="tel" name="emergencyContact" value={studentDetails.emergencyContact} onChange={updateStudentDetails} className="input-field" pattern="[0-9]{10,15}" required /></div>
             <div className="sm:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">Residential Address *</label><textarea name="address" value={studentDetails.address} onChange={updateStudentDetails} className="input-field min-h-24" maxLength="500" required /></div>
           </div>
         </section>

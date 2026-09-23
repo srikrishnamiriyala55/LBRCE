@@ -52,14 +52,15 @@ public class InchargeServiceImpl implements InchargeService {
         if(req.getPassword()==null||req.getPassword().length()<8) throw new BadRequestException("Password must contain at least 8 characters");
         Incharge incharge = new Incharge();
         incharge.setTeacherId(req.getTeacherId().trim().toUpperCase());
-        incharge.setName(req.getName());
-        incharge.setEmail(req.getEmail());
-        incharge.setPhoneNumber(req.getPhoneNumber());
+        incharge.setName(req.getName().trim());
+        incharge.setEmail(req.getEmail().trim().toLowerCase());
+        incharge.setPhoneNumber(req.getPhoneNumber().trim());
         incharge.setPassword(passwordEncoder.encode(req.getPassword()));
-        incharge.setDepartment(req.getDepartment());
-        incharge.setDesignation(req.getDesignation());
+        incharge.setAddress(req.getAddress().trim());
+        incharge.setDepartment(req.getDepartment().trim().toUpperCase());
+        incharge.setDesignation(req.getDesignation().trim());
         incharge.setStatus("ACTIVE");
-        incharge.setCreatedAt(LocalDateTime.now());
+        LocalDateTime now=LocalDateTime.now();incharge.setCreatedAt(now);incharge.setUpdatedAt(now);
         return inchargeRepository.save(incharge);
     }
 
@@ -72,6 +73,7 @@ public class InchargeServiceImpl implements InchargeService {
         if (req.getName() != null) incharge.setName(req.getName().trim());
         if (req.getEmail() != null) incharge.setEmail(req.getEmail().trim().toLowerCase());
         if (req.getPhoneNumber() != null) incharge.setPhoneNumber(req.getPhoneNumber());
+        if (req.getAddress() != null) incharge.setAddress(req.getAddress().trim());
         if (req.getDepartment() != null) incharge.setDepartment(req.getDepartment());
         if (req.getDesignation() != null) incharge.setDesignation(req.getDesignation());
         if (req.getPassword() != null && !req.getPassword().isBlank()) {

@@ -9,13 +9,18 @@ import { useToast } from '../../components/common/Toast';
 export default function AdminDataPage({ type }) {
   const [rows, setRows] = useState([]), [page, setPage] = useState(0), [pages, setPages] = useState(1), [loading, setLoading] = useState(true);
   const [selectedPass, setSelectedPass] = useState(null), [photoUrl, setPhotoUrl] = useState(''), [downloading, setDownloading] = useState(false);
+  const [search, setSearch] = useState(''), [appliedSearch, setAppliedSearch] = useState('');
   const { addToast } = useToast();
 
   useEffect(() => {
     setLoading(true);
-    api.get(`/admin/${type}?page=${page}&size=20`).then((r) => { setRows(r.data.content || []); setPages(r.data.totalPages || 1); })
+    const params = new URLSearchParams({ page: String(page), size: '20' });
+    if (type === 'passes' && appliedSearch) params.set('search', appliedSearch);
+    api.get(`/admin/${type}?${params}`).then((r) => { setRows(r.data.content || []); setPages(r.data.totalPages || 1); })
       .catch((e) => addToast(e.response?.data?.message || `Failed to load ${type}`, 'error')).finally(() => setLoading(false));
-  }, [type, page]);
+  }, [type, page, appliedSearch]);
+
+  useEffect(() => { setPage(0); setSearch(''); setAppliedSearch(''); }, [type]);
 
   const closePass = () => { if (photoUrl) URL.revokeObjectURL(photoUrl); setPhotoUrl(''); setSelectedPass(null); };
   const viewPass = async (row) => {
@@ -40,10 +45,10 @@ export default function AdminDataPage({ type }) {
   };
 
   const configs = {
-    transfers: [{ key: 'studentName', label: 'Student' }, { key: 'studentRollNumber', label: 'Roll Number' }, { key: 'currentBusNumber', label: 'Current Bus' }, { key: 'requestedBusNumber', label: 'Requested Bus' }, { key: 'oldInchargeName', label: 'Old In-Charge' }, { key: 'newInchargeName', label: 'New In-Charge' }, { key: 'status', label: 'State', render: (r) => <StatusBadge status={r.status} /> }],
+    transfers: [{ key: 'studentName', label: 'Student', render: (r) => r.studentName || '—' }, { key: 'studentRollNumber', label: 'Roll Number', render: (r) => r.studentRollNumber || '—' }, { key: 'currentBusNumber', label: 'From', render: (r) => <div><div className="font-medium">{r.currentBusNumber || '—'}</div><div className="text-xs text-gray-500">{r.currentBoardingPoint || '—'}</div></div> }, { key: 'requestedBusNumber', label: 'To', render: (r) => <div><div className="font-medium">{r.requestedBusNumber || '—'}</div><div className="text-xs text-gray-500">{r.requestedBoardingPoint || '—'}</div></div> }, { key: 'academicYear', label: 'Academic Year', render: (r) => r.academicYear || '—' }, { key: 'reason', label: 'Reason', render: (r) => r.reason || '—' }, { key: 'oldInchargeName', label: 'Old In-Charge', render: (r) => r.oldInchargeName || '—' }, { key: 'newInchargeName', label: 'New In-Charge', render: (r) => r.newInchargeName || '—' }, { key: 'status', label: 'State', render: (r) => <StatusBadge status={r.status} /> }],
     payments: [{ key: 'studentName', label: 'Student' }, { key: 'rollNumber', label: 'Roll Number' }, { key: 'orderId', label: 'Order ID' }, { key: 'amount', label: 'Amount', render: (r) => `₹${r.amount || 0}` }, { key: 'status', label: 'Verified Status', render: (r) => <StatusBadge status={r.status} /> }, { key: 'paidAt', label: 'Paid At' }],
     passes: [{ key: 'studentName', label: 'Student' }, { key: 'rollNumber', label: 'Roll Number' }, { key: 'passNumber', label: 'Pass ID' }, { key: 'busNumber', label: 'Bus' }, { key: 'boardingPoint', label: 'Boarding Point' }, { key: 'validUntil', label: 'Valid Until' }, { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> }, { key: 'actions', label: 'Action', render: (r) => <button type="button" className="text-sm font-medium text-blue-700 hover:underline" onClick={() => viewPass(r)}>View</button> }],
     notifications: [{ key: 'title', label: 'Title' }, { key: 'recipientRollNumber', label: 'Recipient' }, { key: 'message', label: 'Message' }, { key: 'createdAt', label: 'Date', render: (r) => r.createdAt ? new Date(r.createdAt).toLocaleString() : '—' }]
   };
-  return <><div className="card"><h2 className="text-2xl font-bold mb-5 capitalize">{type}</h2><DataTable columns={configs[type]} data={rows} loading={loading} /><Pagination page={page} totalPages={pages} onPageChange={setPage} /></div><PassViewerModal pass={selectedPass} photoUrl={photoUrl} onClose={closePass} onDownload={downloadPass} downloading={downloading} /></>;
+  return <><div className="card"><h2 className="text-2xl font-bold mb-5 capitalize">{type}</h2>{type === 'passes' && <form className="mb-5 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); setPage(0); setAppliedSearch(search.trim()); }}><input className="input-field sm:max-w-md" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search pass ID, student, roll number or bus" aria-label="Search bus passes"/><button className="btn-primary" type="submit">Search</button>{appliedSearch && <button className="btn-secondary" type="button" onClick={() => { setSearch(''); setAppliedSearch(''); setPage(0); }}>Clear</button>}</form>}<DataTable columns={configs[type]} data={rows} loading={loading} /><Pagination page={page} totalPages={pages} onPageChange={setPage} /></div><PassViewerModal pass={selectedPass} photoUrl={photoUrl} onClose={closePass} onDownload={downloadPass} downloading={downloading} /></>;
 }

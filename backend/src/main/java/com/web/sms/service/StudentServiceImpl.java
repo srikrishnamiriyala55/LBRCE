@@ -97,7 +97,6 @@ public class StudentServiceImpl implements StudentService {
             }
             response.put("canApply", allocation.isEmpty() && !hasActiveApplication);
             response.put("canTransfer", allocation.isPresent() && !hasActiveTransfer);
-            response.put("canComplain", allocation.isPresent());
             response.put("hasActiveApplication", hasActiveApplication);
             response.put("hasActiveTransfer", hasActiveTransfer);
 
@@ -123,7 +122,6 @@ public class StudentServiceImpl implements StudentService {
             response.put("transportationStatus", "NO_ACTIVE_ACADEMIC_YEAR");
             response.put("canApply", false);
             response.put("canTransfer", false);
-            response.put("canComplain", false);
         }
 
         return response;
@@ -137,7 +135,6 @@ public class StudentServiceImpl implements StudentService {
         if (dto.getPhoneNumber() != null) student.setPhoneNumber(dto.getPhoneNumber());
         if (dto.getAddress() != null) student.setAddress(dto.getAddress());
         if (dto.getParentPhoneNumber() != null) student.setParentPhoneNumber(dto.getParentPhoneNumber());
-        if (dto.getEmergencyContact() != null) student.setEmergencyContact(dto.getEmergencyContact());
         if (dto.getBloodGroup() != null) student.setBloodGroup(dto.getBloodGroup());
 
         Student updated = studentRepository.save(student);

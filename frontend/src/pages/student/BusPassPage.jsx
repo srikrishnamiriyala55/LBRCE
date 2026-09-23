@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/axios';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import StatusBadge from '../../components/common/StatusBadge';
+import PassCard from '../../components/passes/PassCard';
 import { useToast } from '../../components/common/Toast';
 import { Download, Printer } from 'lucide-react';
 
@@ -78,71 +78,7 @@ const BusPassPage = () => {
         </button>
       </div>
 
-      {/* Bus Pass Card */}
-      <div id="bus-pass" className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-        <div className="bg-blue-800 p-4 text-white text-center flex flex-col items-center">
-          <img src="/logo.jpg" alt="LBRCE Logo" className="h-16 w-16 bg-white rounded-full p-1 mb-2" />
-          <h2 className="font-bold text-lg">LAKIREDDY BALI REDDY COLLEGE OF ENGINEERING</h2>
-          <p className="text-sm text-blue-200">DIGITAL BUS PASS</p>
-        </div>
-        
-        <div className="p-4 sm:p-6">
-          <div className="mb-5 flex justify-center">
-            {photoUrl
-              ? <img src={photoUrl} alt={`${pass.studentName} student`} className="h-32 w-28 rounded-lg border-2 border-blue-100 object-cover" />
-              : <div className="flex h-32 w-28 items-center justify-center rounded-lg border bg-gray-50 text-center text-xs text-gray-400">Photo unavailable</div>}
-          </div>
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
-            <div>
-              <p className="text-sm text-gray-500">Pass Number</p>
-              <p className="font-bold text-lg">{pass.passNumber}</p>
-            </div>
-            <StatusBadge status="ACTIVE" />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8">
-            <div>
-              <p className="text-xs text-gray-500 uppercase">Student Name</p>
-              <p className="font-medium text-gray-900">{pass.studentName}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase">Roll Number</p>
-              <p className="font-medium text-gray-900">{pass.rollNumber}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase">Branch</p>
-              <p className="font-medium text-gray-900">{pass.branch || '-'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase">Year / Semester</p>
-              <p className="font-medium text-gray-900">{pass.year || '-'} / {pass.semester || '-'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase">Phone Number</p>
-              <p className="font-medium text-gray-900">{pass.phoneNumber || '-'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase">Bus Number</p>
-              <p className="font-medium text-gray-900">{pass.busNumber}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase">Starting Point</p>
-              <p className="font-medium text-gray-900">{pass.startingPoint || '-'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase">Ending Point</p>
-              <p className="font-medium text-gray-900">{pass.endingPoint || '-'}</p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className="text-xs text-gray-500 uppercase">Boarding Point</p>
-              <p className="font-medium text-gray-900">{pass.boardingPoint}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-gray-50 px-6 py-3 border-t text-center text-xs text-gray-500">
-          This is a system generated digital pass. Valid for the current academic year.
-        </div>
-      </div>
+      <PassCard pass={pass} photoUrl={photoUrl}/>
     </div>
   );
 };

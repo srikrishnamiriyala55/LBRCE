@@ -13,6 +13,7 @@ import jakarta.persistence.LockModeType;
 public interface BusApplicationRepository extends JpaRepository<BusApplication, Long> {
     long countByBoardingPointId(Long boardingPointId);
     List<BusApplication> findByStudentId(Long studentId);
+    void deleteByStudentId(Long studentId);
     List<BusApplication> findByStudentIdAndAcademicYearId(Long studentId, Long academicYearId);
     List<BusApplication> findByBusId(Long busId);
     Page<BusApplication> findByBusId(Long busId, Pageable pageable);

@@ -66,10 +66,6 @@ public class StudentRegistrationRequest {
     @Pattern(regexp = "^[0-9]{10,15}$", message = "Parent phone number must contain 10 to 15 digits")
     private String parentPhoneNumber;
 
-    @NotBlank(message = "Emergency contact is required")
-    @Pattern(regexp = "^[0-9]{10,15}$", message = "Emergency contact must contain 10 to 15 digits")
-    private String emergencyContact;
-
     @NotBlank(message = "Password is required")
     @Size(min = 8, max = 72, message = "Password must be between 8 and 72 characters")
     private String password;
@@ -100,8 +96,6 @@ public class StudentRegistrationRequest {
     public void setParentName(String parentName) { this.parentName = parentName; }
     public String getParentPhoneNumber() { return parentPhoneNumber; }
     public void setParentPhoneNumber(String parentPhoneNumber) { this.parentPhoneNumber = parentPhoneNumber; }
-    public String getEmergencyContact() { return emergencyContact; }
-    public void setEmergencyContact(String emergencyContact) { this.emergencyContact = emergencyContact; }
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
 }

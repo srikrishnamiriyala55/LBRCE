@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { LayoutDashboard, Bus, MapPin, UserCheck, Users, ClipboardList, CreditCard, Calendar, Shield, ArrowLeftRight, Ticket, MessageSquare, Bell, BarChart3, UserCircle } from 'lucide-react';
+import { LayoutDashboard, Bus, MapPin, UserCheck, Users, ClipboardList, CreditCard, Calendar, Shield, ArrowLeftRight, Ticket, Bell, BarChart3, UserCircle } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
 const AdminLayout = () => {
@@ -15,7 +15,6 @@ const AdminLayout = () => {
     { path: '/payments', label: 'Payments', icon: CreditCard },
     { path: '/passes', label: 'Passes', icon: Ticket },
     { path: '/transfers', label: 'Transfers', icon: ArrowLeftRight },
-    { path: '/complaints', label: 'Complaints', icon: MessageSquare },
     { path: '/notifications', label: 'Notifications', icon: Bell },
     { path: '/reports', label: 'Reports', icon: BarChart3 },
     { path: '/academic-years', label: 'Academic Years', icon: Calendar },

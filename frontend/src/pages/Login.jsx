@@ -15,7 +15,7 @@ const Login = () => {
   const [registration, setRegistration] = useState({
     rollNumber: '', name: '', email: '', phoneNumber: '', branch: '',
     year: '', semester: '', dob: '', gender: '', address: '', bloodGroup: '',
-    parentName: '', parentPhoneNumber: '', emergencyContact: '', password: '', confirmPassword: ''
+    parentName: '', parentPhoneNumber: '', password: '', confirmPassword: ''
   });
   
   const { login } = useAuth();
@@ -69,7 +69,7 @@ const Login = () => {
       const studentId = registration.rollNumber.trim().toUpperCase();
       setRollNumber(studentId);
       setPassword('');
-      setRegistration({ rollNumber: '', name: '', email: '', phoneNumber: '', branch: '', year: '', semester: '', dob: '', gender: '', address: '', bloodGroup: '', parentName: '', parentPhoneNumber: '', emergencyContact: '', password: '', confirmPassword: '' });
+      setRegistration({ rollNumber: '', name: '', email: '', phoneNumber: '', branch: '', year: '', semester: '', dob: '', gender: '', address: '', bloodGroup: '', parentName: '', parentPhoneNumber: '', password: '', confirmPassword: '' });
       setIsRegistering(false);
       setSuccess('Account created successfully. You can sign in now.');
     } catch (err) {
@@ -167,7 +167,6 @@ const Login = () => {
             <div><label htmlFor="registerBloodGroup" className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label><select id="registerBloodGroup" name="bloodGroup" value={registration.bloodGroup} onChange={updateRegistration} className="input-field" required><option value="">Select</option>{['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(value => <option key={value}>{value}</option>)}</select></div>
             <div><label htmlFor="registerParentName" className="block text-sm font-medium text-gray-700 mb-1">Parent / Guardian Name *</label><input id="registerParentName" name="parentName" value={registration.parentName} onChange={updateRegistration} className="input-field" maxLength="100" required /></div>
             <div><label htmlFor="registerParentPhone" className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number *</label><input id="registerParentPhone" type="tel" name="parentPhoneNumber" value={registration.parentPhoneNumber} onChange={updateRegistration} className="input-field" pattern="[0-9]{10,15}" placeholder="10 to 15 digits" required /></div>
-            <div><label htmlFor="registerEmergency" className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact *</label><input id="registerEmergency" type="tel" name="emergencyContact" value={registration.emergencyContact} onChange={updateRegistration} className="input-field" pattern="[0-9]{10,15}" placeholder="10 to 15 digits" required /></div>
             <div className="sm:col-span-2"><label htmlFor="registerAddress" className="block text-sm font-medium text-gray-700 mb-1">Residential Address *</label><textarea id="registerAddress" name="address" value={registration.address} onChange={updateRegistration} className="input-field min-h-24" maxLength="500" required /></div>
             <div><label htmlFor="registerPassword" className="block text-sm font-medium text-gray-700 mb-1">Password *</label><input id="registerPassword" type={showPassword ? 'text' : 'password'} name="password" value={registration.password} onChange={updateRegistration} className="input-field" minLength="8" maxLength="72" autoComplete="new-password" required /></div>
             <div><label htmlFor="registerConfirmPassword" className="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label><input id="registerConfirmPassword" type={showPassword ? 'text' : 'password'} name="confirmPassword" value={registration.confirmPassword} onChange={updateRegistration} className="input-field" minLength="8" maxLength="72" autoComplete="new-password" required /></div>

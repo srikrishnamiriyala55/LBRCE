@@ -25,6 +25,9 @@ public interface TransportAllocationRepository extends JpaRepository<TransportAl
     Optional<TransportAllocation> findByIdForUpdate(Long id);
     long countByStatus(EntityStatus status);
     List<TransportAllocation> findByStudentId(Long studentId);
+    void deleteByStudentId(Long studentId);
+    Optional<TransportAllocation> findByStudentIdAndBusIdAndStatus(Long studentId,Long busId,EntityStatus status);
+    boolean existsByApplicationId(Long applicationId);
     long countByBoardingPointIdAndStatus(Long boardingPointId,EntityStatus status);
     long countByBoardingPointId(Long boardingPointId);
 }

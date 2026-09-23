@@ -64,7 +64,6 @@ public class AuthService {
         student.setBloodGroup(request.getBloodGroup());
         student.setParentName(request.getParentName().trim());
         student.setParentPhoneNumber(request.getParentPhoneNumber().trim());
-        student.setEmergencyContact(request.getEmergencyContact().trim());
         student.setPassword(passwordEncoder.encode(request.getPassword()));
         student.setStatus("ACTIVE");
         Student saved = studentRepository.save(student);

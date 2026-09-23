@@ -2,24 +2,28 @@ package com.web.sms.service;
 
 import com.web.sms.dto.request.CreateAcademicYearRequest;
 import com.web.sms.dto.request.CreateStudentRequest;
+import com.web.sms.dto.request.UpdateStudentRequest;
 import com.web.sms.dto.response.DashboardResponse;
 import com.web.sms.dto.response.StudentProfileResponse;
 import com.web.sms.entity.AcademicYear;
 import com.web.sms.entity.Bus;
 import com.web.sms.entity.Student;
+import com.web.sms.entity.TransportAllocation;
 import com.web.sms.enums.ApplicationStatus;
 import com.web.sms.enums.EntityStatus;
 import com.web.sms.enums.PassStatus;
 import com.web.sms.enums.TransferStatus;
-import com.web.sms.enums.ComplaintStatus;
 import com.web.sms.exception.BadRequestException;
 import com.web.sms.repository.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.io.IOException;
 import java.util.List;
 
 @Service
@@ -35,7 +39,8 @@ public class AdminService {
     private final AcademicYearRepository academicYearRepo;
     private final PasswordEncoder passwordEncoder;
     private final TransferRequestRepository transferRepo;
-    private final ComplaintRepository complaintRepo;
+    private final PaymentRepository paymentRepo;
+    private final NotificationRepository notificationRepo;
     private final AuditService auditService;
 
     public AdminService(StudentRepository studentRepo,
@@ -47,7 +52,8 @@ public class AdminService {
                         TransportAllocationRepository allocationRepo,
                         AcademicYearRepository academicYearRepo,
                         PasswordEncoder passwordEncoder, TransferRequestRepository transferRepo,
-                        ComplaintRepository complaintRepo, AuditService auditService) {
+                        PaymentRepository paymentRepo, NotificationRepository notificationRepo,
+                        AuditService auditService) {
         this.studentRepo = studentRepo;
         this.busRepo = busRepo;
         this.inchargeRepo = inchargeRepo;
@@ -58,7 +64,8 @@ public class AdminService {
         this.academicYearRepo = academicYearRepo;
         this.passwordEncoder = passwordEncoder;
         this.transferRepo = transferRepo;
-        this.complaintRepo = complaintRepo;
+        this.paymentRepo = paymentRepo;
+        this.notificationRepo = notificationRepo;
         this.auditService = auditService;
     }
 
@@ -138,43 +145,85 @@ public class AdminService {
         res.put("rejectedTransfers", transferRepo.countByStatus(TransferStatus.OLD_INCHARGE_REJECTED)+transferRepo.countByStatus(TransferStatus.NEW_INCHARGE_REJECTED));
         long expected=feeRepo.sumTotalExpected(); res.put("totalExpectedFees",expected);res.put("pendingFeeAmount",Math.max(0,expected-(totalFeeCollection==null?0:totalFeeCollection)));res.put("passEligibleStudents",feeRepo.countByPassEligibleTrue());
         res.put("expiredOrRevokedPasses",passRepo.countByStatus(PassStatus.EXPIRED)+passRepo.countByStatus(PassStatus.REVOKED)+passRepo.countByStatus(PassStatus.INACTIVE));
-        res.put("openComplaints",complaintRepo.countByStatus(ComplaintStatus.OPEN));res.put("inProgressComplaints",complaintRepo.countByStatus(ComplaintStatus.IN_PROGRESS));res.put("resolvedComplaints",complaintRepo.countByStatus(ComplaintStatus.RESOLVED));
-
         return res;
     }
 
     @Transactional
-    public StudentProfileResponse createStudent(CreateStudentRequest req) {
-        if (studentRepo.existsByRollNumber(req.getRollNumber())) {
-            throw new BadRequestException("Student with roll number " + req.getRollNumber() + " already exists");
+    public StudentProfileResponse createStudent(CreateStudentRequest req, MultipartFile photo) {
+        String rollNumber=req.getRollNumber().trim().toUpperCase();
+        String email=req.getEmail().trim().toLowerCase();
+        if (studentRepo.existsByRollNumber(rollNumber)) {
+            throw new BadRequestException("Student with roll number " + rollNumber + " already exists");
         }
-        if (req.getEmail() != null && !req.getEmail().isBlank() && studentRepo.existsByEmail(req.getEmail())) {
-            throw new BadRequestException("Student with email " + req.getEmail() + " already exists");
+        if (studentRepo.existsByEmail(email)) {
+            throw new BadRequestException("Student with email " + email + " already exists");
         }
+        validateAcademicProgress(req.getYear(),req.getSemester());
 
         Student s = new Student();
-        s.setRollNumber(req.getRollNumber().trim().toUpperCase());
+        s.setRollNumber(rollNumber);
         s.setName(req.getName().trim());
-        s.setEmail(req.getEmail() != null ? req.getEmail().trim() : null);
-        s.setPhoneNumber(req.getPhoneNumber());
+        s.setEmail(email);
+        s.setPhoneNumber(req.getPhoneNumber().trim());
         s.setPassword(passwordEncoder.encode(req.getPassword()));
-        s.setBranch(req.getBranch());
+        s.setBranch(req.getBranch().trim().toUpperCase());
         s.setYear(req.getYear());
         s.setSemester(req.getSemester());
         s.setGender(req.getGender());
-        s.setAddress(req.getAddress());
-        if (req.getDob() != null && !req.getDob().isBlank()) {
-            s.setDob(LocalDate.parse(req.getDob()));
-        }
+        s.setAddress(req.getAddress().trim());
+        s.setDob(req.getDob());
         s.setBloodGroup(req.getBloodGroup());
-        s.setParentName(req.getParentName());
-        s.setParentPhoneNumber(req.getParentPhoneNumber());
+        s.setParentName(req.getParentName().trim());
+        s.setParentPhoneNumber(req.getParentPhoneNumber().trim());
+        storePhoto(s,photo,true);
         s.setStatus("ACTIVE");
-        s.setCreatedAt(LocalDateTime.now());
+        LocalDateTime now=LocalDateTime.now();s.setCreatedAt(now);s.setUpdatedAt(now);
 
         Student saved = studentRepo.save(s);
         return StudentProfileResponse.fromStudent(saved);
     }
+
+    @Transactional
+    public StudentProfileResponse updateStudent(Long studentId, UpdateStudentRequest req, MultipartFile photo, String actor) {
+        Student student=studentRepo.findByIdForUpdate(studentId).orElseThrow(()->new com.web.sms.exception.ResourceNotFoundException("Student not found"));
+        validateAcademicProgress(req.getYear(),req.getSemester());
+        String email=req.getEmail().trim().toLowerCase();
+        if(studentRepo.existsByEmailAndIdNot(email,studentId))throw new BadRequestException("Another student account already uses this email address");
+        applyStudentDetails(student,req,email);
+        storePhoto(student,photo,false);
+        Student saved=studentRepo.save(student);
+        auditService.log(actor,"ADMIN","STUDENT_UPDATED","STUDENT",String.valueOf(studentId),null,saved.getRollNumber(),null);
+        return StudentProfileResponse.fromStudent(saved);
+    }
+
+    @Transactional
+    public StudentProfileResponse updateStudentForIncharge(Long studentId, Long busId, UpdateStudentRequest req, String actor) {
+        TransportAllocation allocation=allocationRepo.findByStudentIdAndBusIdAndStatus(studentId,busId,EntityStatus.ACTIVE)
+                .orElseThrow(()->new com.web.sms.exception.ForbiddenException("Student is not actively assigned to your bus"));
+        Student student=studentRepo.findByIdForUpdate(allocation.getStudent().getId()).orElseThrow(()->new com.web.sms.exception.ResourceNotFoundException("Student not found"));
+        validateAcademicProgress(req.getYear(),req.getSemester());
+        String email=req.getEmail().trim().toLowerCase();
+        if(studentRepo.existsByEmailAndIdNot(email,studentId))throw new BadRequestException("Another student account already uses this email address");
+        applyStudentDetails(student,req,email);
+        Student saved=studentRepo.save(student);
+        auditService.log(actor,"INCHARGE","STUDENT_UPDATED","STUDENT",String.valueOf(studentId),null,saved.getRollNumber(),"Assigned bus: "+allocation.getBus().getBusNumber());
+        return StudentProfileResponse.fromStudent(saved);
+    }
+
+    @Transactional
+    public void deleteStudent(Long studentId,String actor){
+        Student student=studentRepo.findByIdForUpdate(studentId).orElseThrow(()->new com.web.sms.exception.ResourceNotFoundException("Student not found"));
+        List<Bus> affected=allocationRepo.findByStudentId(studentId).stream().map(TransportAllocation::getBus).filter(java.util.Objects::nonNull).distinct().toList();
+        paymentRepo.deleteByStudentId(studentId);passRepo.deleteByStudentId(studentId);feeRepo.deleteByStudentId(studentId);
+        transferRepo.deleteByStudentId(studentId);allocationRepo.deleteByStudentId(studentId);applicationRepo.deleteByStudentId(studentId);
+        notificationRepo.deleteByRecipientRollNumber(student.getRollNumber());studentRepo.delete(student);studentRepo.flush();
+        affected.forEach(bus->{long occupied=allocationRepo.countByBusIdAndStatus(bus.getId(),EntityStatus.ACTIVE);bus.setAvailableSeats(Math.max(0,bus.getTotalSeats()-(int)occupied));busRepo.save(bus);});
+        auditService.log(actor,"ADMIN","STUDENT_DELETED","STUDENT",String.valueOf(studentId),student.getRollNumber(),null,"Related applications, allocations, fees, payments, passes, transfers and notifications removed");
+    }
+
+    private void applyStudentDetails(Student s,UpdateStudentRequest req,String email){s.setName(req.getName().trim());s.setEmail(email);s.setPhoneNumber(req.getPhoneNumber().trim());s.setDob(req.getDob());s.setGender(req.getGender());s.setAddress(req.getAddress().trim());s.setBranch(req.getBranch().trim().toUpperCase());s.setYear(req.getYear());s.setSemester(req.getSemester());s.setBloodGroup(req.getBloodGroup());s.setParentName(req.getParentName().trim());s.setParentPhoneNumber(req.getParentPhoneNumber().trim());}
+    private void validateAcademicProgress(Integer year,Integer semester){if(year==null||semester==null||(semester+1)/2!=year)throw new BadRequestException("Semester must correspond to the selected study year");}
+    private void storePhoto(Student student,MultipartFile photo,boolean required){if(photo==null||photo.isEmpty()){if(required)throw new BadRequestException("A student photo is required");return;}if(photo.getSize()>2L*1024*1024)throw new BadRequestException("Student photo must not exceed 2 MB");try{byte[] bytes=photo.getBytes();boolean jpeg=bytes.length>=3&&(bytes[0]&0xff)==0xff&&(bytes[1]&0xff)==0xd8&&(bytes[2]&0xff)==0xff;boolean png=bytes.length>=8&&(bytes[0]&0xff)==0x89&&bytes[1]==0x50&&bytes[2]==0x4e&&bytes[3]==0x47;if(!jpeg&&!png)throw new BadRequestException("Student photo must be a valid JPEG or PNG image");student.setPhotoData(bytes);student.setPhotoContentType(jpeg?MediaType.IMAGE_JPEG_VALUE:MediaType.IMAGE_PNG_VALUE);}catch(IOException e){throw new BadRequestException("Unable to read the student photo");}}
 
     @Transactional
     public StudentProfileResponse updateStudentStatus(Long studentId, String requestedStatus, String actor) {

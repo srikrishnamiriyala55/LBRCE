@@ -1,7 +1,6 @@
 package com.web.sms.controller;
 
 import com.web.sms.dto.request.BusApplicationRequest;
-import com.web.sms.dto.request.ComplaintRequest;
 import com.web.sms.dto.request.PaymentRequest;
 import com.web.sms.dto.request.TransferRequestDto;
 import com.web.sms.dto.response.*;
@@ -30,20 +29,18 @@ public class StudentController {
     private final FeeService feeService;
     private final PassService passService;
     private final TransferService transferService;
-    private final ComplaintService complaintService;
     private final NotificationService notificationService;
 
     public StudentController(StudentService studentService, BusService busService,
                              ApplicationService applicationService, FeeService feeService,
                              PassService passService, TransferService transferService,
-                             ComplaintService complaintService, NotificationService notificationService) {
+                             NotificationService notificationService) {
         this.studentService = studentService;
         this.busService = busService;
         this.applicationService = applicationService;
         this.feeService = feeService;
         this.passService = passService;
         this.transferService = transferService;
-        this.complaintService = complaintService;
         this.notificationService = notificationService;
     }
 
@@ -143,16 +140,6 @@ public class StudentController {
     @DeleteMapping("/transfers/{id}")
     public void cancelTransfer(@PathVariable Long id) {
         transferService.cancel(getCurrentUser().getId(), id);
-    }
-
-    @PostMapping("/complaints")
-    public ComplaintResponse submitComplaint(@Valid @RequestBody ComplaintRequest req) {
-        return complaintService.submitComplaint(getCurrentUser().getId(), req);
-    }
-
-    @GetMapping("/complaints")
-    public Page<ComplaintResponse> getComplaints(Pageable pageable) {
-        return complaintService.getStudentComplaints(getCurrentUser().getId(), checked(pageable));
     }
 
     @GetMapping("/notifications")

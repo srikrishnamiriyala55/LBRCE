@@ -37,7 +37,6 @@ public class Student {
     
     private String parentName;
     private String parentPhoneNumber;
-    private String emergencyContact;
     @JsonIgnore
     @Lob
     @Basic(fetch = FetchType.LAZY)
@@ -51,7 +50,7 @@ public class Student {
     private LocalDateTime updatedAt;
 
     @PrePersist
-    protected void onCreate() { createdAt = LocalDateTime.now(); }
+    protected void onCreate() { LocalDateTime now = LocalDateTime.now(); createdAt = now; updatedAt = now; }
     @PreUpdate
     protected void onUpdate() { updatedAt = LocalDateTime.now(); }
 
@@ -87,8 +86,6 @@ public class Student {
     public void setParentName(String parentName) { this.parentName = parentName; }
     public String getParentPhoneNumber() { return parentPhoneNumber; }
     public void setParentPhoneNumber(String parentPhoneNumber) { this.parentPhoneNumber = parentPhoneNumber; }
-    public String getEmergencyContact() { return emergencyContact; }
-    public void setEmergencyContact(String emergencyContact) { this.emergencyContact = emergencyContact; }
     public byte[] getPhotoData() { return photoData; }
     public void setPhotoData(byte[] photoData) { this.photoData = photoData; }
     public String getPhotoContentType() { return photoContentType; }

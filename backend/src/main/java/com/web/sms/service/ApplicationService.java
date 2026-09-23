@@ -1,6 +1,7 @@
 package com.web.sms.service;
 
 import com.web.sms.dto.request.BusApplicationRequest;
+import com.web.sms.dto.request.UpdateApplicationRequest;
 import com.web.sms.dto.response.ApplicationResponse;
 import com.web.sms.entity.*;
 import com.web.sms.enums.ApplicationStatus;
@@ -160,12 +161,31 @@ public class ApplicationService {
         student.setBloodGroup(req.getBloodGroup());
         student.setParentName(req.getParentName().trim());
         student.setParentPhoneNumber(req.getParentPhoneNumber().trim());
-        student.setEmergencyContact(req.getEmergencyContact().trim());
     }
 
     public Page<ApplicationResponse> getStudentApplications(Long studentId, Pageable pageable) {
         return appRepo.findByStudentId(studentId, pageable)
                 .map(ApplicationResponse::fromApplication);
+    }
+
+    @Transactional
+    public ApplicationResponse updateApplication(Long applicationId,UpdateApplicationRequest req,String actor){
+        BusApplication app=appRepo.findByIdForUpdate(applicationId).orElseThrow(()->new ResourceNotFoundException("Application not found"));
+        if(app.getStatus()!=ApplicationStatus.PENDING&&app.getStatus()!=ApplicationStatus.UNDER_REVIEW)throw new BadRequestException("Only pending applications can be edited");
+        Bus bus=busRepo.findById(req.getBusId()).orElseThrow(()->new ResourceNotFoundException("Selected bus not found"));
+        BoardingPoints point=boardingPointRepo.findById(req.getBoardingPointId()).orElseThrow(()->new ResourceNotFoundException("Boarding point not found"));
+        if(bus.getStatus()!=EntityStatus.ACTIVE||bus.getIncharge()==null||!"ACTIVE".equalsIgnoreCase(bus.getIncharge().getStatus()))throw new BadRequestException("The selected bus is not accepting applications");
+        if(!point.getBus().getId().equals(bus.getId())||point.getStatus()!=EntityStatus.ACTIVE)throw new BadRequestException("Select an active boarding point belonging to the selected bus");
+        String old=app.getBus().getBusNumber()+" / "+app.getBoardingPoint().getStationName();
+        app.setBus(bus);app.setBoardingPoint(point);app.setRemarks(req.getRemarks()==null?null:req.getRemarks().trim());
+        BusApplication saved=appRepo.save(app);auditService.log(actor,"ADMIN","APPLICATION_UPDATED","BUS_APPLICATION",String.valueOf(applicationId),old,bus.getBusNumber()+" / "+point.getStationName(),null);return ApplicationResponse.fromApplication(saved);
+    }
+
+    @Transactional
+    public void deleteApplication(Long applicationId,String actor){
+        BusApplication app=appRepo.findByIdForUpdate(applicationId).orElseThrow(()->new ResourceNotFoundException("Application not found"));
+        if(app.getStatus()==ApplicationStatus.APPROVED||allocationRepo.existsByApplicationId(applicationId))throw new BadRequestException("Approved or allocated applications cannot be deleted");
+        appRepo.delete(app);auditService.log(actor,"ADMIN","APPLICATION_DELETED","BUS_APPLICATION",String.valueOf(applicationId),app.getStudent().getRollNumber()+" / "+app.getBus().getBusNumber(),null,null);
     }
 
     @Transactional

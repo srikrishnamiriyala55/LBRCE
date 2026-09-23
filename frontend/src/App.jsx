@@ -17,7 +17,6 @@ import ApplicationHistoryPage from './pages/student/ApplicationHistoryPage';
 import FeeViewPage from './pages/student/FeeViewPage';
 import BusPassPage from './pages/student/BusPassPage';
 import TransferPage from './pages/student/TransferPage';
-import ComplaintsPage from './pages/student/ComplaintsPage';
 import NotificationsPage from './pages/student/NotificationsPage';
 
 // Incharge Pages
@@ -25,7 +24,6 @@ import InchargeDashboardPage from './pages/incharge/InchargeDashboardPage';
 import ApplicationManagementPage from './pages/incharge/ApplicationManagementPage';
 import StudentListPage from './pages/incharge/StudentListPage';
 import TransferManagementPage from './pages/incharge/TransferManagementPage';
-import InchargeComplaintsPage from './pages/incharge/InchargeComplaintsPage';
 import InchargeDataPage from './pages/incharge/InchargeDataPage';
 import InchargeReportsPage from './pages/incharge/InchargeReportsPage';
 import InchargeProfilePage from './pages/incharge/InchargeProfilePage';
@@ -41,7 +39,6 @@ import FeeManagementPage from './pages/admin/FeeManagementPage';
 import AcademicYearPage from './pages/admin/AcademicYearPage';
 import AuditLogsPage from './pages/admin/AuditLogsPage';
 import AdminDataPage from './pages/admin/AdminDataPage';
-import AdminComplaintsPage from './pages/admin/AdminComplaintsPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
 import AdminProfilePage from './pages/admin/AdminProfilePage';
 
@@ -61,7 +58,6 @@ function App() {
           <Route path="fees" element={<FeeViewPage />} />
           <Route path="pass" element={<BusPassPage />} />
           <Route path="transfers" element={<TransferPage />} />
-          <Route path="complaints" element={<ComplaintsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="" element={<Navigate to="/student/dashboard" replace />} />
         </Route>
@@ -72,7 +68,6 @@ function App() {
           <Route path="applications" element={<ApplicationManagementPage />} />
           <Route path="students" element={<StudentListPage />} />
           <Route path="transfers" element={<TransferManagementPage />} />
-          <Route path="complaints" element={<InchargeComplaintsPage />} />
           <Route path="fees" element={<InchargeDataPage type="fees" />} />
           <Route path="passes" element={<InchargeDataPage type="passes" />} />
           <Route path="notifications" element={<InchargeDataPage type="notifications" />} />
@@ -96,7 +91,6 @@ function App() {
           <Route path="payments" element={<AdminDataPage type="payments" />} />
           <Route path="passes" element={<AdminDataPage type="passes" />} />
           <Route path="notifications" element={<AdminDataPage type="notifications" />} />
-          <Route path="complaints" element={<AdminComplaintsPage />} />
           <Route path="reports" element={<AdminReportsPage />} />
           <Route path="profile" element={<AdminProfilePage />} />
           <Route path="" element={<Navigate to="/admin/dashboard" replace />} />

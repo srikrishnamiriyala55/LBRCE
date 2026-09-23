@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface FeeRepository extends JpaRepository<Fee, Long> {
     Optional<Fee> findByStudentIdAndAcademicYearId(Long studentId, Long academicYearId);
     List<Fee> findByStudentId(Long studentId);
+    void deleteByStudentId(Long studentId);
     Page<Fee> findByStatus(String status, Pageable pageable);
     
     @Query("SELECT COALESCE(SUM(f.paidAmount), 0) FROM Fee f")

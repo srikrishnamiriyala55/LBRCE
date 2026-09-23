@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -41,10 +42,8 @@ public class AdminController {
     private final AuditService auditService;
     private final PaymentRepository paymentRepo;
     private final BusPassRepository passRepo;
-    private final ComplaintRepository complaintRepo;
     private final NotificationRepository notificationRepo;
     private final AdminRepository adminRepo;
-    private final ComplaintService complaintService;
     private final TransportAllocationRepository allocationRepo;
     private final InchargeRepository inchargeRepo;
     private final TransportReportService reportService;
@@ -63,9 +62,9 @@ public class AdminController {
                            TransferRequestRepository transferRepo,
                            AcademicYearRepository academicYearRepo,
                            AuditService auditService, PaymentRepository paymentRepo,
-                           BusPassRepository passRepo, ComplaintRepository complaintRepo,
+                           BusPassRepository passRepo,
                            NotificationRepository notificationRepo, AdminRepository adminRepo,
-                           ComplaintService complaintService, TransportAllocationRepository allocationRepo,
+                           TransportAllocationRepository allocationRepo,
                            InchargeRepository inchargeRepo, TransportReportService reportService,
                            PassService passService) {
         this.adminService = adminService;
@@ -81,7 +80,7 @@ public class AdminController {
         this.transferRepo = transferRepo;
         this.academicYearRepo = academicYearRepo;
         this.auditService = auditService;
-        this.paymentRepo=paymentRepo;this.passRepo=passRepo;this.complaintRepo=complaintRepo;this.notificationRepo=notificationRepo;this.adminRepo=adminRepo;this.complaintService=complaintService;
+        this.paymentRepo=paymentRepo;this.passRepo=passRepo;this.notificationRepo=notificationRepo;this.adminRepo=adminRepo;
         this.allocationRepo=allocationRepo;
         this.inchargeRepo=inchargeRepo;
         this.reportService=reportService;
@@ -259,10 +258,15 @@ public class AdminController {
                 .map(StudentProfileResponse::fromStudent);
     }
 
-    @PostMapping("/students")
-    public StudentProfileResponse createStudent(@Valid @RequestBody CreateStudentRequest req) {
-        return adminService.createStudent(req);
+    @PostMapping(value="/students",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
+    public StudentProfileResponse createStudent(@Valid @RequestPart("student") CreateStudentRequest req,@RequestPart("photo") MultipartFile photo) {
+        return adminService.createStudent(req,photo);
     }
+
+    @PutMapping(value="/students/{id}",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
+    public StudentProfileResponse updateStudent(@PathVariable Long id,@Valid @RequestPart("student") UpdateStudentRequest req,@RequestPart(value="photo",required=false) MultipartFile photo){return adminService.updateStudent(id,req,photo,getCurrentUser().getUsername());}
+
+    @DeleteMapping("/students/{id}") public void deleteStudent(@PathVariable Long id){adminService.deleteStudent(id,getCurrentUser().getUsername());}
 
     @PutMapping("/students/{id}/status")
     public StudentProfileResponse updateStudentStatus(@PathVariable Long id, @Valid @RequestBody StatusUpdateRequest req) {
@@ -288,6 +292,8 @@ public class AdminController {
         String cleanRemarks = parseRemarks(remarks);
         return applicationService.rejectApplication(id, cleanRemarks != null ? cleanRemarks : "Rejected by Administrator", getCurrentUser().getUsername());
     }
+    @PutMapping("/applications/{id}") public ApplicationResponse updateApplication(@PathVariable Long id,@Valid @RequestBody UpdateApplicationRequest req){return applicationService.updateApplication(id,req,getCurrentUser().getUsername());}
+    @DeleteMapping("/applications/{id}") public void deleteApplication(@PathVariable Long id){applicationService.deleteApplication(id,getCurrentUser().getUsername());}
 
     @GetMapping("/fees")
     public Page<FeeResponse> getFees(Pageable pageable) {
@@ -300,12 +306,10 @@ public class AdminController {
     }
 
     @GetMapping("/payments") public Page<PaymentResponse> payments(Pageable pageable){return paymentRepo.findAll(checked(pageable)).map(PaymentResponse::fromPayment);}
-    @GetMapping("/passes") public Page<PassResponse> passes(Pageable pageable){return passRepo.findAll(checked(pageable)).map(PassResponse::fromBusPass);}
+    @GetMapping("/passes") public Page<PassResponse> passes(@RequestParam(required=false) String search,Pageable pageable){return passRepo.search(search==null?null:search.trim(),checked(pageable)).map(PassResponse::fromBusPass);}
     @GetMapping("/passes/{id}") public PassResponse pass(@PathVariable Long id){return passService.getPassForAdmin(id);}
     @GetMapping("/passes/{id}/photo") public ResponseEntity<byte[]> passPhoto(@PathVariable Long id){return passService.passPhotoForAdmin(id);}
     @GetMapping("/passes/{id}/download") public ResponseEntity<byte[]> downloadPass(@PathVariable Long id){PassResponse pass=passService.getPassForAdmin(id);return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=bus-pass-"+pass.getRollNumber()+".pdf").body(passService.generatePdfForAdmin(id));}
-    @GetMapping("/complaints") public Page<ComplaintResponse> complaints(@RequestParam(required=false) com.web.sms.enums.ComplaintStatus status,Pageable pageable){return (status==null?complaintRepo.findAll(checked(pageable)):complaintRepo.findByStatus(status,checked(pageable))).map(ComplaintResponse::fromComplaint);}
-    @PutMapping("/complaints/{id}/status") public ComplaintResponse complaintStatus(@PathVariable Long id,@Valid @RequestBody StatusUpdateRequest req){ComplaintResponse r=complaintService.updateComplaintStatus(id,req.getStatus(),req.getResponse(),getCurrentUser().getUsername());auditService.log(getCurrentUser().getUsername(),"ADMIN","COMPLAINT_STATUS_UPDATED","COMPLAINT",String.valueOf(id),null,req.getStatus(),null);return r;}
     @GetMapping("/notifications") public Page<NotificationResponse> notifications(Pageable pageable){return notificationRepo.findAll(checked(pageable)).map(NotificationResponse::fromNotification);}
     @GetMapping("/profile") public Map<String,Object> profile(){Admin a=adminRepo.findById(getCurrentUser().getId()).orElseThrow(()->new ResourceNotFoundException("Admin not found"));Map<String,Object> r=new LinkedHashMap<>();r.put("adminId",a.getAdminId());r.put("name",a.getName());r.put("email",a.getEmail());r.put("phoneNumber",a.getPhoneNumber());r.put("status",a.getStatus());return r;}
     @GetMapping("/students/{id}/transport") public Map<String,Object> studentTransport(@PathVariable Long id){Student s=studentRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("Student not found"));Map<String,Object> r=new LinkedHashMap<>();r.put("student",StudentProfileResponse.fromStudent(s));java.util.List<TransportAllocation> history=allocationRepo.findByStudentId(id);r.put("assignments",history.stream().map(a->{Map<String,Object>x=new LinkedHashMap<>();x.put("id",a.getId());x.put("bus",a.getBus().getBusNumber());x.put("boardingPoint",a.getBoardingPoint().getStationName());x.put("status",a.getStatus());return x;}).toList());r.put("fees",feeRepo.findByStudentId(id).stream().map(FeeResponse::fromFee).toList());r.put("passes",passRepo.findByStudentId(id).stream().map(PassResponse::fromBusPass).toList());r.put("transfers",transferRepo.findByStudentId(id).stream().map(TransferResponse::fromTransfer).toList());return r;}

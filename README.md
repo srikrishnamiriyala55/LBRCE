@@ -1,6 +1,6 @@
 # LBRCE Bus Transportation Management System
 
-Web application for managing LBRCE student bus applications, allocations, fees, digital passes, transfers, complaints, notifications and transport administration.
+Web application for managing LBRCE student bus applications, allocations, fees, digital passes, transfers, notifications and transport administration.
 
 ## Technology
 
@@ -15,7 +15,7 @@ Web application for managing LBRCE student bus applications, allocations, fees, 
 
 ### Student
 
-- Create an active student account with complete personal, academic, parent and emergency-contact details
+- Create an active student account with complete personal, academic and parent details
 - View and update permitted profile fields
 - View active buses and boarding points
 - Review/update the complete student profile and submit one bus application with a recent photo for the active academic year
@@ -23,7 +23,6 @@ Web application for managing LBRCE student bus applications, allocations, fees, 
 - View fee balance and initiate an eligible payment
 - View the active digital bus pass after reaching the configured payment threshold
 - Request a bus transfer only after receiving an active allocation
-- Raise complaints only after receiving an active allocation
 - View and mark personal notifications as read
 
 ### In-charge
@@ -34,7 +33,7 @@ Web application for managing LBRCE student bus applications, allocations, fees, 
 - Approve or reject applications belonging to the assigned bus
 - View assigned students and their transport, fee, and pass status
 - Perform the old-bus release and new-bus acceptance stages of transfers
-- Manage complaints raised by students on the assigned bus
+- Edit complete profile details for students allocated to the assigned bus
 - View assigned-bus fees, passes and notifications
 - Filter assigned-bus student reports and export the results to Excel or PDF
 
@@ -47,8 +46,9 @@ In-charge authorization is enforced by the backend. Changing frontend URLs or re
 - Manage buses with starting/ending points and bus-specific boarding points
 - Activate or deactivate buses and boarding points with relationship safety checks
 - Create and manage In-charges and assign at most one bus per In-charge
-- Create, activate or deactivate student accounts
-- Review all applications, fees, payments, passes, transfers, complaints and notifications
+- Create, edit, activate, deactivate or permanently delete student accounts
+- Edit or delete eligible student applications and review fees, payments, passes, transfers and notifications
+- Search passes by pass ID, student name, roll number or bus number
 - Manage academic years
 - Inspect audit logs and individual student transport history
 - Filter organization-wide student transport reports and export them to Excel or PDF
@@ -68,7 +68,6 @@ Excel and PDF downloads use the active filters. A maximum of 10,000 records can 
 - A student with an active allocation cannot submit another normal bus application.
 - Transfers require an active allocation and follow old In-charge approval followed by new In-charge approval.
 - Approval and transfer operations lock relevant database rows to prevent duplicate allocations and overbooking.
-- Complaints require an active approved allocation.
 - Payments require an active allocation and cannot exceed the remaining fee balance.
 - A bus pass is generated when the student pays at least 50% of the applicable fee.
 - Active allocations prevent unsafe bus or boarding-point deactivation.
@@ -109,7 +108,6 @@ LBRCE/
 |       |   |   |   |-- request/
 |       |   |   |   |   |-- AssignInchargeRequest.java      # In-charge assignment payload
 |       |   |   |   |   |-- BusApplicationRequest.java      # Bus application payload
-|       |   |   |   |   |-- ComplaintRequest.java           # Complaint submission payload
 |       |   |   |   |   |-- CreateAcademicYearRequest.java  # Academic-year payload
 |       |   |   |   |   |-- CreateBoardingPointRequest.java # Boarding-point payload
 |       |   |   |   |   |-- CreateBusRequest.java           # Bus creation/update payload
@@ -122,12 +120,13 @@ LBRCE/
 |       |   |   |   |   |-- StudentRegistrationRequest.java # Public student signup payload
 |       |   |   |   |   |-- TransferRequestDto.java         # Bus-transfer request payload
 |       |   |   |   |   |-- TransportReportFilter.java      # Report filter parameters
-|       |   |   |   |   `-- UpdateBoardingPointRequest.java # Boarding-point and fee edit payload
+|       |   |   |   |   |-- UpdateApplicationRequest.java   # Admin application-correction payload
+|       |   |   |   |   |-- UpdateBoardingPointRequest.java # Boarding-point and fee edit payload
+|       |   |   |   |   `-- UpdateStudentRequest.java       # Complete student profile edit payload
 |       |   |   |   `-- response/
 |       |   |   |       |-- ApplicationResponse.java       # Application API view
 |       |   |   |       |-- BoardingPointResponse.java     # Boarding-point API view
 |       |   |   |       |-- BusResponse.java               # Bus API view
-|       |   |   |       |-- ComplaintResponse.java         # Complaint API view
 |       |   |   |       |-- DashboardResponse.java         # Role dashboard metrics
 |       |   |   |       |-- FeeResponse.java               # Fee API view
 |       |   |   |       |-- InchargeStudentResponse.java   # Assigned-student view
@@ -147,7 +146,6 @@ LBRCE/
 |       |   |   |   |-- Bus.java                 # Vehicle, endpoints and capacity entity
 |       |   |   |   |-- BusApplication.java      # Student bus application entity
 |       |   |   |   |-- BusPass.java             # Digital pass and verification entity
-|       |   |   |   |-- Complaint.java           # Complaint workflow entity
 |       |   |   |   |-- Fee.java                 # Student transport fee entity
 |       |   |   |   |-- Incharge.java            # In-charge account entity
 |       |   |   |   |-- Notification.java        # User notification entity
@@ -157,8 +155,6 @@ LBRCE/
 |       |   |   |   `-- TransportAllocation.java # Active student/bus allocation
 |       |   |   |-- enums/
 |       |   |   |   |-- ApplicationStatus.java # Application lifecycle values
-|       |   |   |   |-- ComplaintCategory.java # Complaint category values
-|       |   |   |   |-- ComplaintStatus.java   # Complaint lifecycle values
 |       |   |   |   |-- EntityStatus.java      # Shared active/inactive values
 |       |   |   |   |-- PassStatus.java        # Pass lifecycle values
 |       |   |   |   |-- PaymentStatus.java     # Payment lifecycle values
@@ -178,7 +174,6 @@ LBRCE/
 |       |   |   |   |-- BusApplicationRepository.java     # Application queries and locks
 |       |   |   |   |-- BusPassRepository.java            # Bus-pass queries
 |       |   |   |   |-- BusRepository.java                # Bus queries and locks
-|       |   |   |   |-- ComplaintRepository.java          # Complaint queries and locks
 |       |   |   |   |-- FeeRepository.java                # Fee queries and locks
 |       |   |   |   |-- InchargeRepository.java           # In-charge queries and locks
 |       |   |   |   |-- NotificationRepository.java       # Notification queries
@@ -198,7 +193,6 @@ LBRCE/
 |       |   |       |-- AuthService.java               # Login and student signup logic
 |       |   |       |-- BusService.java                # Bus service contract
 |       |   |       |-- BusServiceImpl.java            # Bus management implementation
-|       |   |       |-- ComplaintService.java          # Complaint ownership and lifecycle
 |       |   |       |-- FeeService.java                # Payments, fees and pass eligibility
 |       |   |       |-- InchargeOperationsService.java # Assigned-bus student operations
 |       |   |       |-- InchargeService.java           # In-charge service contract
@@ -243,9 +237,12 @@ LBRCE/
 |       |   |-- layout/
 |       |   |   `-- DashboardLayout.jsx              # Shared navbar/sidebar page frame
 |       |   |-- passes/
+|       |   |   |-- PassCard.jsx                     # Shared pass layout used by every role
 |       |   |   `-- PassViewerModal.jsx              # Role-scoped bus-pass preview and PDF download
-|       |   `-- reports/
-|       |       `-- TransportReportTable.jsx         # Filters, table and Excel/PDF downloads
+|       |   |-- reports/
+|       |   |   `-- TransportReportTable.jsx         # Filters, table and Excel/PDF downloads
+|       |   `-- students/
+|       |       `-- StudentFormModal.jsx             # Shared complete student create/edit form
 |       |-- contexts/
 |       |   `-- AuthContext.jsx                      # Login state and JWT persistence
 |       |-- pages/
@@ -253,7 +250,6 @@ LBRCE/
 |       |   |-- admin/
 |       |   |   |-- AcademicYearPage.jsx            # Academic-year management
 |       |   |   |-- AdminApplicationsPage.jsx        # All bus applications
-|       |   |   |-- AdminComplaintsPage.jsx          # Organization complaint management
 |       |   |   |-- AdminDashboardPage.jsx           # Admin metrics dashboard
 |       |   |   |-- AdminDataPage.jsx                # Payments/passes/transfers/notifications lists
 |       |   |   |-- AdminLayout.jsx                  # Admin navigation configuration
@@ -267,7 +263,6 @@ LBRCE/
 |       |   |   `-- StudentManagementPage.jsx        # Student accounts and activation
 |       |   |-- incharge/
 |       |   |   |-- ApplicationManagementPage.jsx    # Assigned-bus approvals/rejections
-|       |   |   |-- InchargeComplaintsPage.jsx       # Assigned-bus complaint workflow
 |       |   |   |-- InchargeDashboardPage.jsx        # Assigned-bus dashboard metrics
 |       |   |   |-- InchargeDataPage.jsx             # Fees, passes and notifications lists
 |       |   |   |-- InchargeLayout.jsx               # In-charge navigation configuration
@@ -279,7 +274,6 @@ LBRCE/
 |       |       |-- ApplicationHistoryPage.jsx       # Student application history
 |       |       |-- BusApplicationPage.jsx           # New bus application form
 |       |       |-- BusPassPage.jsx                  # Digital pass and QR display
-|       |       |-- ComplaintsPage.jsx               # Submit and track complaints
 |       |       |-- FeeViewPage.jsx                  # Fee balance and payment initiation
 |       |       |-- NotificationsPage.jsx            # Personal notifications
 |       |       |-- StudentDashboardPage.jsx         # Student status dashboard
@@ -310,11 +304,11 @@ Create the database before starting the backend:
 CREATE DATABASE btms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-The repository does not contain database backups or ad-hoc SQL files. The backend connects to the configured schema through JPA. Production currently uses these 15 application tables:
+The repository does not contain database backups or ad-hoc SQL files. The backend connects to the configured schema through JPA. Production uses these 14 application tables:
 
-`academic_year`, `admin`, `audit_log`, `boarding_points`, `bus`, `bus_application`, `bus_pass`, `complaint`, `fee`, `incharge`, `notification`, `payment`, `student`, `transfer_request`, and `transport_allocation`.
+`academic_year`, `admin`, `audit_log`, `boarding_points`, `bus`, `bus_application`, `bus_pass`, `fee`, `incharge`, `notification`, `payment`, `student`, `transfer_request`, and `transport_allocation`.
 
-Legacy authentication, faculty, registration, and transfer tables have been migrated into the current model and removed. Student account removal is implemented as a safe deactivation: active allocations are closed, passes are revoked, and pending applications/transfers are cancelled while financial and audit history is retained.
+Legacy authentication, faculty, registration, complaint and transfer tables have been migrated or retired and removed. Student account deletion is an explicit admin-only permanent operation that first removes the student's dependent transport records in foreign-key-safe order; ordinary account suspension remains available through status changes.
 
 For local development, `JPA_DDL_AUTO=update` can create or update mapped tables. For staging and production, use `JPA_DDL_AUTO=validate` and apply reviewed, version-controlled migrations through the deployment process.
 

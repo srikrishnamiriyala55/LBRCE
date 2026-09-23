@@ -31,7 +31,7 @@ public class BoardingPoints {
     private LocalDateTime updatedAt;
 
     @PrePersist
-    void onCreate() { createdAt = LocalDateTime.now(); }
+    void onCreate() { LocalDateTime now = LocalDateTime.now(); createdAt = now; updatedAt = now; }
     @PreUpdate
     void onUpdate() { updatedAt = LocalDateTime.now(); }
 

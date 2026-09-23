@@ -21,6 +21,7 @@ public class TransferResponse {
     private String requestedEndingPoint;
     private String oldInchargeName;
     private String newInchargeName;
+    private String academicYear;
     private LocalDateTime oldInchargeDecisionAt;
     private LocalDateTime newInchargeDecisionAt;
     private LocalDateTime completedAt;
@@ -39,8 +40,7 @@ public class TransferResponse {
         r.setRemarks(t.getRemarks());
         r.setRequestedAt(t.getRequestedAt());
         r.setProcessedAt(t.getProcessedAt());
-        r.setStudentName(t.getStudent().getName());
-        r.setStudentRollNumber(t.getStudent().getRollNumber());
+        if(t.getStudent()!=null){r.setStudentName(t.getStudent().getName());r.setStudentRollNumber(t.getStudent().getRollNumber());}
         if (t.getCurrentBus() != null) {
             r.setCurrentStartingPoint(t.getCurrentBus().getStartingPoint());
             r.setCurrentEndingPoint(t.getCurrentBus().getEndingPoint());
@@ -50,7 +50,10 @@ public class TransferResponse {
             r.setRequestedEndingPoint(t.getRequestedBus().getEndingPoint());
         }
         if (t.getOldIncharge() != null) r.setOldInchargeName(t.getOldIncharge().getName());
+        else if(t.getCurrentBus()!=null&&t.getCurrentBus().getIncharge()!=null)r.setOldInchargeName(t.getCurrentBus().getIncharge().getName());
         if (t.getNewIncharge() != null) r.setNewInchargeName(t.getNewIncharge().getName());
+        else if(t.getRequestedBus()!=null&&t.getRequestedBus().getIncharge()!=null)r.setNewInchargeName(t.getRequestedBus().getIncharge().getName());
+        if(t.getAcademicYear()!=null)r.setAcademicYear(t.getAcademicYear().getYearName());
         r.setOldInchargeDecisionAt(t.getOldInchargeDecisionAt());
         r.setNewInchargeDecisionAt(t.getNewInchargeDecisionAt());
         r.setCompletedAt(t.getCompletedAt());
@@ -93,6 +96,8 @@ public class TransferResponse {
     public void setOldInchargeName(String v) { oldInchargeName = v; }
     public String getNewInchargeName() { return newInchargeName; }
     public void setNewInchargeName(String v) { newInchargeName = v; }
+    public String getAcademicYear() { return academicYear; }
+    public void setAcademicYear(String v) { academicYear=v; }
     public LocalDateTime getOldInchargeDecisionAt() { return oldInchargeDecisionAt; }
     public void setOldInchargeDecisionAt(LocalDateTime v) { oldInchargeDecisionAt = v; }
     public LocalDateTime getNewInchargeDecisionAt() { return newInchargeDecisionAt; }

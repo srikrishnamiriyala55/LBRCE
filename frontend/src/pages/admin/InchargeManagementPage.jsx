@@ -16,6 +16,7 @@ const InchargeManagementPage = () => {
     name: '',
     email: '',
     phoneNumber: '',
+    address: '',
     password: '',
     department: 'CSE',
     designation: 'Assistant Professor'
@@ -47,6 +48,7 @@ const InchargeManagementPage = () => {
         name: incharge.name,
         email: incharge.email || '',
         phoneNumber: incharge.phoneNumber || '',
+        address: incharge.address || '',
         password: '',
         department: incharge.department || 'CSE',
         designation: incharge.designation || 'Assistant Professor'
@@ -58,6 +60,7 @@ const InchargeManagementPage = () => {
         name: '',
         email: '',
         phoneNumber: '',
+        address: '',
         password: '',
         department: 'CSE',
         designation: 'Assistant Professor'
@@ -178,7 +181,7 @@ const InchargeManagementPage = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input
-                type="email"
+                type="email" required
                 className="input-field"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -187,12 +190,17 @@ const InchargeManagementPage = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
               <input
-                type="text"
+                type="tel" required pattern="[0-9]{10,15}"
                 className="input-field"
                 value={form.phoneNumber}
                 onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Address *</label>
+            <textarea required maxLength="500" rows="3" className="input-field" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
           </div>
 
           <div>

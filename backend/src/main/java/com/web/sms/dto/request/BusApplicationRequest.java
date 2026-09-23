@@ -22,7 +22,6 @@ public class BusApplicationRequest {
     @NotBlank @Pattern(regexp="A\\+|A-|B\\+|B-|AB\\+|AB-|O\\+|O-") private String bloodGroup;
     @NotBlank @Size(max=100) private String parentName;
     @NotBlank @Pattern(regexp="^[0-9]{10,15}$") private String parentPhoneNumber;
-    @NotBlank @Pattern(regexp="^[0-9]{10,15}$") private String emergencyContact;
 
     public Long getBusId() { return busId; }
     public void setBusId(Long busId) { this.busId = busId; }
@@ -54,6 +53,4 @@ public class BusApplicationRequest {
     public void setParentName(String parentName) { this.parentName = parentName; }
     public String getParentPhoneNumber() { return parentPhoneNumber; }
     public void setParentPhoneNumber(String parentPhoneNumber) { this.parentPhoneNumber = parentPhoneNumber; }
-    public String getEmergencyContact() { return emergencyContact; }
-    public void setEmergencyContact(String emergencyContact) { this.emergencyContact = emergencyContact; }
 }

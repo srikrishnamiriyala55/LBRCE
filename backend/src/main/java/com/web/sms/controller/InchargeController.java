@@ -1,7 +1,6 @@
 package com.web.sms.controller;
 
 import com.web.sms.dto.response.ApplicationResponse;
-import com.web.sms.dto.response.ComplaintResponse;
 import com.web.sms.dto.response.DashboardResponse;
 import com.web.sms.dto.response.TransferResponse;
 import com.web.sms.dto.response.TransportReportRow;
@@ -26,21 +25,23 @@ import com.web.sms.exception.ForbiddenException;
 import com.web.sms.exception.ResourceNotFoundException;
 import com.web.sms.security.UserPrincipal;
 import com.web.sms.service.ApplicationService;
-import com.web.sms.service.ComplaintService;
 import com.web.sms.service.InchargeService;
 import com.web.sms.service.TransferService;
 import com.web.sms.service.InchargeOperationsService;
 import com.web.sms.service.NotificationService;
 import com.web.sms.service.TransportReportService;
 import com.web.sms.service.PassService;
+import com.web.sms.service.AdminService;
+import com.web.sms.dto.request.UpdateStudentRequest;
+import com.web.sms.dto.response.StudentProfileResponse;
 import com.web.sms.dto.response.PassResponse;
 import com.web.sms.dto.response.InchargeStudentResponse;
-import com.web.sms.repository.ComplaintRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import org.springframework.http.*;
 
 import java.util.*;
@@ -53,7 +54,6 @@ public class InchargeController {
     private final InchargeService inchargeService;
     private final ApplicationService applicationService;
     private final TransferService transferService;
-    private final ComplaintService complaintService;
     private final TransportAllocationRepository allocationRepo;
     private final BusApplicationRepository applicationRepo;
     private final FeeRepository feeRepo;
@@ -61,7 +61,6 @@ public class InchargeController {
     private final AcademicYearRepository academicYearRepo;
     private final TransferRequestRepository transferRepo;
     private final InchargeOperationsService operations;
-    private final ComplaintRepository complaintRepo;
     private final NotificationService notificationService;
     private final TransportReportService reportService;
     private final PassService passService;
@@ -69,19 +68,17 @@ public class InchargeController {
     public InchargeController(InchargeService inchargeService,
                               ApplicationService applicationService,
                               TransferService transferService,
-                              ComplaintService complaintService,
                               TransportAllocationRepository allocationRepo,
                               BusApplicationRepository applicationRepo,
                               FeeRepository feeRepo,
                               BusPassRepository passRepo,
                               AcademicYearRepository academicYearRepo,
                               TransferRequestRepository transferRepo, InchargeOperationsService operations,
-                              ComplaintRepository complaintRepo, NotificationService notificationService, TransportReportService reportService,
-                              PassService passService) {
+                              NotificationService notificationService, TransportReportService reportService,
+                              PassService passService,AdminService adminService) {
         this.inchargeService = inchargeService;
         this.applicationService = applicationService;
         this.transferService = transferService;
-        this.complaintService = complaintService;
         this.allocationRepo = allocationRepo;
         this.applicationRepo = applicationRepo;
         this.feeRepo = feeRepo;
@@ -89,11 +86,13 @@ public class InchargeController {
         this.academicYearRepo = academicYearRepo;
         this.transferRepo = transferRepo;
         this.operations = operations;
-        this.complaintRepo = complaintRepo;
         this.notificationService = notificationService;
         this.reportService = reportService;
         this.passService = passService;
+        this.adminService=adminService;
     }
+
+    private final AdminService adminService;
 
     private UserPrincipal getCurrentUser() {
         return (UserPrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -156,7 +155,7 @@ public class InchargeController {
     public com.web.sms.dto.response.BusResponse assignedBus() { return operations.bus(requireAssignedBus()); }
 
     @GetMapping("/profile")
-    public Map<String,Object> profile(){com.web.sms.entity.Incharge i=inchargeService.getInchargeById(getCurrentUser().getId());Map<String,Object> r=new LinkedHashMap<>();r.put("teacherId",i.getTeacherId());r.put("name",i.getName());r.put("email",i.getEmail());r.put("phoneNumber",i.getPhoneNumber());r.put("department",i.getDepartment());r.put("designation",i.getDesignation());Bus b=getAssignedBus();r.put("assignedBus",b==null?null:b.getBusNumber());return r;}
+    public Map<String,Object> profile(){com.web.sms.entity.Incharge i=inchargeService.getInchargeById(getCurrentUser().getId());Map<String,Object> r=new LinkedHashMap<>();r.put("teacherId",i.getTeacherId());r.put("name",i.getName());r.put("email",i.getEmail());r.put("phoneNumber",i.getPhoneNumber());r.put("address",i.getAddress());r.put("department",i.getDepartment());r.put("designation",i.getDesignation());Bus b=getAssignedBus();r.put("assignedBus",b==null?null:b.getBusNumber());return r;}
 
     @GetMapping("/fees")
     public Page<com.web.sms.dto.response.FeeResponse> fees(Pageable pageable){return feeRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(),EntityStatus.ACTIVE,checked(pageable)).map(com.web.sms.dto.response.FeeResponse::fromFee);}
@@ -200,6 +199,7 @@ public class InchargeController {
     public Page<InchargeStudentResponse> getStudents(@RequestParam(required=false) String search,@RequestParam(required=false) String branch,@RequestParam(required=false) Integer year,@RequestParam(required=false) Long boardingPointId,@RequestParam(required=false) String paymentStatus,@RequestParam(required=false) String passStatus,Pageable pageable) {
         return operations.students(requireAssignedBus(),search,branch,year,boardingPointId,paymentStatus,passStatus,checked(pageable));
     }
+    @PutMapping("/students/{studentId}") public StudentProfileResponse updateStudent(@PathVariable Long studentId,@Valid @RequestBody UpdateStudentRequest req){return adminService.updateStudentForIncharge(studentId,requireAssignedBus().getId(),req,getCurrentUser().getUsername());}
 
     @GetMapping("/transfers")
     public Page<TransferResponse> getTransfers(Pageable pageable) {
@@ -262,16 +262,4 @@ public class InchargeController {
         return raw.trim();
     }
 
-    @GetMapping("/complaints")
-    public Page<ComplaintResponse> getComplaints(Pageable pageable) {
-        Bus bus = getAssignedBus();
-        if (bus == null) return Page.empty();
-        return complaintService.getComplaintsByBus(bus.getId(), checked(pageable));
-    }
-
-    @PutMapping("/complaints/{id}/status")
-    public ComplaintResponse updateComplaintStatus(@PathVariable Long id, @RequestBody ComplaintResponse req) {
-        Bus bus=requireAssignedBus();
-        return complaintService.updateComplaintStatus(id, req.getStatus() != null ? req.getStatus().name() : "RESOLVED", req.getResponse(), getCurrentUser().getUsername(),bus.getId());
-    }
 }
