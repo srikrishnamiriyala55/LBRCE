@@ -6,11 +6,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.EntityGraph;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import java.util.List;
 
 public interface TransferRequestRepository extends JpaRepository<TransferRequest, Long> {
+    @EntityGraph(attributePaths = {"student", "currentBus", "currentBus.incharge", "requestedBus",
+            "requestedBus.incharge", "currentBoardingPoint", "requestedBoardingPoint", "oldIncharge",
+            "newIncharge", "academicYear"})
+    @Query(value = "select t from TransferRequest t", countQuery = "select count(t) from TransferRequest t")
+    Page<TransferRequest> findAllWithDetails(Pageable pageable);
     long countByCurrentBoardingPointIdOrRequestedBoardingPointId(Long currentBoardingPointId, Long requestedBoardingPointId);
     List<TransferRequest> findByStudentId(Long studentId);
     void deleteByStudentId(Long studentId);

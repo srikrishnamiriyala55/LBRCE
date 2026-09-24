@@ -302,7 +302,7 @@ public class AdminController {
 
     @GetMapping("/transfers")
     public Page<TransferResponse> getTransfers(Pageable pageable) {
-        return transferRepo.findAll(checked(pageable)).map(TransferResponse::fromTransfer);
+        return transferRepo.findAllWithDetails(checked(pageable)).map(TransferResponse::fromTransfer);
     }
 
     @GetMapping("/payments") public Page<PaymentResponse> payments(Pageable pageable){return paymentRepo.findAll(checked(pageable)).map(PaymentResponse::fromPayment);}

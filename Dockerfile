@@ -4,7 +4,7 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
 ENV VITE_API_URL=/api
-ENV VITE_API_TIMEOUT_MS=15000
+ENV VITE_API_TIMEOUT_MS=45000
 ENV VITE_TOAST_DURATION_MS=3000
 RUN npm run build
 
