@@ -22,6 +22,7 @@ public class TransferResponse {
     private String oldInchargeName;
     private String newInchargeName;
     private String academicYear;
+    private Integer requestedAvailableSeats;
     private LocalDateTime oldInchargeDecisionAt;
     private LocalDateTime newInchargeDecisionAt;
     private LocalDateTime completedAt;
@@ -48,6 +49,7 @@ public class TransferResponse {
         if (t.getRequestedBus() != null) {
             r.setRequestedStartingPoint(t.getRequestedBus().getStartingPoint());
             r.setRequestedEndingPoint(t.getRequestedBus().getEndingPoint());
+            r.setRequestedAvailableSeats(t.getRequestedBus().getAvailableSeats());
         }
         if (t.getOldIncharge() != null) r.setOldInchargeName(t.getOldIncharge().getName());
         else if(t.getCurrentBus()!=null&&t.getCurrentBus().getIncharge()!=null)r.setOldInchargeName(t.getCurrentBus().getIncharge().getName());
@@ -98,6 +100,8 @@ public class TransferResponse {
     public void setNewInchargeName(String v) { newInchargeName = v; }
     public String getAcademicYear() { return academicYear; }
     public void setAcademicYear(String v) { academicYear=v; }
+    public Integer getRequestedAvailableSeats() { return requestedAvailableSeats; }
+    public void setRequestedAvailableSeats(Integer v) { requestedAvailableSeats=v; }
     public LocalDateTime getOldInchargeDecisionAt() { return oldInchargeDecisionAt; }
     public void setOldInchargeDecisionAt(LocalDateTime v) { oldInchargeDecisionAt = v; }
     public LocalDateTime getNewInchargeDecisionAt() { return newInchargeDecisionAt; }

@@ -304,6 +304,7 @@ public class AdminController {
     public Page<TransferResponse> getTransfers(Pageable pageable) {
         return transferRepo.findAllWithDetails(checked(pageable)).map(TransferResponse::fromTransfer);
     }
+    @PostMapping("/transfers/{id}/approve") public TransferResponse approveTransfer(@PathVariable Long id){return transferService.approveByAdmin(id,getCurrentUser().getUsername());}
 
     @GetMapping("/payments") public Page<PaymentResponse> payments(Pageable pageable){return paymentRepo.findAll(checked(pageable)).map(PaymentResponse::fromPayment);}
     @GetMapping("/passes") public Page<PassResponse> passes(@RequestParam(required=false) String search,Pageable pageable){return passRepo.search(search==null?null:search.trim(),checked(pageable)).map(PassResponse::fromBusPass);}
