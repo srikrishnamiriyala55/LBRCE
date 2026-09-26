@@ -4,6 +4,7 @@ import DataTable from '../../components/common/DataTable';
 import Pagination from '../../components/common/Pagination';
 import StatusBadge from '../../components/common/StatusBadge';
 import { useToast } from '../../components/common/Toast';
+import { formatINR } from '../../utils/currency';
 
 const FeeManagementPage = () => {
   const [fees, setFees] = useState([]);
@@ -38,9 +39,9 @@ const FeeManagementPage = () => {
       </div>
     )},
     { key: 'academicYear', label: 'Academic Year', render: (row) => <span className="font-semibold">{row.academicYear || '—'}</span> },
-    { key: 'totalAmount', label: 'Total Fee', render: (row) => `₹${row.totalAmount}` },
-    { key: 'paidAmount', label: 'Paid Amount', render: (row) => <span className="text-green-700 font-medium">₹${row.paidAmount || 0}</span> },
-    { key: 'remainingAmount', label: 'Remaining', render: (row) => <span className="text-red-600 font-medium">₹${row.remainingAmount || 0}</span> },
+    { key: 'totalAmount', label: 'Total Fee', render: (row) => formatINR(row.totalAmount) },
+    { key: 'paidAmount', label: 'Paid Amount', render: (row) => <span className="text-green-700 font-medium">{formatINR(row.paidAmount)}</span> },
+    { key: 'remainingAmount', label: 'Remaining', render: (row) => <span className="text-red-600 font-medium">{formatINR(row.remainingAmount)}</span> },
     {
       key: 'percentage',
       label: 'Progress',
@@ -70,7 +71,7 @@ const FeeManagementPage = () => {
       </div>
 
       <div className="card">
-        <DataTable columns={columns} data={fees} loading={loading} />
+        <DataTable columns={columns} data={fees} loading={loading} searchPlaceholder="Search student, roll number, year, fee or status..." />
         <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
     </div>

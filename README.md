@@ -301,7 +301,7 @@ Generated folders are intentionally excluded from the tree: `frontend/node_modul
 Create the database before starting the backend:
 
 ```sql
-CREATE DATABASE btms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE lbrcebtms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 The repository does not contain database backups or ad-hoc SQL files. The backend connects to the configured schema through JPA. Production uses these 14 application tables:
@@ -317,7 +317,7 @@ For local development, `JPA_DDL_AUTO=update` can create or update mapped tables.
 Set environment variables instead of committing credentials:
 
 ```env
-DB_URL=jdbc:mysql://localhost:3306/btms?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Kolkata
+DB_URL=jdbc:mysql://localhost:3306/lbrcebtms?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Kolkata
 DB_USERNAME=your_database_user
 DB_PASSWORD=your_database_password
 SERVER_PORT=8089
@@ -326,6 +326,8 @@ JWT_EXPIRATION=86400000
 CORS_ALLOWED_ORIGINS=http://localhost:3000
 CORS_MAX_AGE_SECONDS=3600
 BCRYPT_STRENGTH=10
+LOGIN_MAX_FAILURES=10
+LOGIN_BLOCK_MINUTES=15
 JPA_DDL_AUTO=validate
 PAYMENTS_AUTO_CONFIRM=false
 BTMS_SEED_ENABLED=false
@@ -336,6 +338,8 @@ PASS_VERIFICATION_URL=http://localhost:8089/api/public/verify-pass?token=
 ```
 
 `PAYMENTS_AUTO_CONFIRM` must remain `false` outside explicit local demonstrations. `BTMS_SEED_ENABLED` must remain `false` for a real college database.
+
+`DB_USERNAME`, `DB_PASSWORD`, and `JWT_SECRET` are required at startup and intentionally have no committed fallback values. Keep them in operating-system or deployment secrets, never in source control. The login limiter temporarily blocks repeated failures from the same login-ID/address pair.
 
 Start the backend:
 

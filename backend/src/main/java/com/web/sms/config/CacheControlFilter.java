@@ -28,6 +28,15 @@ public class CacheControlFilter extends OncePerRequestFilter {
             response.setDateHeader("Expires", 0);
         }
 
+        response.setHeader("X-Content-Type-Options", "nosniff");
+        response.setHeader("X-Frame-Options", "DENY");
+        response.setHeader("Referrer-Policy", "same-origin");
+        response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+        response.setHeader("Content-Security-Policy",
+                "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; " +
+                "script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
+                "font-src 'self' data:; connect-src 'self'");
+
         filterChain.doFilter(request, response);
     }
 }

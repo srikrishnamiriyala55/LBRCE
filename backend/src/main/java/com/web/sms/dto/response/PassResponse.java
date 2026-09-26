@@ -22,7 +22,6 @@ public class PassResponse {
     private LocalDate validUntil;
     private PassStatus status;
     private String verificationToken;
-    private String qrCodePath;
     private boolean photoAvailable;
 
     public static PassResponse fromBusPass(BusPass pass) {
@@ -54,7 +53,6 @@ public class PassResponse {
         r.setValidUntil(pass.getValidUntil());
         r.setStatus(pass.getStatus());
         r.setVerificationToken(pass.getVerificationToken());
-        r.setQrCodePath(pass.getQrCodePath());
         return r;
     }
     
@@ -92,8 +90,6 @@ public class PassResponse {
     public void setStatus(PassStatus status) { this.status = status; }
     public String getVerificationToken() { return verificationToken; }
     public void setVerificationToken(String verificationToken) { this.verificationToken = verificationToken; }
-    public String getQrCodePath() { return qrCodePath; }
-    public void setQrCodePath(String qrCodePath) { this.qrCodePath = qrCodePath; }
     public boolean isPhotoAvailable() { return photoAvailable; }
     public void setPhotoAvailable(boolean photoAvailable) { this.photoAvailable = photoAvailable; }
 }

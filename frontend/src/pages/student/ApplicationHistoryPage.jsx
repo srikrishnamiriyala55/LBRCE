@@ -30,7 +30,12 @@ const ApplicationHistoryPage = () => {
   };
 
   const columns = [
-    { key: 'applicationDate', label: 'Date', render: (row) => new Date(row.applicationDate || row.createdAt).toLocaleDateString() },
+    { key: 'appliedAt', label: 'Date', render: (row) => {
+      const value = row.appliedAt || row.applicationDate || row.createdAt;
+      if (!value) return '—';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
+    } },
     { key: 'busNumber', label: 'Bus Number', render: (row) => row.bus?.busNumber || row.busNumber },
     { key: 'boardingPoint', label: 'Boarding Point', render: (row) => row.boardingPoint?.stationName || row.boardingPointName },
     { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },

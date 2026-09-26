@@ -9,12 +9,6 @@ services:
     healthCheckPath: /api/public/health
     autoDeployTrigger: commit
     envVars:
-      - key: DB_URL
-        sync: false
-      - key: DB_USERNAME
-        value: root
-      - key: DB_PASSWORD
-        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRATION

@@ -29,8 +29,6 @@ public class BusPass {
     @Column(unique=true, nullable=false)
     private String verificationToken;
     
-    private String qrCodePath;
-    
     @Enumerated(EnumType.STRING)
     private PassStatus status = PassStatus.ACTIVE;
     
@@ -58,8 +56,6 @@ public class BusPass {
     public void setPassNumber(String passNumber) { this.passNumber = passNumber; }
     public String getVerificationToken() { return verificationToken; }
     public void setVerificationToken(String verificationToken) { this.verificationToken = verificationToken; }
-    public String getQrCodePath() { return qrCodePath; }
-    public void setQrCodePath(String qrCodePath) { this.qrCodePath = qrCodePath; }
     public PassStatus getStatus() { return status; }
     public void setStatus(PassStatus status) { this.status = status; }
     public LocalDate getValidFrom() { return validFrom; }

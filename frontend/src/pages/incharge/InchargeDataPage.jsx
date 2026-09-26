@@ -5,6 +5,7 @@ import Pagination from '../../components/common/Pagination';
 import StatusBadge from '../../components/common/StatusBadge';
 import PassViewerModal from '../../components/passes/PassViewerModal';
 import { useToast } from '../../components/common/Toast';
+import { formatINR } from '../../utils/currency';
 
 export default function InchargeDataPage({ type }) {
   const [data, setData] = useState([]), [page, setPage] = useState(0), [pages, setPages] = useState(1), [loading, setLoading] = useState(true);
@@ -39,9 +40,9 @@ export default function InchargeDataPage({ type }) {
     finally { setDownloading(false); }
   };
   const configs = {
-    fees: [{ key: 'studentName', label: 'Student' }, { key: 'rollNumber', label: 'Roll Number' }, { key: 'totalAmount', label: 'Required Fee' }, { key: 'paidAmount', label: 'Paid' }, { key: 'remainingAmount', label: 'Remaining' }, { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> }],
+    fees: [{ key: 'studentName', label: 'Student' }, { key: 'rollNumber', label: 'Roll Number' }, { key: 'totalAmount', label: 'Required Fee', render: (r) => formatINR(r.totalAmount) }, { key: 'paidAmount', label: 'Paid', render: (r) => formatINR(r.paidAmount) }, { key: 'remainingAmount', label: 'Remaining', render: (r) => formatINR(r.remainingAmount) }, { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> }],
     passes: [{ key: 'studentName', label: 'Student' }, { key: 'rollNumber', label: 'Roll Number' }, { key: 'passNumber', label: 'Pass ID' }, { key: 'busNumber', label: 'Bus' }, { key: 'boardingPoint', label: 'Boarding Point' }, { key: 'validUntil', label: 'Valid Until' }, { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> }, { key: 'actions', label: 'Action', render: (r) => <button type="button" className="text-sm font-medium text-blue-700 hover:underline" onClick={() => viewPass(r)}>View</button> }],
     notifications: [{ key: 'title', label: 'Title' }, { key: 'message', label: 'Message' }, { key: 'createdAt', label: 'Date', render: (r) => new Date(r.createdAt).toLocaleString() }, { key: 'read', label: 'Action', render: (r) => r.read ? 'Read' : <button className="text-blue-700 text-sm" onClick={() => markRead(r)}>Mark read</button> }]
   };
-  return <><div className="card"><h2 className="text-xl font-bold mb-5 capitalize">{type}</h2><DataTable columns={configs[type]} data={data} loading={loading} /><Pagination page={page} totalPages={pages} onPageChange={setPage} /></div><PassViewerModal pass={selectedPass} photoUrl={photoUrl} onClose={closePass} onDownload={downloadPass} downloading={downloading} /></>;
+  return <><div className="card"><h2 className="text-xl font-bold mb-5 capitalize">{type}</h2><DataTable columns={configs[type]} data={data} loading={loading} searchPlaceholder={`Search ${type}...`} /><Pagination page={page} totalPages={pages} onPageChange={setPage} /></div><PassViewerModal pass={selectedPass} photoUrl={photoUrl} onClose={closePass} onDownload={downloadPass} downloading={downloading} /></>;
 }
