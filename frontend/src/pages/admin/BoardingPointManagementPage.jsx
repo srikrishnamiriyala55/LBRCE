@@ -202,7 +202,13 @@ export default function BoardingPointManagementPage() {
         <label className="text-sm font-medium text-gray-700">Status<select className="input-field mt-1" value={filters.status} onChange={e => setFilters({...filters,status:e.target.value})}><option value="">All statuses</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option><option value="RETIRED">Retired</option></select></label>
         <div className="flex items-end gap-2"><div className="flex-1 rounded-lg bg-blue-50 px-3 py-2.5 text-sm text-blue-800"><Filter size={15} className="inline mr-2"/>{filteredPoints.length} of {points.length} points</div><button onClick={() => setFilters(emptyFilters)} className="btn-secondary" title="Clear filters"><X size={17}/></button></div>
       </div>
-      <DataTable columns={columns} data={filteredPoints} loading={loading} emptyMessage="No boarding points match these filters"/>
+      <DataTable
+        columns={columns}
+        data={filteredPoints}
+        loading={loading}
+        emptyMessage="No boarding points match these filters"
+        searchable={false}
+      />
     </div>
 
     <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Boarding Point & Fee' : 'Add Boarding Point'}>

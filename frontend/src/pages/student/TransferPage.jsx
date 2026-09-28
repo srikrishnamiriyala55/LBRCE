@@ -109,7 +109,7 @@ const TransferPage = () => {
 
       <div className="card">
         <h3 className="text-lg font-bold mb-4">Transfer History</h3>
-        <DataTable columns={columns} data={transfers} loading={loading} />
+        <DataTable columns={columns} data={transfers} loading={loading} searchable={false} />
       </div>
     </div>
   );

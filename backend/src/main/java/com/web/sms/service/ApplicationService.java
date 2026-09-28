@@ -145,6 +145,9 @@ public class ApplicationService {
         if ((req.getSemester() + 1) / 2 != req.getYear()) {
             throw new BadRequestException("Semester must correspond to the selected study year");
         }
+        if ("MBA".equalsIgnoreCase(req.getBranch()) && req.getYear() > 2) {
+            throw new BadRequestException("MBA is a two-year programme; select year 1 or 2");
+        }
         String email = req.getEmail().trim().toLowerCase();
         if (studentRepo.existsByEmailAndIdNot(email, student.getId())) {
             throw new BadRequestException("Another student account already uses this email address");

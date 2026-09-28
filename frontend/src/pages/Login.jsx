@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/axios';
 import { ArrowLeft, Eye, EyeOff, Loader2, UserPlus } from 'lucide-react';
+import { DEPARTMENTS, PASSWORD_HELP, PASSWORD_PATTERN, normalizePhone, semestersForYear, yearsForDepartment } from '../utils/academicOptions';
 
 const Login = () => {
   const [rollNumber, setRollNumber] = useState('');
@@ -12,6 +13,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [success, setSuccess] = useState('');
+  const [rollNumberStatus, setRollNumberStatus] = useState('idle');
   const [registration, setRegistration] = useState({
     rollNumber: '', name: '', email: '', phoneNumber: '', branch: '',
     year: '', semester: '', dob: '', gender: '', address: '', bloodGroup: '',
@@ -43,7 +45,10 @@ const Login = () => {
 
   const updateRegistration = (event) => {
     const { name, value } = event.target;
-    setRegistration((current) => ({ ...current, [name]: value, ...(name === 'year' ? { semester: '' } : {}) }));
+    const nextValue = ['phoneNumber', 'parentPhoneNumber'].includes(name) ? normalizePhone(value) : name === 'rollNumber' ? value.toUpperCase() : value;
+    setRegistration((current) => ({ ...current, [name]: nextValue,
+      ...(name === 'year' ? { semester: '' } : {}),
+      ...(name === 'branch' ? { year: '', semester: '' } : {}) }));
   };
 
   const openRegistration = () => {
@@ -62,6 +67,15 @@ const Login = () => {
     }
     setIsLoading(true);
     try {
+      setRollNumberStatus('checking');
+      const candidate = registration.rollNumber.trim().toUpperCase();
+      const availability = await api.get('/auth/register/student/roll-number-exists', { params: { rollNumber: candidate } });
+      if (availability.data.exists) {
+        setRollNumberStatus('exists');
+        setError(`User with roll number ${candidate} already exists.`);
+        return;
+      }
+      setRollNumberStatus('available');
       const { confirmPassword, ...payload } = registration;
       payload.year = Number(payload.year);
       payload.semester = Number(payload.semester);
@@ -153,26 +167,26 @@ const Login = () => {
           </button>
         </form> : <form onSubmit={handleRegistration} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div><label htmlFor="registerStudentId" className="block text-sm font-medium text-gray-700 mb-1">Student ID *</label><input id="registerStudentId" name="rollNumber" value={registration.rollNumber} onChange={updateRegistration} className="input-field uppercase" placeholder="e.g. 21761A0501" maxLength="30" required /></div>
+            <div><label htmlFor="registerStudentId" className="block text-sm font-medium text-gray-700 mb-1">Student ID *</label><input id="registerStudentId" name="rollNumber" value={registration.rollNumber} onChange={updateRegistration} className={`input-field uppercase ${rollNumberStatus === 'exists' ? 'border-red-500 focus:ring-red-500' : ''}`} placeholder="e.g. 21761A0501" maxLength="30" aria-describedby="rollNumberStatus" required />{rollNumberStatus === 'exists' && <span id="rollNumberStatus" className="mt-1 block text-xs text-red-600">User with roll number {registration.rollNumber.trim().toUpperCase()} already exists.</span>}</div>
             <div><label htmlFor="registerName" className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label><input id="registerName" name="name" value={registration.name} onChange={updateRegistration} className="input-field" placeholder="Student full name" maxLength="100" required /></div>
             <div><label htmlFor="registerEmail" className="block text-sm font-medium text-gray-700 mb-1">Email *</label><input id="registerEmail" type="email" name="email" value={registration.email} onChange={updateRegistration} className="input-field" placeholder="student@lbrce.ac.in" maxLength="120" required /></div>
-            <div><label htmlFor="registerPhone" className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label><input id="registerPhone" type="tel" name="phoneNumber" value={registration.phoneNumber} onChange={updateRegistration} className="input-field" placeholder="10 to 15 digits" pattern="[0-9]{10,15}" required /></div>
+            <div><label htmlFor="registerPhone" className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label><input id="registerPhone" type="tel" inputMode="numeric" name="phoneNumber" value={registration.phoneNumber} onChange={updateRegistration} className="input-field" placeholder="Exactly 10 digits" pattern="[0-9]{10}" minLength="10" maxLength="10" required /></div>
             <div><label htmlFor="registerDob" className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label><input id="registerDob" type="date" name="dob" value={registration.dob} max={new Date().toISOString().split('T')[0]} onChange={updateRegistration} className="input-field" required /></div>
             <div><label htmlFor="registerGender" className="block text-sm font-medium text-gray-700 mb-1">Gender *</label><select id="registerGender" name="gender" value={registration.gender} onChange={updateRegistration} className="input-field" required><option value="">Select</option><option value="MALE">Male</option><option value="FEMALE">Female</option><option value="OTHER">Other</option></select></div>
-            <div><label htmlFor="registerBranch" className="block text-sm font-medium text-gray-700 mb-1">Branch *</label><input id="registerBranch" name="branch" value={registration.branch} onChange={updateRegistration} className="input-field uppercase" placeholder="e.g. CSE" maxLength="50" required /></div>
+            <div><label htmlFor="registerBranch" className="block text-sm font-medium text-gray-700 mb-1">Department *</label><select id="registerBranch" name="branch" value={registration.branch} onChange={updateRegistration} className="input-field" required><option value="">Select department</option>{DEPARTMENTS.map(value=><option key={value} value={value}>{value}</option>)}</select></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label htmlFor="registerYear" className="block text-sm font-medium text-gray-700 mb-1">Year *</label><select id="registerYear" name="year" value={registration.year} onChange={updateRegistration} className="input-field" required><option value="">Select</option>{[1,2,3,4].map(value => <option key={value} value={value}>{value}</option>)}</select></div>
-              <div><label htmlFor="registerSemester" className="block text-sm font-medium text-gray-700 mb-1">Semester *</label><select id="registerSemester" name="semester" value={registration.semester} onChange={updateRegistration} className="input-field" disabled={!registration.year} required><option value="">Select</option>{registration.year && [Number(registration.year) * 2 - 1, Number(registration.year) * 2].map(value => <option key={value} value={value}>{value}</option>)}</select></div>
+              <div><label htmlFor="registerYear" className="block text-sm font-medium text-gray-700 mb-1">Year *</label><select id="registerYear" name="year" value={registration.year} onChange={updateRegistration} className="input-field" disabled={!registration.branch} required><option value="">Select</option>{yearsForDepartment(registration.branch).map(value => <option key={value} value={value}>{value}</option>)}</select></div>
+              <div><label htmlFor="registerSemester" className="block text-sm font-medium text-gray-700 mb-1">Semester *</label><select id="registerSemester" name="semester" value={registration.semester} onChange={updateRegistration} className="input-field" disabled={!registration.year} required><option value="">Select</option>{semestersForYear(registration.year).map(value => <option key={value} value={value}>{value}</option>)}</select></div>
             </div>
             <div><label htmlFor="registerBloodGroup" className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label><select id="registerBloodGroup" name="bloodGroup" value={registration.bloodGroup} onChange={updateRegistration} className="input-field" required><option value="">Select</option>{['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(value => <option key={value}>{value}</option>)}</select></div>
             <div><label htmlFor="registerParentName" className="block text-sm font-medium text-gray-700 mb-1">Parent / Guardian Name *</label><input id="registerParentName" name="parentName" value={registration.parentName} onChange={updateRegistration} className="input-field" maxLength="100" required /></div>
-            <div><label htmlFor="registerParentPhone" className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number *</label><input id="registerParentPhone" type="tel" name="parentPhoneNumber" value={registration.parentPhoneNumber} onChange={updateRegistration} className="input-field" pattern="[0-9]{10,15}" placeholder="10 to 15 digits" required /></div>
+            <div><label htmlFor="registerParentPhone" className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number *</label><input id="registerParentPhone" type="tel" inputMode="numeric" name="parentPhoneNumber" value={registration.parentPhoneNumber} onChange={updateRegistration} className="input-field" pattern="[0-9]{10}" minLength="10" maxLength="10" placeholder="Exactly 10 digits" required /></div>
             <div className="sm:col-span-2"><label htmlFor="registerAddress" className="block text-sm font-medium text-gray-700 mb-1">Residential Address *</label><textarea id="registerAddress" name="address" value={registration.address} onChange={updateRegistration} className="input-field min-h-24" maxLength="500" required /></div>
-            <div><label htmlFor="registerPassword" className="block text-sm font-medium text-gray-700 mb-1">Password *</label><input id="registerPassword" type={showPassword ? 'text' : 'password'} name="password" value={registration.password} onChange={updateRegistration} className="input-field" minLength="8" maxLength="72" autoComplete="new-password" required /></div>
-            <div><label htmlFor="registerConfirmPassword" className="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label><input id="registerConfirmPassword" type={showPassword ? 'text' : 'password'} name="confirmPassword" value={registration.confirmPassword} onChange={updateRegistration} className="input-field" minLength="8" maxLength="72" autoComplete="new-password" required /></div>
+            <div><label htmlFor="registerPassword" className="block text-sm font-medium text-gray-700 mb-1">Password *</label><input id="registerPassword" type={showPassword ? 'text' : 'password'} name="password" value={registration.password} onChange={updateRegistration} className="input-field" minLength="6" maxLength="15" pattern={PASSWORD_PATTERN} title={PASSWORD_HELP} autoComplete="new-password" required /><span className="mt-1 block text-xs text-gray-500">{PASSWORD_HELP}</span></div>
+            <div><label htmlFor="registerConfirmPassword" className="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label><input id="registerConfirmPassword" type={showPassword ? 'text' : 'password'} name="confirmPassword" value={registration.confirmPassword} onChange={updateRegistration} className="input-field" minLength="6" maxLength="15" pattern={PASSWORD_PATTERN} title={PASSWORD_HELP} autoComplete="new-password" required /></div>
           </div>
           <label className="flex items-center gap-2 text-sm text-gray-600"><input type="checkbox" checked={showPassword} onChange={() => setShowPassword(!showPassword)} /> Show passwords</label>
-          <button type="submit" disabled={isLoading} className="w-full btn-primary py-3 flex justify-center items-center gap-2">{isLoading ? <Loader2 className="animate-spin" size={20} /> : <><UserPlus size={18} /> Create Account</>}</button>
+          <button type="submit" disabled={isLoading} className="w-full btn-primary py-3 flex justify-center items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60">{isLoading ? <Loader2 className="animate-spin" size={20} /> : <><UserPlus size={18} /> Create Account</>}</button>
           <button type="button" disabled={isLoading} onClick={() => { setIsRegistering(false); setError(''); }} className="w-full text-sm text-blue-700 hover:text-blue-900 flex justify-center items-center gap-2"><ArrowLeft size={16} /> Back to sign in</button>
         </form>}
       </div>

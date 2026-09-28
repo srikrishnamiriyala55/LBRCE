@@ -20,7 +20,7 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     Page<Student> findByNameContainingIgnoreCase(String name, Pageable pageable);
     
     @Query("SELECT s FROM Student s WHERE " +
-           "(:search IS NULL OR :search = '' OR LOWER(s.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(s.rollNumber) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+           "(:search IS NULL OR :search = '' OR LOWER(s.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(s.rollNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(s.email) LIKE LOWER(CONCAT('%', :search, '%')) OR s.phoneNumber LIKE CONCAT('%', :search, '%') OR LOWER(s.branch) LIKE LOWER(CONCAT('%', :search, '%')) OR CAST(s.year AS string) LIKE CONCAT('%', :search, '%') OR CAST(s.semester AS string) LIKE CONCAT('%', :search, '%') OR LOWER(s.status) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
            "(:branch IS NULL OR :branch = '' OR s.branch = :branch)")
     Page<Student> searchStudents(@Param("search") String search, @Param("branch") String branch, Pageable pageable);
 

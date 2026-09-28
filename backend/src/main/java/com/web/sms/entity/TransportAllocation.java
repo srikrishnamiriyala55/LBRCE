@@ -39,7 +39,12 @@ public class TransportAllocation {
     private LocalDateTime updatedAt;
 
     @PrePersist
-    void onCreate() { if (createdAt == null) createdAt = LocalDateTime.now(); }
+    void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        if (createdAt == null) createdAt = now;
+        if (allocatedAt == null) allocatedAt = now;
+        if (updatedAt == null) updatedAt = now;
+    }
     @PreUpdate
     void onUpdate() { updatedAt = LocalDateTime.now(); }
 

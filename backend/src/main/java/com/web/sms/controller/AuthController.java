@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -42,5 +43,10 @@ public class AuthController {
     public ResponseEntity<StudentProfileResponse> registerStudent(
             @Valid @RequestBody StudentRegistrationRequest request) {
         return ResponseEntity.status(201).body(authService.registerStudent(request));
+    }
+
+    @GetMapping("/register/student/roll-number-exists")
+    public Map<String, Boolean> studentRollNumberExists(@RequestParam String rollNumber) {
+        return Map.of("exists", authService.studentRollNumberExists(rollNumber));
     }
 }

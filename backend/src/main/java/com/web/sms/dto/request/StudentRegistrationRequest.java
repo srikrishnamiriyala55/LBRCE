@@ -25,7 +25,7 @@ public class StudentRegistrationRequest {
     private String email;
 
     @NotBlank(message = "Phone number is required")
-    @Pattern(regexp = "^[0-9]{10,15}$", message = "Phone number must contain 10 to 15 digits")
+    @Pattern(regexp = "^[0-9]{10}$", message = "Phone number must contain exactly 10 digits")
     private String phoneNumber;
 
     @NotNull(message = "Date of birth is required")
@@ -41,7 +41,7 @@ public class StudentRegistrationRequest {
     private String address;
 
     @NotBlank(message = "Branch is required")
-    @Size(max = 50, message = "Branch must not exceed 50 characters")
+    @Pattern(regexp = "CSE|AI&DS|IT|CSM|ECE|EEE|MECH|CIVIL|ASE|MBA", message = "Select a valid department")
     private String branch;
 
     @NotNull(message = "Year is required")
@@ -63,11 +63,12 @@ public class StudentRegistrationRequest {
     private String parentName;
 
     @NotBlank(message = "Parent phone number is required")
-    @Pattern(regexp = "^[0-9]{10,15}$", message = "Parent phone number must contain 10 to 15 digits")
+    @Pattern(regexp = "^[0-9]{10}$", message = "Parent phone number must contain exactly 10 digits")
     private String parentPhoneNumber;
 
     @NotBlank(message = "Password is required")
-    @Size(min = 8, max = 72, message = "Password must be between 8 and 72 characters")
+    @Size(min = 6, max = 15, message = "Password must be between 6 and 15 characters")
+    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).+$", message = "Password must include uppercase, lowercase, number and special character")
     private String password;
 
     public String getRollNumber() { return rollNumber; }

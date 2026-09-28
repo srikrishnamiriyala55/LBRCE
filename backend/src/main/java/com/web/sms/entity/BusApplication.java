@@ -43,6 +43,7 @@ public class BusApplication {
         LocalDateTime now = LocalDateTime.now();
         createdAt = now;
         appliedAt = now;
+        updatedAt = now;
     }
     @PreUpdate
     protected void onUpdate() {

@@ -8,7 +8,7 @@ public class LoginRequest {
     @Size(max = 50)
     private String rollNumber;
     @NotBlank
-    @Size(max = 72)
+    @Size(max = 15, message = "Password must not exceed 15 characters")
     private String password;
     
     public String getRollNumber() { return rollNumber; }

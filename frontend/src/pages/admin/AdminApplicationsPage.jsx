@@ -30,19 +30,22 @@ export default function AdminApplicationsPage() {
   const [viewing, setViewing] = useState(null);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ busId: '', boardingPointId: '', remarks: '' });
+  const [summary, setSummary] = useState({});
   const { addToast } = useToast();
 
   const load = async () => {
     setLoading(true);
     try {
       const query = `page=${page}&size=10${status ? `&status=${status}` : ''}`;
-      const [applications, busResponse] = await Promise.all([
+      const [applications, busResponse, summaryResponse] = await Promise.all([
         api.get(`/admin/applications?${query}`),
         api.get('/admin/buses'),
+        api.get('/admin/applications/summary'),
       ]);
       setRows(applications.data.content || []);
       setPages(applications.data.totalPages || 0);
       setBuses(busResponse.data || []);
+      setSummary(summaryResponse.data || {});
     } catch (error) {
       addToast(error.response?.data?.message || 'Failed to load applications', 'error');
     } finally {
@@ -144,6 +147,7 @@ export default function AdminApplicationsPage() {
   return <>
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-2xl font-bold text-gray-800">Transportation Applications</h2><p className="text-sm text-gray-500">Review, correct and manage student bus applications</p></div><select className="input-field w-auto" value={status} onChange={(event) => { setStatus(event.target.value); setPage(0); }}><option value="">All Applications</option><option>PENDING</option><option>UNDER_REVIEW</option><option>APPROVED</option><option>REJECTED</option><option>CANCELLED</option></select></div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{[['Registered',summary.registered],['Pending',summary.pending],['Under review',summary.under_review],['Approved',summary.approved],['Rejected',summary.rejected],['Cancelled',summary.cancelled]].map(([label,value])=><div key={label} className="rounded-lg border bg-white p-3"><p className="text-xs text-gray-500">{label}</p><p className="text-xl font-bold text-blue-900">{value || 0}</p></div>)}</div>
       <div className="card"><DataTable columns={columns} data={rows} loading={loading} /><p className="mt-3 text-xs text-gray-500">Approved applications are linked to allocations, fees and passes. They can be viewed here but must be changed through the relevant transport workflow.</p><Pagination page={page} totalPages={pages} onPageChange={setPage} /></div>
     </div>
 

@@ -60,7 +60,12 @@ public class TransferRequest {
     private LocalDateTime updatedAt;
 
     @PrePersist
-    void onCreate() { if (createdAt == null) createdAt = LocalDateTime.now(); }
+    void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        if (createdAt == null) createdAt = now;
+        if (requestedAt == null) requestedAt = now;
+        if (updatedAt == null) updatedAt = now;
+    }
     @PreUpdate
     void onUpdate() { updatedAt = LocalDateTime.now(); }
 

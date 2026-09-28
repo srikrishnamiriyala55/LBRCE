@@ -59,7 +59,8 @@ const TransferManagementPage = () => {
   };
 
   const columns = [
-    { key: 'studentName', label: 'Student', render: row => `${row.studentName} (${row.studentRollNumber})` },
+    { key: 'studentName', label: 'Student Name', render: row => row.studentName || '—' },
+    { key: 'studentRollNumber', label: 'Roll Number', render: row => row.studentRollNumber || '—' },
     { key: 'currentBus', label: 'Current Bus', render: row => row.currentBusNumber },
     { key: 'requestedBus', label: 'Requested Bus', render: row => row.requestedBusNumber },
     { key: 'approvalStage', label: 'Your Decision', render: row => row.approvalStage === 'RELEASE' ? 'Approve release' : 'Accept into bus' },

@@ -158,7 +158,7 @@ public class AdminService {
         if (studentRepo.existsByEmail(email)) {
             throw new BadRequestException("Student with email " + email + " already exists");
         }
-        validateAcademicProgress(req.getYear(),req.getSemester());
+        validateAcademicProgress(req.getBranch(),req.getYear(),req.getSemester());
 
         Student s = new Student();
         s.setRollNumber(rollNumber);
@@ -186,7 +186,7 @@ public class AdminService {
     @Transactional
     public StudentProfileResponse updateStudent(Long studentId, UpdateStudentRequest req, MultipartFile photo, String actor) {
         Student student=studentRepo.findByIdForUpdate(studentId).orElseThrow(()->new com.web.sms.exception.ResourceNotFoundException("Student not found"));
-        validateAcademicProgress(req.getYear(),req.getSemester());
+        validateAcademicProgress(req.getBranch(),req.getYear(),req.getSemester());
         String email=req.getEmail().trim().toLowerCase();
         if(studentRepo.existsByEmailAndIdNot(email,studentId))throw new BadRequestException("Another student account already uses this email address");
         applyStudentDetails(student,req,email);
@@ -197,14 +197,15 @@ public class AdminService {
     }
 
     @Transactional
-    public StudentProfileResponse updateStudentForIncharge(Long studentId, Long busId, UpdateStudentRequest req, String actor) {
+    public StudentProfileResponse updateStudentForIncharge(Long studentId, Long busId, UpdateStudentRequest req, MultipartFile photo, String actor) {
         TransportAllocation allocation=allocationRepo.findByStudentIdAndBusIdAndStatus(studentId,busId,EntityStatus.ACTIVE)
                 .orElseThrow(()->new com.web.sms.exception.ForbiddenException("Student is not actively assigned to your bus"));
         Student student=studentRepo.findByIdForUpdate(allocation.getStudent().getId()).orElseThrow(()->new com.web.sms.exception.ResourceNotFoundException("Student not found"));
-        validateAcademicProgress(req.getYear(),req.getSemester());
+        validateAcademicProgress(req.getBranch(),req.getYear(),req.getSemester());
         String email=req.getEmail().trim().toLowerCase();
         if(studentRepo.existsByEmailAndIdNot(email,studentId))throw new BadRequestException("Another student account already uses this email address");
         applyStudentDetails(student,req,email);
+        storePhoto(student,photo,false);
         Student saved=studentRepo.save(student);
         auditService.log(actor,"INCHARGE","STUDENT_UPDATED","STUDENT",String.valueOf(studentId),null,saved.getRollNumber(),"Assigned bus: "+allocation.getBus().getBusNumber());
         return StudentProfileResponse.fromStudent(saved);
@@ -222,7 +223,7 @@ public class AdminService {
     }
 
     private void applyStudentDetails(Student s,UpdateStudentRequest req,String email){s.setName(req.getName().trim());s.setEmail(email);s.setPhoneNumber(req.getPhoneNumber().trim());s.setDob(req.getDob());s.setGender(req.getGender());s.setAddress(req.getAddress().trim());s.setBranch(req.getBranch().trim().toUpperCase());s.setYear(req.getYear());s.setSemester(req.getSemester());s.setBloodGroup(req.getBloodGroup());s.setParentName(req.getParentName().trim());s.setParentPhoneNumber(req.getParentPhoneNumber().trim());}
-    private void validateAcademicProgress(Integer year,Integer semester){if(year==null||semester==null||(semester+1)/2!=year)throw new BadRequestException("Semester must correspond to the selected study year");}
+    private void validateAcademicProgress(String department,Integer year,Integer semester){if(year==null||semester==null||(semester+1)/2!=year)throw new BadRequestException("Semester must correspond to the selected study year");if("MBA".equalsIgnoreCase(department)&&year>2)throw new BadRequestException("MBA is a two-year programme; select year 1 or 2");}
     private void storePhoto(Student student,MultipartFile photo,boolean required){if(photo==null||photo.isEmpty()){if(required)throw new BadRequestException("A student photo is required");return;}if(photo.getSize()>2L*1024*1024)throw new BadRequestException("Student photo must not exceed 2 MB");try{byte[] bytes=photo.getBytes();boolean jpeg=bytes.length>=3&&(bytes[0]&0xff)==0xff&&(bytes[1]&0xff)==0xd8&&(bytes[2]&0xff)==0xff;boolean png=bytes.length>=8&&(bytes[0]&0xff)==0x89&&bytes[1]==0x50&&bytes[2]==0x4e&&bytes[3]==0x47;if(!jpeg&&!png)throw new BadRequestException("Student photo must be a valid JPEG or PNG image");student.setPhotoData(bytes);student.setPhotoContentType(jpeg?MediaType.IMAGE_JPEG_VALUE:MediaType.IMAGE_PNG_VALUE);}catch(IOException e){throw new BadRequestException("Unable to read the student photo");}}
 
     @Transactional

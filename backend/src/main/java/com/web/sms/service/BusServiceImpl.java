@@ -61,7 +61,7 @@ public class BusServiceImpl implements BusService {
         bus.setBusNumber(busNumber);
         bus.setTotalSeats(req.getTotalSeats());
         bus.setAvailableSeats(req.getTotalSeats());
-        bus.setStartingPoint(req.getStartingPoint().trim());
+        bus.setStartingPoint(canonicalStartingPoint(req.getStartingPoint()));
         bus.setEndingPoint(req.getEndingPoint().trim());
         bus.setStatus(EntityStatus.ACTIVE);
         bus.setCreatedAt(LocalDateTime.now());
@@ -90,7 +90,7 @@ public class BusServiceImpl implements BusService {
             bus.setTotalSeats(req.getTotalSeats());
             bus.setAvailableSeats(req.getTotalSeats() - (int) occupied);
         }
-        if (req.getStartingPoint() != null) bus.setStartingPoint(req.getStartingPoint().trim());
+        if (req.getStartingPoint() != null) bus.setStartingPoint(canonicalStartingPoint(req.getStartingPoint()));
         if (req.getEndingPoint() != null) bus.setEndingPoint(req.getEndingPoint().trim());
 
         bus.setUpdatedAt(LocalDateTime.now());
@@ -104,5 +104,12 @@ public class BusServiceImpl implements BusService {
         return boardingPointsRepository.findByBusIdAndStatusOrderByOrderIndexAscStationNameAsc(busId, EntityStatus.ACTIVE).stream()
                 .map(BoardingPointResponse::fromBoardingPoint)
                 .collect(Collectors.toList());
+    }
+
+    private String canonicalStartingPoint(String startingPoint) {
+        String trimmed = startingPoint.trim();
+        return boardingPointsRepository.findFirstByStationNameIgnoreCase(trimmed)
+                .map(point -> point.getStationName().trim())
+                .orElse(trimmed);
     }
 }

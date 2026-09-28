@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../utils/axios';
 import { useToast } from '../../components/common/Toast';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { DEPARTMENTS, normalizePhone, semestersForYear, yearsForDepartment } from '../../utils/academicOptions';
 
 const BusApplicationPage = () => {
   const [buses, setBuses] = useState([]);
@@ -110,7 +111,10 @@ const BusApplicationPage = () => {
 
   const updateStudentDetails = (event) => {
     const { name, value } = event.target;
-    setStudentDetails((current) => ({ ...current, [name]: value, ...(name === 'year' ? { semester: '' } : {}) }));
+    const nextValue = ['phoneNumber', 'parentPhoneNumber'].includes(name) ? normalizePhone(value) : value;
+    setStudentDetails((current) => ({ ...current, [name]: nextValue,
+      ...(name === 'year' ? { semester: '' } : {}),
+      ...(name === 'branch' ? { year: '', semester: '' } : {}) }));
   };
 
   if (loading) return <LoadingSpinner />;
@@ -139,17 +143,17 @@ const BusApplicationPage = () => {
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Student ID</label><input value={studentDetails.rollNumber} className="input-field bg-gray-100" readOnly /></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label><input name="name" value={studentDetails.name} onChange={updateStudentDetails} className="input-field" maxLength="100" required /></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Email *</label><input type="email" name="email" value={studentDetails.email} onChange={updateStudentDetails} className="input-field" maxLength="120" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label><input type="tel" name="phoneNumber" value={studentDetails.phoneNumber} onChange={updateStudentDetails} className="input-field" pattern="[0-9]{10,15}" required /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label><input type="tel" inputMode="numeric" name="phoneNumber" value={studentDetails.phoneNumber} onChange={updateStudentDetails} className="input-field" pattern="[0-9]{10}" minLength="10" maxLength="10" required /></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label><input type="date" name="dob" value={studentDetails.dob} max={new Date().toISOString().split('T')[0]} onChange={updateStudentDetails} className="input-field" required /></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label><select name="gender" value={studentDetails.gender} onChange={updateStudentDetails} className="input-field" required><option value="">Select</option><option value="MALE">Male</option><option value="FEMALE">Female</option><option value="OTHER">Other</option></select></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Branch *</label><input name="branch" value={studentDetails.branch} onChange={updateStudentDetails} className="input-field uppercase" maxLength="50" required /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Department *</label><select name="branch" value={studentDetails.branch} onChange={updateStudentDetails} className="input-field" required><option value="">Select department</option>{DEPARTMENTS.map(value=><option key={value} value={value}>{value}</option>)}</select></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Year *</label><select name="year" value={studentDetails.year} onChange={updateStudentDetails} className="input-field" required><option value="">Select</option>{[1,2,3,4].map(value => <option key={value} value={value}>{value}</option>)}</select></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Semester *</label><select name="semester" value={studentDetails.semester} onChange={updateStudentDetails} className="input-field" disabled={!studentDetails.year} required><option value="">Select</option>{studentDetails.year && [Number(studentDetails.year) * 2 - 1, Number(studentDetails.year) * 2].map(value => <option key={value} value={value}>{value}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Year *</label><select name="year" value={studentDetails.year} onChange={updateStudentDetails} className="input-field" disabled={!studentDetails.branch} required><option value="">Select</option>{yearsForDepartment(studentDetails.branch).map(value => <option key={value} value={value}>{value}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Semester *</label><select name="semester" value={studentDetails.semester} onChange={updateStudentDetails} className="input-field" disabled={!studentDetails.year} required><option value="">Select</option>{semestersForYear(studentDetails.year).map(value => <option key={value} value={value}>{value}</option>)}</select></div>
             </div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label><select name="bloodGroup" value={studentDetails.bloodGroup} onChange={updateStudentDetails} className="input-field" required><option value="">Select</option>{['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(value => <option key={value}>{value}</option>)}</select></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Parent / Guardian Name *</label><input name="parentName" value={studentDetails.parentName} onChange={updateStudentDetails} className="input-field" maxLength="100" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number *</label><input type="tel" name="parentPhoneNumber" value={studentDetails.parentPhoneNumber} onChange={updateStudentDetails} className="input-field" pattern="[0-9]{10,15}" required /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number *</label><input type="tel" inputMode="numeric" name="parentPhoneNumber" value={studentDetails.parentPhoneNumber} onChange={updateStudentDetails} className="input-field" pattern="[0-9]{10}" minLength="10" maxLength="10" required /></div>
             <div className="sm:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">Residential Address *</label><textarea name="address" value={studentDetails.address} onChange={updateStudentDetails} className="input-field min-h-24" maxLength="500" required /></div>
           </div>
         </section>

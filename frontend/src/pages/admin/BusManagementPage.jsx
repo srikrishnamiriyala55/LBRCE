@@ -10,11 +10,13 @@ import { useToast } from '../../components/common/Toast';
 const BusManagementPage = () => {
   const [buses, setBuses] = useState([]);
   const [incharges, setIncharges] = useState([]);
+  const [boardingPoints, setBoardingPoints] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Add/Edit Bus Modal
   const [busModalOpen, setBusModalOpen] = useState(false);
   const [editingBus, setEditingBus] = useState(null);
+  const [startingPointSelection, setStartingPointSelection] = useState('');
   const [busForm, setBusForm] = useState({
     busNumber: '',
     totalSeats: 50,
@@ -33,7 +35,18 @@ const BusManagementPage = () => {
   useEffect(() => {
     fetchBuses();
     api.get('/admin/incharges').then(r => setIncharges(r.data)).catch(() => {});
+    api.get('/admin/boarding-points').then(r => setBoardingPoints(r.data)).catch(() => {
+      addToast('Failed to load existing boarding points', 'error');
+    });
   }, []);
+
+  const existingStartingPoints = Array.from(
+    new Map(
+      boardingPoints
+        .filter((point) => point.status === 'ACTIVE' && point.stationName?.trim())
+        .map((point) => [point.stationName.trim().toLowerCase(), point.stationName.trim()])
+    ).values()
+  ).sort((left, right) => left.localeCompare(right));
 
   const fetchBuses = async () => {
     setLoading(true);
@@ -49,7 +62,11 @@ const BusManagementPage = () => {
 
   const handleOpenBusModal = (bus = null) => {
     if (bus) {
+      const matchingPoint = existingStartingPoints.find(
+        (point) => point.toLowerCase() === (bus.startingPoint || '').trim().toLowerCase()
+      );
       setEditingBus(bus);
+      setStartingPointSelection(matchingPoint || (bus.startingPoint ? 'NEW' : ''));
       setBusForm({
         busNumber: bus.busNumber,
         totalSeats: bus.totalSeats || 50,
@@ -58,6 +75,7 @@ const BusManagementPage = () => {
       });
     } else {
       setEditingBus(null);
+      setStartingPointSelection('');
       setBusForm({
         busNumber: '',
         totalSeats: 50,
@@ -70,12 +88,21 @@ const BusManagementPage = () => {
 
   const handleSaveBus = async (e) => {
     e.preventDefault();
+    if (!busForm.startingPoint.trim()) {
+      addToast('Select or enter a starting point', 'error');
+      return;
+    }
     try {
+      const request = {
+        ...busForm,
+        startingPoint: busForm.startingPoint.trim(),
+        endingPoint: busForm.endingPoint.trim()
+      };
       if (editingBus) {
-        await api.put(`/admin/buses/${editingBus.id}`, busForm);
+        await api.put(`/admin/buses/${editingBus.id}`, request);
         addToast('Bus updated successfully', 'success');
       } else {
-        await api.post('/admin/buses', busForm);
+        await api.post('/admin/buses', request);
         addToast('Bus created successfully', 'success');
       }
       setBusModalOpen(false);
@@ -187,14 +214,34 @@ const BusManagementPage = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Starting Point *</label>
-              <input
-                type="text"
-                placeholder="e.g. Vijayawada Bus Stand"
+              <select
                 className="input-field"
                 required
-                value={busForm.startingPoint}
-                onChange={(e) => setBusForm({ ...busForm, startingPoint: e.target.value })}
-              />
+                value={startingPointSelection}
+                onChange={(e) => {
+                  const selection = e.target.value;
+                  setStartingPointSelection(selection);
+                  setBusForm({ ...busForm, startingPoint: selection === 'NEW' ? '' : selection });
+                }}
+              >
+                <option value="">Select a starting point</option>
+                {existingStartingPoints.map((point) => (
+                  <option key={point.toLowerCase()} value={point}>{point}</option>
+                ))}
+                <option value="NEW">+ Add new boarding point</option>
+              </select>
+              {startingPointSelection === 'NEW' && (
+                <input
+                  type="text"
+                  placeholder="Enter new boarding point"
+                  className="input-field mt-2"
+                  required
+                  maxLength={255}
+                  autoFocus
+                  value={busForm.startingPoint}
+                  onChange={(e) => setBusForm({ ...busForm, startingPoint: e.target.value })}
+                />
+              )}
             </div>
           </div>
 

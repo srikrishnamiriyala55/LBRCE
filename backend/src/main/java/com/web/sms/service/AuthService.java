@@ -48,7 +48,7 @@ public class AuthService {
         String studentId = request.getRollNumber().trim().toUpperCase();
         String email = request.getEmail().trim().toLowerCase();
         validateNewStudent(studentId, email);
-        validateAcademicProgress(request.getYear(), request.getSemester());
+        validateAcademicProgress(request.getBranch(), request.getYear(), request.getSemester());
 
         Student student = new Student();
         student.setRollNumber(studentId);
@@ -70,6 +70,13 @@ public class AuthService {
         return StudentProfileResponse.fromStudent(saved);
     }
 
+    public boolean studentRollNumberExists(String rollNumber) {
+        if (rollNumber == null) return false;
+        String normalized = rollNumber.trim().toUpperCase();
+        if (normalized.isEmpty() || normalized.length() > 30) return false;
+        return studentRepository.existsByRollNumber(normalized);
+    }
+
     private void validateNewStudent(String studentId, String email) {
         if (studentRepository.existsByRollNumber(studentId)) {
             throw new BadRequestException("An account already exists for student ID " + studentId);
@@ -79,9 +86,12 @@ public class AuthService {
         }
     }
 
-    private void validateAcademicProgress(Integer year, Integer semester) {
+    private void validateAcademicProgress(String department, Integer year, Integer semester) {
         if (year == null || semester == null || (semester + 1) / 2 != year) {
             throw new BadRequestException("Semester must correspond to the selected study year");
+        }
+        if ("MBA".equalsIgnoreCase(department) && year > 2) {
+            throw new BadRequestException("MBA is a two-year programme; select year 1 or 2");
         }
     }
 

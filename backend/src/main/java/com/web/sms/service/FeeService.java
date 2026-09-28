@@ -1,6 +1,7 @@
 package com.web.sms.service;
 
 import com.web.sms.dto.request.PaymentRequest;
+import com.web.sms.dto.request.AdminManualPaymentRequest;
 import com.web.sms.dto.response.FeeResponse;
 import com.web.sms.dto.response.PaymentResponse;
 import com.web.sms.entity.AcademicYear;
@@ -52,6 +53,50 @@ public class FeeService {
         return feeRepo.findByStudentId(studentId).stream()
                 .map(FeeResponse::fromFee)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public FeeResponse recordManualPayment(Long feeId, AdminManualPaymentRequest req, String adminId) {
+        Fee fee = feeRepo.findByIdForUpdate(feeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Fee record not found"));
+        if (fee.getAllocation() == null || fee.getAllocation().getStatus() != com.web.sms.enums.EntityStatus.ACTIVE) {
+            throw new BadRequestException("Manual payments are allowed only for an active approved bus allocation");
+        }
+
+        long paid = fee.getPaidAmount() == null ? 0L : fee.getPaidAmount();
+        long remaining = fee.getTotalAmount() - paid;
+        if (remaining <= 0) throw new BadRequestException("This fee has already been paid in full");
+        if (req.getAmount() > remaining) {
+            throw new BadRequestException("Payment amount cannot exceed remaining balance of ₹" + remaining);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        String receipt = "MAN_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
+        Payment payment = new Payment();
+        payment.setFee(fee);
+        payment.setStudent(fee.getStudent());
+        payment.setAmount(req.getAmount());
+        payment.setOrderId(receipt);
+        payment.setTransactionId(req.getReference() == null || req.getReference().isBlank() ? receipt : req.getReference().trim());
+        payment.setStatus(PaymentStatus.SUCCESS);
+        payment.setGatewayName("ADMIN_MANUAL");
+        payment.setGatewayResponse("Recorded by " + adminId + (req.getRemarks() == null || req.getRemarks().isBlank() ? "" : ": " + req.getRemarks().trim()));
+        payment.setPaidAt(now);
+        payment.setCreatedAt(now);
+        payment.setUpdatedAt(now);
+        paymentRepo.save(payment);
+
+        long newPaid = paid + req.getAmount();
+        fee.setPaidAmount(newPaid);
+        fee.setStatus(newPaid >= fee.getTotalAmount() ? "PAID" : "PARTIALLY_PAID");
+        fee.setUpdatedAt(now);
+        checkAndGeneratePass(fee);
+        feeRepo.save(fee);
+
+        notificationService.createNotification(fee.getStudent().getRollNumber(), "Fee Payment Recorded",
+                "The Transport Administrator recorded a payment of ₹" + req.getAmount() + ". Receipt: " + receipt,
+                "PAYMENT");
+        return FeeResponse.fromFee(fee);
     }
 
     @Transactional

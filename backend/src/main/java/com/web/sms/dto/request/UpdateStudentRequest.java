@@ -6,16 +6,16 @@ import java.time.LocalDate;
 public class UpdateStudentRequest {
     @NotBlank @Size(max=100) private String name;
     @NotBlank @Email @Size(max=120) private String email;
-    @NotBlank @Pattern(regexp="^[0-9]{10,15}$") private String phoneNumber;
+    @NotBlank @Pattern(regexp="^[0-9]{10}$",message="Phone number must contain exactly 10 digits") private String phoneNumber;
     @NotNull @Past private LocalDate dob;
     @NotBlank @Pattern(regexp="MALE|FEMALE|OTHER") private String gender;
     @NotBlank @Size(max=500) private String address;
-    @NotBlank @Size(max=50) private String branch;
+    @NotBlank @Pattern(regexp="CSE|AI&DS|IT|CSM|ECE|EEE|MECH|CIVIL|ASE|MBA",message="Select a valid department") private String branch;
     @NotNull @Min(1) @Max(4) private Integer year;
     @NotNull @Min(1) @Max(8) private Integer semester;
     @NotBlank @Pattern(regexp="A\\+|A-|B\\+|B-|AB\\+|AB-|O\\+|O-") private String bloodGroup;
     @NotBlank @Size(max=100) private String parentName;
-    @NotBlank @Pattern(regexp="^[0-9]{10,15}$") private String parentPhoneNumber;
+    @NotBlank @Pattern(regexp="^[0-9]{10}$",message="Parent phone number must contain exactly 10 digits") private String parentPhoneNumber;
 
     public String getName(){return name;} public void setName(String v){name=v;}
     public String getEmail(){return email;} public void setEmail(String v){email=v;}

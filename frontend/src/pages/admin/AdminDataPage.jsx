@@ -9,11 +9,12 @@ import { RefreshCw } from 'lucide-react';
 import { formatINR } from '../../utils/currency';
 
 export default function AdminDataPage({ type }) {
-  const [rows, setRows] = useState([]), [page, setPage] = useState(0), [pages, setPages] = useState(1), [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState([]), [page, setPage] = useState(0), [pages, setPages] = useState(1), [total, setTotal] = useState(0), [loading, setLoading] = useState(true);
   const [selectedPass, setSelectedPass] = useState(null), [photoUrl, setPhotoUrl] = useState(''), [downloading, setDownloading] = useState(false);
   const [search, setSearch] = useState(''), [appliedSearch, setAppliedSearch] = useState('');
   const [refreshKey, setRefreshKey] = useState(0), [lastUpdated, setLastUpdated] = useState(null);
   const [approvingTransfer, setApprovingTransfer] = useState(null);
+  const [transferSummary, setTransferSummary] = useState({ total: 0, accepted: 0, rejected: 0 });
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -21,11 +22,12 @@ export default function AdminDataPage({ type }) {
     const params = new URLSearchParams({ page: String(page), size: '20' });
     if (type === 'passes' && appliedSearch) params.set('search', appliedSearch);
     params.set('_ts', String(Date.now()));
-    api.get(`/admin/${type}?${params}`, { headers: { 'Cache-Control': 'no-cache' } }).then((r) => { setRows(r.data.content || []); setPages(r.data.totalPages || 1); setLastUpdated(new Date()); })
+    api.get(`/admin/${type}?${params}`, { headers: { 'Cache-Control': 'no-cache' } }).then((r) => { setRows(r.data.content || []); setPages(r.data.totalPages || 1); setTotal(r.data.totalElements ?? (r.data.content || []).length); setLastUpdated(new Date()); })
       .catch((e) => addToast(e.response?.data?.message || `Failed to load ${type}`, 'error')).finally(() => setLoading(false));
   }, [type, page, appliedSearch, refreshKey]);
 
   useEffect(() => { setPage(0); setSearch(''); setAppliedSearch(''); }, [type]);
+  useEffect(() => { if (type === 'transfers') api.get('/admin/transfers/summary').then((response) => setTransferSummary(response.data || {})).catch(() => {}); }, [type, refreshKey]);
   useEffect(() => {
     const refreshVisiblePage = () => { if (document.visibilityState === 'visible') setRefreshKey((value) => value + 1); };
     window.addEventListener('focus', refreshVisiblePage);
@@ -68,5 +70,6 @@ export default function AdminDataPage({ type }) {
     passes: [{ key: 'studentName', label: 'Student' }, { key: 'rollNumber', label: 'Roll Number' }, { key: 'passNumber', label: 'Pass ID' }, { key: 'busNumber', label: 'Bus' }, { key: 'boardingPoint', label: 'Boarding Point' }, { key: 'validUntil', label: 'Valid Until' }, { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> }, { key: 'actions', label: 'Action', render: (r) => <button type="button" className="text-sm font-medium text-blue-700 hover:underline" onClick={() => viewPass(r)}>View</button> }],
     notifications: [{ key: 'title', label: 'Title' }, { key: 'recipientRollNumber', label: 'Recipient' }, { key: 'message', label: 'Message' }, { key: 'createdAt', label: 'Date', render: (r) => r.createdAt ? new Date(r.createdAt).toLocaleString() : '—' }]
   };
-  return <><div className="card"><div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-2xl font-bold capitalize">{type}</h2>{lastUpdated && <p className="text-xs text-gray-500">Updated {lastUpdated.toLocaleTimeString()}</p>}</div><button type="button" className="btn-secondary inline-flex items-center justify-center gap-2" disabled={loading} onClick={() => setRefreshKey((value) => value + 1)}><RefreshCw size={16} className={loading?'animate-spin':''}/>Refresh</button></div>{type === 'passes' && <form className="mb-5 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); setPage(0); setAppliedSearch(search.trim()); }}><input className="input-field sm:max-w-md" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search pass ID, student, roll number or bus" aria-label="Search bus passes"/><button className="btn-primary" type="submit">Search</button>{appliedSearch && <button className="btn-secondary" type="button" onClick={() => { setSearch(''); setAppliedSearch(''); setPage(0); }}>Clear</button>}</form>}<DataTable columns={configs[type]} data={rows} loading={loading} searchable={type !== 'passes'} searchPlaceholder={`Search ${type}...`} /><Pagination page={page} totalPages={pages} onPageChange={setPage} /></div><PassViewerModal pass={selectedPass} photoUrl={photoUrl} onClose={closePass} onDownload={downloadPass} downloading={downloading} /></>;
+  const transferCounts=transferSummary;
+  return <><div className="card"><div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-2xl font-bold capitalize">{type}</h2>{type==='passes'&&<p className="text-sm text-gray-500">Passes generated: {total}</p>}{type==='transfers'&&<p className="text-sm text-gray-500">Total: {transferCounts.total || 0} · Accepted: {transferCounts.accepted || 0} · Rejected: {transferCounts.rejected || 0}</p>}{lastUpdated && <p className="text-xs text-gray-500">Updated {lastUpdated.toLocaleTimeString()}</p>}</div><button type="button" className="btn-secondary inline-flex items-center justify-center gap-2" disabled={loading} onClick={() => setRefreshKey((value) => value + 1)}><RefreshCw size={16} className={loading?'animate-spin':''}/>Refresh</button></div>{type === 'passes' && <form className="mb-5 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); setPage(0); setAppliedSearch(search.trim()); }}><input className="input-field sm:max-w-md" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search pass ID, student, roll number or bus" aria-label="Search bus passes"/><button className="btn-primary" type="submit">Search</button>{appliedSearch && <button className="btn-secondary" type="button" onClick={() => { setSearch(''); setAppliedSearch(''); setPage(0); }}>Clear</button>}</form>}<DataTable columns={configs[type]} data={rows} loading={loading} searchable={type !== 'passes'} searchPlaceholder={`Search ${type}...`} /><Pagination page={page} totalPages={pages} onPageChange={setPage} /></div><PassViewerModal pass={selectedPass} photoUrl={photoUrl} onClose={closePass} onDownload={downloadPass} downloading={downloading} /></>;
 }

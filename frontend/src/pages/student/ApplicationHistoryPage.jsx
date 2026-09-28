@@ -44,7 +44,7 @@ const ApplicationHistoryPage = () => {
   return (
     <div className="card">
       <h2 className="text-xl font-bold text-gray-800 mb-6">Application History</h2>
-      <DataTable columns={columns} data={data} loading={loading} />
+      <DataTable columns={columns} data={data} loading={loading} searchable={false} />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );

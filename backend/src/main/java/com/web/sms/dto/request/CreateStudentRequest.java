@@ -7,9 +7,9 @@ public class CreateStudentRequest {
     @NotBlank @Size(max=30) private String rollNumber;
     @NotBlank @Size(max=100) private String name;
     @NotBlank @Email @Size(max=120) private String email;
-    @NotBlank @Pattern(regexp="^[0-9]{10,15}$") private String phoneNumber;
-    @NotBlank @Size(min=8,max=72) private String password;
-    @NotBlank @Size(max=50) private String branch;
+    @NotBlank @Pattern(regexp="^[0-9]{10}$",message="Phone number must contain exactly 10 digits") private String phoneNumber;
+    @NotBlank @Size(min=6,max=15,message="Password must be between 6 and 15 characters") @Pattern(regexp="^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).+$",message="Password must include uppercase, lowercase, number and special character") private String password;
+    @NotBlank @Pattern(regexp="CSE|AI&DS|IT|CSM|ECE|EEE|MECH|CIVIL|ASE|MBA",message="Select a valid department") private String branch;
     @NotNull @Min(1) @Max(4) private Integer year;
     @NotNull @Min(1) @Max(8) private Integer semester;
     @NotBlank @Pattern(regexp="MALE|FEMALE|OTHER") private String gender;
@@ -17,7 +17,7 @@ public class CreateStudentRequest {
     @NotNull @Past private LocalDate dob;
     @NotBlank @Pattern(regexp="A\\+|A-|B\\+|B-|AB\\+|AB-|O\\+|O-") private String bloodGroup;
     @NotBlank @Size(max=100) private String parentName;
-    @NotBlank @Pattern(regexp="^[0-9]{10,15}$") private String parentPhoneNumber;
+    @NotBlank @Pattern(regexp="^[0-9]{10}$",message="Parent phone number must contain exactly 10 digits") private String parentPhoneNumber;
 
     public String getRollNumber() { return rollNumber; }
     public void setRollNumber(String rollNumber) { this.rollNumber = rollNumber; }

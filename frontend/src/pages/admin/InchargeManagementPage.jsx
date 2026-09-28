@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2 } from 'lucide-react';
+import { Plus, Edit2, Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import Modal from '../../components/common/Modal';
 import StatusBadge from '../../components/common/StatusBadge';
 import { useToast } from '../../components/common/Toast';
+import { DEPARTMENTS, PASSWORD_HELP, PASSWORD_PATTERN, normalizePhone } from '../../utils/academicOptions';
 
 const InchargeManagementPage = () => {
   const [incharges, setIncharges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingIncharge, setEditingIncharge] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     teacherId: '',
     name: '',
@@ -67,6 +69,7 @@ const InchargeManagementPage = () => {
       });
     }
     setModalOpen(true);
+    setShowPassword(false);
   };
 
   const handleSubmit = async (e) => {
@@ -156,24 +159,18 @@ const InchargeManagementPage = () => {
                 value={form.department}
                 onChange={(e) => setForm({ ...form, department: e.target.value })}
               >
-                <option value="CSE">CSE</option>
-                <option value="ECE">ECE</option>
-                <option value="EEE">EEE</option>
-                <option value="MECH">MECH</option>
-                <option value="CIVIL">CIVIL</option>
-                <option value="IT">IT</option>
-                <option value="AI&DS">AI & DS</option>
-                <option value="FED">FED</option>
+                {DEPARTMENTS.map((department) => <option key={department} value={department}>{department}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-              <input
-                type="text"
+              <select
                 className="input-field"
                 value={form.designation}
                 onChange={(e) => setForm({ ...form, designation: e.target.value })}
-              />
+              >
+                {['Assistant Professor', 'Associate Professor', 'Professor', 'Lecturer', 'Transport Officer', 'Administrative Staff'].map((designation) => <option key={designation} value={designation}>{designation}</option>)}
+              </select>
             </div>
           </div>
 
@@ -190,10 +187,10 @@ const InchargeManagementPage = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
               <input
-                type="tel" required pattern="[0-9]{10,15}"
+                type="tel" inputMode="numeric" required pattern="[0-9]{10}" minLength="10" maxLength="10"
                 className="input-field"
                 value={form.phoneNumber}
-                onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
+                onChange={(e) => setForm({ ...form, phoneNumber: normalizePhone(e.target.value) })}
               />
             </div>
           </div>
@@ -207,13 +204,18 @@ const InchargeManagementPage = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {editingIncharge ? 'Password (leave blank to keep existing)' : 'Password *'}
             </label>
-            <input
-              type="password"
+            <div className="relative"><input
+              type={showPassword ? 'text' : 'password'}
               required={!editingIncharge}
+              minLength={form.password ? 6 : undefined}
+              maxLength="15"
+              pattern={form.password ? PASSWORD_PATTERN : undefined}
+              title={PASSWORD_HELP}
               className="input-field"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-            />
+            /><button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((visible) => !visible)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
+            <span className="mt-1 block text-xs text-gray-500">{PASSWORD_HELP}</span>
           </div>
 
           <div className="flex justify-end gap-3 mt-6">

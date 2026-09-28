@@ -5,6 +5,7 @@ import com.web.sms.dto.response.*;
 import com.web.sms.entity.*;
 import com.web.sms.enums.ApplicationStatus;
 import com.web.sms.enums.EntityStatus;
+import com.web.sms.enums.TransferStatus;
 import com.web.sms.exception.ResourceNotFoundException;
 import com.web.sms.repository.*;
 import com.web.sms.security.UserPrincipal;
@@ -48,6 +49,7 @@ public class AdminController {
     private final InchargeRepository inchargeRepo;
     private final TransportReportService reportService;
     private final PassService passService;
+    private final FeeService feeService;
 
     public AdminController(AdminService adminService,
                            BusService busService,
@@ -66,7 +68,7 @@ public class AdminController {
                            NotificationRepository notificationRepo, AdminRepository adminRepo,
                            TransportAllocationRepository allocationRepo,
                            InchargeRepository inchargeRepo, TransportReportService reportService,
-                           PassService passService) {
+                           PassService passService, FeeService feeService) {
         this.adminService = adminService;
         this.busService = busService;
         this.inchargeService = inchargeService;
@@ -85,6 +87,7 @@ public class AdminController {
         this.inchargeRepo=inchargeRepo;
         this.reportService=reportService;
         this.passService=passService;
+        this.feeService=feeService;
     }
 
     private UserPrincipal getCurrentUser() {
@@ -282,6 +285,14 @@ public class AdminController {
         return applicationRepo.findAll(pageable).map(ApplicationResponse::fromApplication);
     }
 
+    @GetMapping("/applications/summary")
+    public Map<String, Long> applicationSummary() {
+        Map<String, Long> summary = new LinkedHashMap<>();
+        summary.put("registered", studentRepo.count());
+        for (ApplicationStatus status : ApplicationStatus.values()) summary.put(status.name().toLowerCase(), applicationRepo.countByStatus(status));
+        return summary;
+    }
+
     @PutMapping("/applications/{id}/approve")
     public ApplicationResponse approveApplication(@PathVariable Long id) {
         return applicationService.approveApplication(id, getCurrentUser().getUsername());
@@ -300,10 +311,19 @@ public class AdminController {
         return feeRepo.findAll(checked(pageable)).map(FeeResponse::fromFee);
     }
 
+    @PostMapping("/fees/{id}/manual-payment")
+    public FeeResponse recordManualPayment(@PathVariable Long id, @Valid @RequestBody AdminManualPaymentRequest req) {
+        FeeResponse result = feeService.recordManualPayment(id, req, getCurrentUser().getUsername());
+        auditService.log(getCurrentUser().getUsername(), "ADMIN", "MANUAL_PAYMENT_RECORDED", "FEE",
+                String.valueOf(id), null, String.valueOf(req.getAmount()), req.getRemarks());
+        return result;
+    }
+
     @GetMapping("/transfers")
     public Page<TransferResponse> getTransfers(Pageable pageable) {
         return transferRepo.findAllWithDetails(checked(pageable)).map(TransferResponse::fromTransfer);
     }
+    @GetMapping("/transfers/summary") public Map<String, Long> transferSummary(){Map<String,Long> summary=new LinkedHashMap<>();summary.put("total",transferRepo.count());summary.put("accepted",transferRepo.countByStatus(TransferStatus.TRANSFER_COMPLETED));summary.put("rejected",transferRepo.countByStatus(TransferStatus.OLD_INCHARGE_REJECTED)+transferRepo.countByStatus(TransferStatus.NEW_INCHARGE_REJECTED));return summary;}
     @PostMapping("/transfers/{id}/approve") public TransferResponse approveTransfer(@PathVariable Long id){return transferService.approveByAdmin(id,getCurrentUser().getUsername());}
 
     @GetMapping("/payments") public Page<PaymentResponse> payments(Pageable pageable){return paymentRepo.findAll(checked(pageable)).map(PaymentResponse::fromPayment);}

@@ -110,8 +110,8 @@ public class InchargeController {
     }
 
     private Pageable checked(Pageable pageable) {
-        if (pageable.getPageNumber() < 0 || pageable.getPageSize() < 1 || pageable.getPageSize() > 50) {
-            throw new com.web.sms.exception.BadRequestException("Page size must be between 1 and 50");
+        if (pageable.getPageNumber() < 0 || pageable.getPageSize() < 1 || pageable.getPageSize() > 6000) {
+            throw new com.web.sms.exception.BadRequestException("Page size must be between 1 and 6000");
         }
         return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
     }
@@ -199,7 +199,7 @@ public class InchargeController {
     public Page<InchargeStudentResponse> getStudents(@RequestParam(required=false) String search,@RequestParam(required=false) String branch,@RequestParam(required=false) Integer year,@RequestParam(required=false) Long boardingPointId,@RequestParam(required=false) String paymentStatus,@RequestParam(required=false) String passStatus,Pageable pageable) {
         return operations.students(requireAssignedBus(),search,branch,year,boardingPointId,paymentStatus,passStatus,checked(pageable));
     }
-    @PutMapping("/students/{studentId}") public StudentProfileResponse updateStudent(@PathVariable Long studentId,@Valid @RequestBody UpdateStudentRequest req){return adminService.updateStudentForIncharge(studentId,requireAssignedBus().getId(),req,getCurrentUser().getUsername());}
+    @PutMapping(value="/students/{studentId}",consumes=MediaType.MULTIPART_FORM_DATA_VALUE) public StudentProfileResponse updateStudent(@PathVariable Long studentId,@Valid @RequestPart("student") UpdateStudentRequest req,@RequestPart(value="photo",required=false) org.springframework.web.multipart.MultipartFile photo){return adminService.updateStudentForIncharge(studentId,requireAssignedBus().getId(),req,photo,getCurrentUser().getUsername());}
 
     @GetMapping("/transfers")
     public Page<TransferResponse> getTransfers(Pageable pageable) {

@@ -1,103 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
-import Pagination from '../../components/common/Pagination';
 import StatusBadge from '../../components/common/StatusBadge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { useToast } from '../../components/common/Toast';
 
-const ApplicationManagementPage = () => {
+const initialFilters = { search: '', status: 'PENDING', boardingPoint: '', academicYear: '' };
+
+export default function ApplicationManagementPage() {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [statusFilter, setStatusFilter] = useState('PENDING');
-  
+  const [filters, setFilters] = useState(initialFilters);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentApp, setCurrentApp] = useState(null);
   const [actionType, setActionType] = useState('');
   const [remarks, setRemarks] = useState('');
-  
   const { addToast } = useToast();
-
-  useEffect(() => {
-    fetchApplications();
-  }, [page, statusFilter]);
 
   const fetchApplications = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/incharge/applications?status=${statusFilter === 'ALL' ? '' : statusFilter}&page=${page}&size=10`);
-      setApplications(res.data.content || res.data);
-      setTotalPages(res.data.totalPages || 1);
-    } catch (err) {
-      addToast('Failed to load applications', 'error');
-    } finally {
-      setLoading(false);
-    }
+      const response = await api.get('/incharge/applications', { params: { size: 6000 } });
+      setApplications(response.data.content || response.data || []);
+    } catch (error) { addToast(error.response?.data?.message || 'Failed to load applications', 'error'); }
+    finally { setLoading(false); }
   };
+  useEffect(() => { fetchApplications(); }, []);
 
-  const handleAction = async () => {
+  const filtered = useMemo(() => applications.filter((row) => {
+    const point = row.boardingPoint?.stationName || row.boardingPointName || '';
+    const haystack = [row.studentName, row.rollNumber, row.busNumber, point, row.academicYear, row.status].join(' ').toLowerCase();
+    return (!filters.search || haystack.includes(filters.search.toLowerCase()))
+      && (!filters.status || row.status === filters.status)
+      && (!filters.boardingPoint || point.toLowerCase().includes(filters.boardingPoint.toLowerCase()))
+      && (!filters.academicYear || String(row.academicYear || '').toLowerCase().includes(filters.academicYear.toLowerCase()));
+  }), [applications, filters]);
+
+  const decide = async () => {
+    if (actionType === 'REJECT' && !remarks.trim()) { addToast('A rejection reason is required', 'error'); return; }
     try {
-      if (actionType === 'APPROVE') {
-        await api.put(`/incharge/applications/${currentApp.id}/approve`);
-      } else {
-        await api.put(`/incharge/applications/${currentApp.id}/reject`, { remarks });
-      }
+      if (actionType === 'APPROVE') await api.put(`/incharge/applications/${currentApp.id}/approve`);
+      else await api.put(`/incharge/applications/${currentApp.id}/reject`, { remarks: remarks.trim() });
       addToast(`Application ${actionType.toLowerCase()}d successfully`, 'success');
-      setDialogOpen(false);
-      fetchApplications();
-    } catch (err) {
-      addToast(err.response?.data?.message || 'Action failed', 'error');
-    }
+      setDialogOpen(false); await fetchApplications();
+    } catch (error) { addToast(error.response?.data?.message || 'Action failed', 'error'); }
   };
-
+  const actionable = (row) => ['PENDING', 'UNDER_REVIEW'].includes(row.status);
   const columns = [
-    { key: 'studentName', label: 'Student Name' },
-    { key: 'rollNumber', label: 'Roll Number' },
-    { key: 'boardingPoint', label: 'Boarding Point', render: (row) => row.boardingPoint?.stationName || row.boardingPointName },
-    { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },
-    { key: 'actions', label: 'Actions', render: (row) => (
-      row.status === 'PENDING' && (
-        <div className="flex gap-2">
-          <button onClick={() => { setCurrentApp(row); setActionType('APPROVE'); setRemarks(''); setDialogOpen(true); }} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Approve</button>
-          <button onClick={() => { setCurrentApp(row); setActionType('REJECT'); setRemarks(''); setDialogOpen(true); }} className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">Reject</button>
-        </div>
-      )
-    )}
+    { key: 'studentName', label: 'Student Name', render: row => row.studentName || '—' },
+    { key: 'rollNumber', label: 'Roll Number', render: row => row.rollNumber || '—' },
+    { key: 'busNumber', label: 'Bus', render: row => row.busNumber || '—' },
+    { key: 'boardingPoint', label: 'Boarding Point', render: row => row.boardingPoint?.stationName || row.boardingPointName || '—' },
+    { key: 'academicYear', label: 'Academic Year', render: row => row.academicYear || '—' },
+    { key: 'status', label: 'Status', render: row => <StatusBadge status={row.status} /> },
+    { key: 'actions', label: 'Actions', render: row => actionable(row) ? <div className="flex min-w-[150px] flex-wrap gap-2"><button type="button" onClick={() => { setCurrentApp(row); setActionType('APPROVE'); setRemarks(''); setDialogOpen(true); }} className="rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-700">Approve</button><button type="button" onClick={() => { setCurrentApp(row); setActionType('REJECT'); setRemarks(''); setDialogOpen(true); }} className="rounded bg-red-100 px-2 py-1 text-xs font-medium text-red-700">Reject</button></div> : <span className="text-xs text-gray-500">No action required</span> },
   ];
 
-  return (
-    <div className="card">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
-        <h2 className="text-xl font-bold">Manage Applications</h2>
-        <select className="input-field w-auto" value={statusFilter} onChange={(e) => {setStatusFilter(e.target.value); setPage(0);}}>
-          <option value="ALL">All Status</option>
-          <option value="PENDING">Pending</option>
-          <option value="APPROVED">Approved</option>
-          <option value="REJECTED">Rejected</option>
-        </select>
-      </div>
-
-      <DataTable columns={columns} data={applications} loading={loading} />
-      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-
-      <ConfirmDialog 
-        isOpen={dialogOpen} 
-        onCancel={() => setDialogOpen(false)} 
-        onConfirm={handleAction} 
-        title={`${actionType === 'APPROVE' ? 'Approve' : 'Reject'} Application`} 
-        message={
-          <div>
-            <p>Are you sure you want to {actionType.toLowerCase()} this application for {currentApp?.studentName}?</p>
-            {actionType === 'REJECT' && (
-              <textarea className="input-field mt-3 w-full" placeholder="Rejection Remarks..." value={remarks} onChange={(e) => setRemarks(e.target.value)} required />
-            )}
-          </div>
-        }
-      />
-    </div>
-  );
-};
-
-export default ApplicationManagementPage;
+  return <div className="card space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-bold">Manage Applications</h2><p className="text-sm text-gray-500">{filtered.length} matching application(s)</p></div><button type="button" className="btn-secondary" onClick={fetchApplications}>Refresh</button></div><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"><input className="input-field" placeholder="Search student, roll, bus or status" value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })}/><select className="input-field" value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })}><option value="">All statuses</option>{['PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'CANCELLED'].map(value => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}</select><input className="input-field" placeholder="Boarding point" value={filters.boardingPoint} onChange={e => setFilters({ ...filters, boardingPoint: e.target.value })}/><input className="input-field" placeholder="Academic year" value={filters.academicYear} onChange={e => setFilters({ ...filters, academicYear: e.target.value })}/></div><DataTable columns={columns} data={filtered} loading={loading} searchable={false}/><ConfirmDialog isOpen={dialogOpen} onCancel={() => setDialogOpen(false)} onConfirm={decide} title={`${actionType === 'APPROVE' ? 'Approve' : 'Reject'} Application`} message={<div className="space-y-3"><p>Confirm {actionType.toLowerCase()} for {currentApp?.studentName || currentApp?.rollNumber}.</p>{actionType === 'REJECT' && <textarea className="input-field" maxLength="500" placeholder="Rejection remarks" value={remarks} onChange={e => setRemarks(e.target.value)}/>}</div>}/></div>;
+}

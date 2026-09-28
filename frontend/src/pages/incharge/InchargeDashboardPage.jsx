@@ -36,8 +36,8 @@ const InchargeDashboardPage = () => {
         <DashboardCard title="Total Students" value={stats?.totalStudents || 0} icon={Users} color="green" />
         <DashboardCard title="Pending Applications" value={stats?.pendingApplications || 0} icon={ClipboardList} color="yellow" />
         <DashboardCard title="Vacancy" value={stats?.vacancy || 0} icon={AlertCircle} color="purple" />
-        <DashboardCard title="Transfer Releases" value={stats?.pendingTransferReleases || 0} icon={ArrowLeftRight} color="yellow" />
-        <DashboardCard title="Transfer Acceptances" value={stats?.pendingTransferAcceptances || 0} icon={ArrowLeftRight} color="blue" />
+        <DashboardCard title="Pending Transfer Releases" value={stats?.pendingTransferReleases || 0} icon={ArrowLeftRight} color="yellow" />
+        <DashboardCard title="Pending Transfer Acceptances" value={stats?.pendingTransferAcceptances || 0} icon={ArrowLeftRight} color="blue" />
         <DashboardCard title="Active Passes" value={stats?.activePasses || 0} icon={BadgeCheck} color="green" />
         <DashboardCard title="Fee Collected" value={`₹${stats?.collectedFee || 0}`} icon={CreditCard} color="green" />
       </div>

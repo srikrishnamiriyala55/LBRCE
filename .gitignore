@@ -23,4 +23,5 @@ tmp/
 
 # Keep credentials and deployment secrets outside source control
 .env
+**/.env
 *.local.properties
