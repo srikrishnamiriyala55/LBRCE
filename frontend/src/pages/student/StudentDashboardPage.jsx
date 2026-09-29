@@ -55,6 +55,10 @@ const StudentDashboardPage = () => {
           color="blue" 
           subtitle={data?.startingPoint && data?.endingPoint ? `${data.startingPoint} → ${data.endingPoint}` : undefined}
         />
+        <div className="card hover:shadow-md transition-shadow md:col-span-2">
+          <p className="text-sm font-medium text-gray-500 mb-2">Bus In-Charge</p>
+          {data?.inchargeName ? <div className="space-y-1"><p className="text-lg font-bold text-gray-800">{data.inchargeName}</p><p className="text-sm text-gray-600">{data.inchargeDesignation || '—'} · {data.inchargeBranch || '—'}</p><p className="text-sm text-blue-800">Phone: {data.inchargePhoneNumber || '—'}</p><p className="text-xs text-gray-500">Bus {data.busNumber} · {data.startingPoint || '—'} → {data.endingPoint || '—'}</p></div> : <p className="text-sm text-gray-500">In-Charge details will appear after a bus is assigned.</p>}
+        </div>
         <DashboardCard 
           title="Boarding Point" 
           value={data?.boardingPoint || 'N/A'} 

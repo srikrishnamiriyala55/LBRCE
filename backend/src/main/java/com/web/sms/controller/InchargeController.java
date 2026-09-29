@@ -43,6 +43,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import org.springframework.http.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -155,7 +156,8 @@ public class InchargeController {
     public com.web.sms.dto.response.BusResponse assignedBus() { return operations.bus(requireAssignedBus()); }
 
     @GetMapping("/profile")
-    public Map<String,Object> profile(){com.web.sms.entity.Incharge i=inchargeService.getInchargeById(getCurrentUser().getId());Map<String,Object> r=new LinkedHashMap<>();r.put("teacherId",i.getTeacherId());r.put("name",i.getName());r.put("email",i.getEmail());r.put("phoneNumber",i.getPhoneNumber());r.put("address",i.getAddress());r.put("department",i.getDepartment());r.put("designation",i.getDesignation());Bus b=getAssignedBus();r.put("assignedBus",b==null?null:b.getBusNumber());return r;}
+    public Map<String,Object> profile(){com.web.sms.entity.Incharge i=inchargeService.getInchargeById(getCurrentUser().getId());Map<String,Object> r=new LinkedHashMap<>();r.put("teacherId",i.getTeacherId());r.put("name",i.getName());r.put("email",i.getEmail());r.put("phoneNumber",i.getPhoneNumber());r.put("address",i.getAddress());r.put("department",i.getDepartment());r.put("designation",i.getDesignation());r.put("photoAvailable",i.getPhotoData()!=null&&i.getPhotoData().length>0);Bus b=getAssignedBus();r.put("assignedBus",b==null?null:b.getBusNumber());return r;}
+    @GetMapping("/profile/photo") public ResponseEntity<byte[]> profilePhoto(){com.web.sms.entity.Incharge i=inchargeService.getInchargeById(getCurrentUser().getId());if(i.getPhotoData()==null||i.getPhotoData().length==0)throw new ResourceNotFoundException("Profile photo not found");return ResponseEntity.ok().contentType(MediaType.parseMediaType(i.getPhotoContentType()==null?MediaType.APPLICATION_OCTET_STREAM_VALUE:i.getPhotoContentType())).body(i.getPhotoData());}
 
     @GetMapping("/fees")
     public Page<com.web.sms.dto.response.FeeResponse> fees(Pageable pageable){return feeRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(),EntityStatus.ACTIVE,checked(pageable)).map(com.web.sms.dto.response.FeeResponse::fromFee);}
@@ -181,6 +183,8 @@ public class InchargeController {
         if (bus == null) return Page.empty();
         return applicationService.getApplicationsByBus(bus.getId(), status, checked(pageable));
     }
+    @GetMapping("/applications/summary")
+    public Map<String,Long> applicationSummary(){Bus bus=requireAssignedBus();Map<String,Long> result=new LinkedHashMap<>();result.put("total",(long)applicationRepo.findByBusId(bus.getId()).size());for(ApplicationStatus status:ApplicationStatus.values())result.put(status.name().toLowerCase(),(long)applicationRepo.findByBusIdAndStatus(bus.getId(),status).size());return result;}
 
     @PutMapping("/applications/{id}/approve")
     public ApplicationResponse approveApplication(@PathVariable Long id) {

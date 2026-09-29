@@ -23,6 +23,13 @@ public class Incharge {
     private String address;
     private String department;
     private String designation;
+
+    @Lob
+    @Column(name = "photo_data", columnDefinition = "MEDIUMBLOB")
+    private byte[] photoData;
+
+    @Column(name = "photo_content_type", length = 50)
+    private String photoContentType;
     
     @Column(columnDefinition = "varchar(255) default 'ACTIVE'")
     private String status = "ACTIVE";
@@ -53,6 +60,10 @@ public class Incharge {
     public void setDepartment(String department) { this.department = department; }
     public String getDesignation() { return designation; }
     public void setDesignation(String designation) { this.designation = designation; }
+    public byte[] getPhotoData() { return photoData; }
+    public void setPhotoData(byte[] photoData) { this.photoData = photoData; }
+    public String getPhotoContentType() { return photoContentType; }
+    public void setPhotoContentType(String photoContentType) { this.photoContentType = photoContentType; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public LocalDateTime getCreatedAt() { return createdAt; }

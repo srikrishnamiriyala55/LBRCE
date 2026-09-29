@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Eye, EyeOff } from 'lucide-react';
-import api from '../../utils/axios';
+import { Eye, EyeOff, Plus, Upload } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import DataTable from '../../components/common/DataTable';
 import Modal from '../../components/common/Modal';
 import StatusBadge from '../../components/common/StatusBadge';
 import { useToast } from '../../components/common/Toast';
 import { DEPARTMENTS, PASSWORD_HELP, PASSWORD_PATTERN, normalizePhone } from '../../utils/academicOptions';
+import api from '../../utils/axios';
 
 const InchargeManagementPage = () => {
   const [incharges, setIncharges] = useState([]);
@@ -13,6 +13,9 @@ const InchargeManagementPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingIncharge, setEditingIncharge] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [photo, setPhoto] = useState(null);
+  const [viewing, setViewing] = useState(null);
+  const [photoUrl, setPhotoUrl] = useState('');
   const [form, setForm] = useState({
     teacherId: '',
     name: '',
@@ -70,6 +73,7 @@ const InchargeManagementPage = () => {
     }
     setModalOpen(true);
     setShowPassword(false);
+    setPhoto(null);
   };
 
   const handleSubmit = async (e) => {
@@ -79,7 +83,8 @@ const InchargeManagementPage = () => {
         await api.put(`/admin/incharges/${editingIncharge.id}`, form);
         addToast('Incharge updated successfully', 'success');
       } else {
-        await api.post('/admin/incharges', form);
+        const response = await api.post('/admin/incharges', form);
+        if (photo) { const data = new FormData(); data.append('photo', photo); await api.put(`/admin/incharges/${response.data.id}/photo`, data); }
         addToast('Incharge created successfully', 'success');
       }
       setModalOpen(false);
@@ -88,6 +93,8 @@ const InchargeManagementPage = () => {
       addToast(err.response?.data?.message || 'Failed to save incharge', 'error');
     }
   };
+  const viewIncharge = async (incharge) => { try { if (photoUrl) URL.revokeObjectURL(photoUrl); let nextPhoto = ''; try { const response = await api.get(`/admin/incharges/${incharge.id}/photo`, { responseType: 'blob' }); nextPhoto = URL.createObjectURL(response.data); } catch (error) { if (error.response?.status !== 404) throw error; } setPhotoUrl(nextPhoto); setViewing(incharge); } catch (error) { addToast(error.response?.data?.message || 'Unable to load In-Charge details', 'error'); } };
+  const uploadPhoto = async (incharge, file) => { if (!file) return; if (!['image/jpeg','image/png'].includes(file.type) || file.size > 2 * 1024 * 1024) { addToast('Choose a JPEG or PNG photo up to 2 MB', 'error'); return; } try { const data = new FormData(); data.append('photo', file); await api.put(`/admin/incharges/${incharge.id}/photo`, data); addToast('In-Charge photo updated', 'success'); await viewIncharge(incharge); } catch (error) { addToast(error.response?.data?.message || 'Unable to update photo', 'error'); } };
 
   const columns = [
     { key: 'teacherId', label: 'Teacher ID', render: (row) => <span className="font-bold text-blue-900">{row.teacherId}</span> },
@@ -100,9 +107,7 @@ const InchargeManagementPage = () => {
       key: 'actions',
       label: 'Actions',
       render: (row) => (
-        <button onClick={() => handleOpenModal(row)} className="p-1.5 text-gray-700 hover:bg-gray-100 rounded" title="Edit Faculty">
-          <Edit2 size={16} />
-        </button>
+        <button onClick={() => viewIncharge(row)} className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800" title="View In-Charge details"><Eye size={14} /> View</button>
       )
     }
   ];
@@ -169,7 +174,7 @@ const InchargeManagementPage = () => {
                 value={form.designation}
                 onChange={(e) => setForm({ ...form, designation: e.target.value })}
               >
-                {['Assistant Professor', 'Associate Professor', 'Professor', 'Lecturer', 'Transport Officer', 'Administrative Staff'].map((designation) => <option key={designation} value={designation}>{designation}</option>)}
+                {['Professor', 'Associate Professor', 'Sr. Assistant Professors', 'Assistant Professors', 'Transport Officer', 'Administrative Staff'].map((designation) => <option key={designation} value={designation}>{designation}</option>)}
               </select>
             </div>
           </div>
@@ -199,6 +204,7 @@ const InchargeManagementPage = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Address *</label>
             <textarea required maxLength="500" rows="3" className="input-field" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
           </div>
+          {!editingIncharge && <label className="block text-sm font-medium text-gray-700">Profile Photo *<input required type="file" accept="image/jpeg,image/png" className="input-field mt-1" onChange={(event) => setPhoto(event.target.files?.[0] || null)} /><span className="mt-1 block text-xs text-gray-500">JPEG or PNG, maximum 2 MB. Only an administrator can set this photo.</span></label>}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -223,6 +229,9 @@ const InchargeManagementPage = () => {
             <button type="submit" className="btn-primary">{editingIncharge ? 'Save Changes' : 'Create Incharge'}</button>
           </div>
         </form>
+      </Modal>
+      <Modal isOpen={Boolean(viewing)} onClose={() => { if (photoUrl) URL.revokeObjectURL(photoUrl); setPhotoUrl(''); setViewing(null); }} title="In-Charge Details" size="lg">
+        {viewing && <div className="space-y-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><div className="flex h-32 w-28 items-center justify-center overflow-hidden rounded-lg border bg-gray-50 text-center text-xs text-gray-400">{photoUrl ? <img src={photoUrl} alt={viewing.name} className="h-full w-full object-cover" /> : 'Photo unavailable'}</div><label className="btn-secondary inline-flex w-fit cursor-pointer items-center gap-2"><Upload size={16} /> Update photo<input type="file" accept="image/jpeg,image/png" className="hidden" onChange={(event) => { uploadPhoto(viewing, event.target.files?.[0]); event.target.value = ''; }} /></label></div><div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{[['Teacher ID',viewing.teacherId],['Name',viewing.name],['Email',viewing.email],['Phone Number',viewing.phoneNumber],['Department',viewing.department],['Designation',viewing.designation],['Status',viewing.status],['Address',viewing.address]].map(([label,value])=><div key={label} className={label==='Address'?'sm:col-span-2':''}><p className="text-xs font-medium uppercase text-gray-500">{label}</p><p className="mt-1 break-words font-medium">{value || '—'}</p></div>)}</div></div>}
       </Modal>
     </div>
   );
