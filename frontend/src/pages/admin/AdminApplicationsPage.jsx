@@ -21,7 +21,6 @@ export default function AdminApplicationsPage() {
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
-  const [pages, setPages] = useState(0);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(false);
@@ -37,14 +36,14 @@ export default function AdminApplicationsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const query = 'page=0&size=6000';
-      const [applications, busResponse, summaryResponse] = await Promise.all([
-        api.get(`/admin/applications?${query}`),
+      const [firstPage, busResponse, summaryResponse] = await Promise.all([
+        api.get('/admin/applications?page=0&size=100'),
         api.get('/admin/buses'),
         api.get('/admin/applications/summary'),
       ]);
-      setRows(applications.data.content || []);
-      setPages(applications.data.totalPages || 0);
+      const totalServerPages = firstPage.data.totalPages || 1;
+      const remaining = await Promise.all(Array.from({ length: Math.max(0, totalServerPages - 1) }, (_, index) => api.get(`/admin/applications?page=${index + 1}&size=100`)));
+      setRows([...(firstPage.data.content || []), ...remaining.flatMap(response => response.data.content || [])]);
       setBuses(busResponse.data || []);
       setSummary(summaryResponse.data || {});
     } catch (error) {
