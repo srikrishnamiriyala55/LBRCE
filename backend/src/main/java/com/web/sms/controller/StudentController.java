@@ -16,6 +16,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
+import com.web.sms.repository.StudentRepository;
+import com.web.sms.repository.TransportAllocationRepository;
+import com.web.sms.enums.EntityStatus;
+import com.web.sms.exception.ResourceNotFoundException;
 
 import java.util.List;
 
@@ -30,11 +34,13 @@ public class StudentController {
     private final PassService passService;
     private final TransferService transferService;
     private final NotificationService notificationService;
+    private final StudentRepository studentRepository;
+    private final TransportAllocationRepository allocationRepository;
 
     public StudentController(StudentService studentService, BusService busService,
                              ApplicationService applicationService, FeeService feeService,
                              PassService passService, TransferService transferService,
-                             NotificationService notificationService) {
+                             NotificationService notificationService, StudentRepository studentRepository, TransportAllocationRepository allocationRepository) {
         this.studentService = studentService;
         this.busService = busService;
         this.applicationService = applicationService;
@@ -42,6 +48,8 @@ public class StudentController {
         this.passService = passService;
         this.transferService = transferService;
         this.notificationService = notificationService;
+        this.studentRepository = studentRepository;
+        this.allocationRepository = allocationRepository;
     }
 
     private UserPrincipal getCurrentUser() {
@@ -65,9 +73,17 @@ public class StudentController {
         return studentService.getProfile(getCurrentUser().getId());
     }
 
-    @PutMapping("/profile")
-    public StudentProfileResponse updateProfile(@Valid @RequestBody StudentProfileResponse request) {
-        return studentService.updateProfile(getCurrentUser().getId(), request);
+    @GetMapping("/profile/photo") public ResponseEntity<byte[]> profilePhoto() {
+        var student = studentRepository.findById(getCurrentUser().getId()).orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        if (student.getPhotoData() == null || student.getPhotoData().length == 0) throw new ResourceNotFoundException("Profile photo not found");
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(student.getPhotoContentType())).body(student.getPhotoData());
+    }
+
+    @GetMapping("/incharge/photo") public ResponseEntity<byte[]> inchargePhoto() {
+        var allocation = allocationRepository.findByStudentId(getCurrentUser().getId()).stream().filter(a -> a.getStatus() == EntityStatus.ACTIVE).findFirst().orElseThrow(() -> new ResourceNotFoundException("Assigned bus not found"));
+        var incharge = allocation.getBus().getIncharge();
+        if (incharge == null || incharge.getPhotoData() == null || incharge.getPhotoData().length == 0) throw new ResourceNotFoundException("In-Charge photo not found");
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(incharge.getPhotoContentType())).body(incharge.getPhotoData());
     }
 
     @GetMapping("/buses")
@@ -80,11 +96,10 @@ public class StudentController {
         return busService.getBoardingPointsByBusId(busId);
     }
 
-    @PostMapping(value="/applications", consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping("/applications")
     public ApplicationResponse submitApplication(
-            @Valid @RequestPart("application") BusApplicationRequest req,
-            @RequestPart("photo") MultipartFile photo) {
-        return applicationService.submitApplication(getCurrentUser().getId(), req, photo);
+            @Valid @RequestBody BusApplicationRequest req) {
+        return applicationService.submitApplication(getCurrentUser().getId(), req);
     }
 
     @GetMapping("/applications")

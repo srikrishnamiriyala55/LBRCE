@@ -12,12 +12,14 @@ const StudentDashboardPage = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [inchargePhotoUrl, setInchargePhotoUrl] = useState('');
 
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
         const res = await api.get('/student/dashboard');
-        setData(res.data.data || res.data);
+        const dashboard = res.data.data || res.data; setData(dashboard);
+        if (dashboard.inchargePhotoAvailable) { const photo = await api.get('/student/incharge/photo', { responseType: 'blob' }); setInchargePhotoUrl(URL.createObjectURL(photo.data)); }
       } catch (err) {
         setError('Failed to load dashboard data');
       } finally {
@@ -57,7 +59,7 @@ const StudentDashboardPage = () => {
         />
         <div className="card hover:shadow-md transition-shadow md:col-span-2">
           <p className="text-sm font-medium text-gray-500 mb-2">Bus In-Charge</p>
-          {data?.inchargeName ? <div className="space-y-1"><p className="text-lg font-bold text-gray-800">{data.inchargeName}</p><p className="text-sm text-gray-600">{data.inchargeDesignation || '—'} · {data.inchargeBranch || '—'}</p><p className="text-sm text-blue-800">Phone: {data.inchargePhoneNumber || '—'}</p><p className="text-xs text-gray-500">Bus {data.busNumber} · {data.startingPoint || '—'} → {data.endingPoint || '—'}</p></div> : <p className="text-sm text-gray-500">In-Charge details will appear after a bus is assigned.</p>}
+          {data?.inchargeName ? <div className="flex gap-4"><div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-gray-50 text-center text-xs text-gray-400">{inchargePhotoUrl?<img src={inchargePhotoUrl} alt={`${data.inchargeName} profile`} className="h-full w-full object-cover"/>:'Photo unavailable'}</div><div className="space-y-1"><p className="text-lg font-bold text-gray-800">{data.inchargeName}</p><p className="text-sm text-gray-600">{data.inchargeDesignation || '—'} · {data.inchargeBranch || '—'}</p><p className="text-sm text-blue-800">Phone: {data.inchargePhoneNumber || '—'}</p><p className="text-xs text-gray-500">Bus {data.busNumber} · {data.startingPoint || '—'} → {data.endingPoint || '—'}</p></div></div> : <p className="text-sm text-gray-500">In-Charge details will appear after a bus is assigned.</p>}
         </div>
         <DashboardCard 
           title="Boarding Point" 

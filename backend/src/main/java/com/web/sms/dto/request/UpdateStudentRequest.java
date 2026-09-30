@@ -4,6 +4,7 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 
 public class UpdateStudentRequest {
+    @NotBlank @Size(max=30) private String rollNumber;
     @NotBlank @Size(max=100) private String name;
     @NotBlank @Email @Size(max=120) private String email;
     @NotBlank @Pattern(regexp="^[0-9]{10}$",message="Phone number must contain exactly 10 digits") private String phoneNumber;
@@ -18,6 +19,7 @@ public class UpdateStudentRequest {
     @NotBlank @Pattern(regexp="^[0-9]{10}$",message="Parent phone number must contain exactly 10 digits") private String parentPhoneNumber;
 
     public String getName(){return name;} public void setName(String v){name=v;}
+    public String getRollNumber(){return rollNumber;} public void setRollNumber(String v){rollNumber=v;}
     public String getEmail(){return email;} public void setEmail(String v){email=v;}
     public String getPhoneNumber(){return phoneNumber;} public void setPhoneNumber(String v){phoneNumber=v;}
     public LocalDate getDob(){return dob;} public void setDob(LocalDate v){dob=v;}

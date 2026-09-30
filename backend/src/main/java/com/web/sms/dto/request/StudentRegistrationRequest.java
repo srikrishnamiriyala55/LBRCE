@@ -71,6 +71,9 @@ public class StudentRegistrationRequest {
     @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).+$", message = "Password must include uppercase, lowercase, number and special character")
     private String password;
 
+    @NotBlank(message = "Email verification is required")
+    private String emailVerificationToken;
+
     public String getRollNumber() { return rollNumber; }
     public void setRollNumber(String rollNumber) { this.rollNumber = rollNumber; }
     public String getName() { return name; }
@@ -99,4 +102,6 @@ public class StudentRegistrationRequest {
     public void setParentPhoneNumber(String parentPhoneNumber) { this.parentPhoneNumber = parentPhoneNumber; }
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+    public String getEmailVerificationToken() { return emailVerificationToken; }
+    public void setEmailVerificationToken(String emailVerificationToken) { this.emailVerificationToken = emailVerificationToken; }
 }

@@ -67,21 +67,14 @@ const BusApplicationPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedBus || !selectedPoint || !photo) return;
+    if (!selectedBus || !selectedPoint) return;
     
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      const { rollNumber, ...details } = studentDetails;
-      formData.append('application', new Blob([JSON.stringify({
+      await api.post('/student/applications', {
         busId: Number(selectedBus),
-        boardingPointId: Number(selectedPoint),
-        ...details,
-        year: Number(studentDetails.year),
-        semester: Number(studentDetails.semester)
-      })], { type: 'application/json' }));
-      formData.append('photo', photo);
-      await api.post('/student/applications', formData);
+        boardingPointId: Number(selectedPoint)
+      });
       addToast('Application submitted successfully', 'success');
       navigate('/student/applications');
     } catch (err) {
@@ -136,28 +129,6 @@ const BusApplicationPage = () => {
       <h2 className="text-xl font-bold text-gray-800 mb-6">Apply for Bus Service</h2>
       
       <form onSubmit={handleSubmit} className="space-y-6">
-        <section>
-          <h3 className="text-base font-semibold text-gray-800 mb-3">Confirm Student Details</h3>
-          <p className="text-sm text-gray-500 mb-4">Review these details carefully. They will update your student record and be used for transport administration.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Student ID</label><input value={studentDetails.rollNumber} className="input-field bg-gray-100" readOnly /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label><input name="name" value={studentDetails.name} onChange={updateStudentDetails} className="input-field" maxLength="100" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Email *</label><input type="email" name="email" value={studentDetails.email} onChange={updateStudentDetails} className="input-field" maxLength="120" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label><input type="tel" inputMode="numeric" name="phoneNumber" value={studentDetails.phoneNumber} onChange={updateStudentDetails} className="input-field" pattern="[0-9]{10}" minLength="10" maxLength="10" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label><input type="date" name="dob" value={studentDetails.dob} max={new Date().toISOString().split('T')[0]} onChange={updateStudentDetails} className="input-field" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label><select name="gender" value={studentDetails.gender} onChange={updateStudentDetails} className="input-field" required><option value="">Select</option><option value="MALE">Male</option><option value="FEMALE">Female</option><option value="OTHER">Other</option></select></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Department *</label><select name="branch" value={studentDetails.branch} onChange={updateStudentDetails} className="input-field" required><option value="">Select department</option>{DEPARTMENTS.map(value=><option key={value} value={value}>{value}</option>)}</select></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Year *</label><select name="year" value={studentDetails.year} onChange={updateStudentDetails} className="input-field" disabled={!studentDetails.branch} required><option value="">Select</option>{yearsForDepartment(studentDetails.branch).map(value => <option key={value} value={value}>{value}</option>)}</select></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Semester *</label><select name="semester" value={studentDetails.semester} onChange={updateStudentDetails} className="input-field" disabled={!studentDetails.year} required><option value="">Select</option>{semestersForYear(studentDetails.year).map(value => <option key={value} value={value}>{value}</option>)}</select></div>
-            </div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label><select name="bloodGroup" value={studentDetails.bloodGroup} onChange={updateStudentDetails} className="input-field" required><option value="">Select</option>{['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(value => <option key={value}>{value}</option>)}</select></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Parent / Guardian Name *</label><input name="parentName" value={studentDetails.parentName} onChange={updateStudentDetails} className="input-field" maxLength="100" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number *</label><input type="tel" inputMode="numeric" name="parentPhoneNumber" value={studentDetails.parentPhoneNumber} onChange={updateStudentDetails} className="input-field" pattern="[0-9]{10}" minLength="10" maxLength="10" required /></div>
-            <div className="sm:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">Residential Address *</label><textarea name="address" value={studentDetails.address} onChange={updateStudentDetails} className="input-field min-h-24" maxLength="500" required /></div>
-          </div>
-        </section>
-
         <section className="border-t pt-6">
           <h3 className="text-base font-semibold text-gray-800 mb-3">Transport Selection</h3>
         <div>
@@ -197,16 +168,9 @@ const BusApplicationPage = () => {
         )}
         </section>
 
-        <div className="border-t pt-6">
-          <label htmlFor="studentPhoto" className="block text-sm font-medium text-gray-700 mb-1">Recent Student Photo *</label>
-          <input id="studentPhoto" type="file" accept="image/jpeg,image/png" onChange={handlePhotoChange} className="input-field" required />
-          <p className="mt-1 text-xs text-gray-500">JPEG or PNG only, maximum 2 MB. This photo will appear on your digital bus pass.</p>
-          {photoPreview && <img src={photoPreview} alt="Student preview" className="mt-3 h-32 w-28 rounded-lg border object-cover" />}
-        </div>
-
         <button 
           type="submit" 
-          disabled={!selectedBus || !selectedPoint || !photo || submitting}
+          disabled={!selectedBus || !selectedPoint || submitting}
           className="btn-primary w-full disabled:opacity-50"
         >
           {submitting ? 'Submitting...' : 'Submit Application'}

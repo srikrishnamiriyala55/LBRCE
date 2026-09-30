@@ -188,7 +188,10 @@ public class AdminService {
         Student student=studentRepo.findByIdForUpdate(studentId).orElseThrow(()->new com.web.sms.exception.ResourceNotFoundException("Student not found"));
         validateAcademicProgress(req.getBranch(),req.getYear(),req.getSemester());
         String email=req.getEmail().trim().toLowerCase();
+        String rollNumber=req.getRollNumber().trim().toUpperCase();
+        if (!rollNumber.equals(student.getRollNumber()) && studentRepo.existsByRollNumber(rollNumber)) throw new BadRequestException("Student with roll number " + rollNumber + " already exists");
         if(studentRepo.existsByEmailAndIdNot(email,studentId))throw new BadRequestException("Another student account already uses this email address");
+        student.setRollNumber(rollNumber);
         applyStudentDetails(student,req,email);
         storePhoto(student,photo,false);
         Student saved=studentRepo.save(student);

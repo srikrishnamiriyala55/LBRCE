@@ -18,7 +18,7 @@ export default function StudentFormModal({isOpen,onClose,title,initial=emptyStud
   const editing=mode!=='create',photoAllowed=true;
   return <Modal isOpen={isOpen} onClose={onClose} title={title} size="xl"><form onSubmit={submit} className="space-y-4">
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <label className="text-sm font-medium">Roll Number *<input required readOnly={editing} className={`input-field mt-1 uppercase ${editing?'bg-gray-100':''}`} value={form.rollNumber} onChange={e=>set('rollNumber',e.target.value)} /></label>
+      <label className="text-sm font-medium">Roll Number *<input required readOnly={mode==='inchargeEdit'} className={`input-field mt-1 uppercase ${mode==='inchargeEdit'?'bg-gray-100':''}`} value={form.rollNumber} onChange={e=>set('rollNumber',e.target.value.toUpperCase())} /><span className="mt-1 block text-xs text-gray-500">Only a unique roll number can be saved.</span></label>
       <label className="text-sm font-medium">Full Name *<input required maxLength="100" className="input-field mt-1" value={form.name} onChange={e=>set('name',e.target.value)} /></label>
       <label className="text-sm font-medium">Email *<input required type="email" maxLength="120" className="input-field mt-1" value={form.email} onChange={e=>set('email',e.target.value)} /></label>
       <label className="text-sm font-medium">Phone Number *<input required type="tel" inputMode="numeric" pattern="[0-9]{10}" minLength="10" maxLength="10" className="input-field mt-1" value={form.phoneNumber} onChange={e=>set('phoneNumber',e.target.value)} /></label>

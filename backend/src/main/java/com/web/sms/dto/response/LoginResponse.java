@@ -5,6 +5,8 @@ import com.web.sms.enums.Role;
 public class LoginResponse {
     private String token;
     private UserInfo user;
+    private boolean otpRequired;
+    private String otpChallengeToken;
 
     public LoginResponse(String token, UserInfo user) {
         this.token = token;
@@ -15,6 +17,10 @@ public class LoginResponse {
     public void setToken(String token) { this.token = token; }
     public UserInfo getUser() { return user; }
     public void setUser(UserInfo user) { this.user = user; }
+    public boolean isOtpRequired() { return otpRequired; }
+    public void setOtpRequired(boolean otpRequired) { this.otpRequired = otpRequired; }
+    public String getOtpChallengeToken() { return otpChallengeToken; }
+    public void setOtpChallengeToken(String otpChallengeToken) { this.otpChallengeToken = otpChallengeToken; }
 
     public static class UserInfo {
         private Long id;

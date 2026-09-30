@@ -13,10 +13,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.http.MediaType;
-
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -53,7 +49,7 @@ public class ApplicationService {
     }
 
     @Transactional
-    public ApplicationResponse submitApplication(Long studentId, BusApplicationRequest req, MultipartFile photo) {
+    public ApplicationResponse submitApplication(Long studentId, BusApplicationRequest req) {
         Student student = studentRepo.findByIdForUpdate(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
 
@@ -61,8 +57,9 @@ public class ApplicationService {
             throw new BadRequestException("Only active students can apply for transportation");
         }
 
-        updateStudentDetails(student, req);
-        storeStudentPhoto(student, photo);
+        if (student.getPhotoData() == null || student.getPhotoData().length == 0) {
+            throw new BadRequestException("A student photo must be recorded by the transport office before applying");
+        }
 
         AcademicYear year = academicYearRepo.findByActiveTrue()
                 .orElseThrow(() -> new BadRequestException("No active academic year found in the system"));
@@ -118,7 +115,7 @@ public class ApplicationService {
         return ApplicationResponse.fromApplication(saved);
     }
 
-    private void storeStudentPhoto(Student student, MultipartFile photo) {
+    /* private void storeStudentPhoto(Student student, MultipartFile photo) {
         if (photo == null || photo.isEmpty()) {
             throw new BadRequestException("A recent student photo is required");
         }
@@ -164,7 +161,7 @@ public class ApplicationService {
         student.setBloodGroup(req.getBloodGroup());
         student.setParentName(req.getParentName().trim());
         student.setParentPhoneNumber(req.getParentPhoneNumber().trim());
-    }
+    } */
 
     public Page<ApplicationResponse> getStudentApplications(Long studentId, Pageable pageable) {
         return appRepo.findByStudentId(studentId, pageable)

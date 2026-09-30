@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Map;
 
 @Component
 public class JwtTokenProvider {
@@ -59,6 +60,21 @@ public class JwtTokenProvider {
         } catch (Exception ex) {
             return false;
         }
+    }
+
+    /** Short lived, purpose-bound token used only between OTP verification steps. */
+    public String generateVerificationToken(String subject, String purpose, Map<String, Object> claims, long lifetimeMillis) {
+        return Jwts.builder().subject(subject).claim("purpose", purpose).claims(claims)
+                .issuedAt(new Date()).expiration(new Date(System.currentTimeMillis() + lifetimeMillis))
+                .signWith(getSigningKey()).compact();
+    }
+
+    public Claims getVerifiedClaims(String token, String expectedPurpose) {
+        Claims claims = getClaims(token);
+        if (!expectedPurpose.equals(claims.get("purpose", String.class))) {
+            throw new IllegalArgumentException("Invalid verification token purpose");
+        }
+        return claims;
     }
 
     private Claims getClaims(String token) {

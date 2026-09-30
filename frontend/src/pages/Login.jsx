@@ -14,13 +14,18 @@ const Login = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [success, setSuccess] = useState('');
   const [rollNumberStatus, setRollNumberStatus] = useState('idle');
+  const [photo, setPhoto] = useState(null);
+  const [registrationOtp, setRegistrationOtp] = useState('');
+  const [registrationToken, setRegistrationToken] = useState('');
+  const [loginChallenge, setLoginChallenge] = useState(null);
+  const [loginOtp, setLoginOtp] = useState('');
   const [registration, setRegistration] = useState({
     rollNumber: '', name: '', email: '', phoneNumber: '', branch: '',
     year: '', semester: '', dob: '', gender: '', address: '', bloodGroup: '',
     parentName: '', parentPhoneNumber: '', password: '', confirmPassword: ''
   });
   
-  const { login } = useAuth();
+  const { login, completeOtpLogin } = useAuth();
   const navigate = useNavigate();
 
   const navigateForRole = (user) => {
@@ -34,14 +39,20 @@ const Login = () => {
     setError('');
     setIsLoading(true);
     try {
-      const user = await login(rollNumber, password);
-      navigateForRole(user);
+      const result = await login(rollNumber, password);
+      if (result.otpRequired) { setLoginChallenge(result); setSuccess('A 6-digit verification code was sent to your registered email.'); }
+      else navigateForRole(result);
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  const verifyLoginOtp = async (event) => { event.preventDefault(); setError(''); setIsLoading(true); try { const user=await completeOtpLogin(loginChallenge.otpChallengeToken, loginOtp); navigateForRole(user); } catch(err) { setError(err.response?.data?.message || 'Invalid or expired OTP.'); } finally { setIsLoading(false); } };
+
+  const sendRegistrationOtp = async () => { setError(''); if (!registration.email || !photo) { setError('Enter your email and choose your photo before requesting OTP.'); return; } setIsLoading(true); try { await api.post('/auth/registration-otp/send', { email: registration.email }); setSuccess('OTP sent to your email.'); } catch(err) { setError(err.response?.data?.message || 'Unable to send OTP.'); } finally { setIsLoading(false); } };
+  const verifyRegistrationOtp = async () => { setError(''); setIsLoading(true); try { const result=await api.post('/auth/registration-otp/verify', { email: registration.email, otp: registrationOtp }); setRegistrationToken(result.data.verificationToken); setSuccess('Email verified. You can create your account now.'); } catch(err) { setError(err.response?.data?.message || 'Invalid or expired OTP.'); } finally { setIsLoading(false); } };
 
   const updateRegistration = (event) => {
     const { name, value } = event.target;
@@ -65,6 +76,7 @@ const Login = () => {
       setError('Passwords do not match.');
       return;
     }
+    if (!registrationToken || !photo) { setError('Verify your email OTP and upload a student photo before creating the account.'); return; }
     setIsLoading(true);
     try {
       setRollNumberStatus('checking');
@@ -79,11 +91,13 @@ const Login = () => {
       const { confirmPassword, ...payload } = registration;
       payload.year = Number(payload.year);
       payload.semester = Number(payload.semester);
-      await api.post('/auth/register/student', payload);
+      payload.emailVerificationToken = registrationToken;
+      const formData = new FormData(); formData.append('student', new Blob([JSON.stringify(payload)], { type: 'application/json' })); formData.append('photo', photo);
+      await api.post('/auth/register/student', formData);
       const studentId = registration.rollNumber.trim().toUpperCase();
       setRollNumber(studentId);
       setPassword('');
-      setRegistration({ rollNumber: '', name: '', email: '', phoneNumber: '', branch: '', year: '', semester: '', dob: '', gender: '', address: '', bloodGroup: '', parentName: '', parentPhoneNumber: '', password: '', confirmPassword: '' });
+      setRegistration({ rollNumber: '', name: '', email: '', phoneNumber: '', branch: '', year: '', semester: '', dob: '', gender: '', address: '', bloodGroup: '', parentName: '', parentPhoneNumber: '', password: '', confirmPassword: '' }); setPhoto(null); setRegistrationOtp(''); setRegistrationToken('');
       setIsRegistering(false);
       setSuccess('Account created successfully. You can sign in now.');
     } catch (err) {
@@ -113,7 +127,7 @@ const Login = () => {
 
         {success && <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-500 text-green-700 text-sm">{success}</div>}
 
-        {!isRegistering ? <form onSubmit={handleLogin} className="space-y-5">
+        {loginChallenge ? <form onSubmit={verifyLoginOtp} className="space-y-5"><p className="text-sm text-gray-600">Verify the code sent to <strong>{loginChallenge.user?.email}</strong>.</p><input required inputMode="numeric" pattern="[0-9]{6}" maxLength="6" className="input-field" placeholder="Enter 6-digit OTP" value={loginOtp} onChange={e=>setLoginOtp(e.target.value.replace(/\D/g,''))}/><button type="submit" disabled={isLoading} className="w-full btn-primary py-3">{isLoading?'Verifying...':'Verify and Sign In'}</button><button type="button" className="w-full text-sm text-blue-700" onClick={()=>{setLoginChallenge(null);setLoginOtp('');}}>Back to sign in</button></form> : !isRegistering ? <form onSubmit={handleLogin} className="space-y-5">
           <div>
             <label htmlFor="loginId" className="block text-sm font-medium text-gray-700 mb-1">Roll Number / User ID</label>
             <input
@@ -182,6 +196,8 @@ const Login = () => {
             <div><label htmlFor="registerParentName" className="block text-sm font-medium text-gray-700 mb-1">Parent / Guardian Name *</label><input id="registerParentName" name="parentName" value={registration.parentName} onChange={updateRegistration} className="input-field" maxLength="100" required /></div>
             <div><label htmlFor="registerParentPhone" className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number *</label><input id="registerParentPhone" type="tel" inputMode="numeric" name="parentPhoneNumber" value={registration.parentPhoneNumber} onChange={updateRegistration} className="input-field" pattern="[0-9]{10}" minLength="10" maxLength="10" placeholder="Exactly 10 digits" required /></div>
             <div className="sm:col-span-2"><label htmlFor="registerAddress" className="block text-sm font-medium text-gray-700 mb-1">Residential Address *</label><textarea id="registerAddress" name="address" value={registration.address} onChange={updateRegistration} className="input-field min-h-24" maxLength="500" required /></div>
+            <div className="sm:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">Student Photo *</label><input required type="file" accept="image/jpeg,image/png" className="input-field" onChange={e=>setPhoto(e.target.files?.[0] || null)} /><p className="mt-1 text-xs text-gray-500">JPEG or PNG, maximum 2 MB. This photo will be used on the profile and bus pass.</p></div>
+            <div className="sm:col-span-2 rounded-lg border border-blue-100 bg-blue-50 p-3"><label className="block text-sm font-medium text-gray-700 mb-1">Email OTP *</label><div className="flex flex-col gap-2 sm:flex-row"><input inputMode="numeric" maxLength="6" value={registrationOtp} onChange={e=>setRegistrationOtp(e.target.value.replace(/\D/g,''))} className="input-field" placeholder="6-digit OTP" disabled={Boolean(registrationToken)} /><button type="button" onClick={sendRegistrationOtp} disabled={isLoading || Boolean(registrationToken)} className="btn-secondary whitespace-nowrap">Send OTP</button><button type="button" onClick={verifyRegistrationOtp} disabled={isLoading || registrationOtp.length!==6 || Boolean(registrationToken)} className="btn-primary whitespace-nowrap">Verify OTP</button></div>{registrationToken&&<p className="mt-1 text-xs text-green-700">Email verified.</p>}</div>
             <div><label htmlFor="registerPassword" className="block text-sm font-medium text-gray-700 mb-1">Password *</label><input id="registerPassword" type={showPassword ? 'text' : 'password'} name="password" value={registration.password} onChange={updateRegistration} className="input-field" minLength="6" maxLength="15" pattern={PASSWORD_PATTERN} title={PASSWORD_HELP} autoComplete="new-password" required /><span className="mt-1 block text-xs text-gray-500">{PASSWORD_HELP}</span></div>
             <div><label htmlFor="registerConfirmPassword" className="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label><input id="registerConfirmPassword" type={showPassword ? 'text' : 'password'} name="confirmPassword" value={registration.confirmPassword} onChange={updateRegistration} className="input-field" minLength="6" maxLength="15" pattern={PASSWORD_PATTERN} title={PASSWORD_HELP} autoComplete="new-password" required /></div>
           </div>

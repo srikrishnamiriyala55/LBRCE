@@ -2,6 +2,8 @@ package com.web.sms.controller;
 
 import com.web.sms.dto.request.LoginRequest;
 import com.web.sms.dto.request.StudentRegistrationRequest;
+import com.web.sms.dto.request.OtpRequest;
+import com.web.sms.dto.request.LoginOtpVerificationRequest;
 import com.web.sms.dto.response.LoginResponse;
 import com.web.sms.dto.response.StudentProfileResponse;
 import com.web.sms.service.AuthService;
@@ -41,9 +43,13 @@ public class AuthController {
 
     @PostMapping("/register/student")
     public ResponseEntity<StudentProfileResponse> registerStudent(
-            @Valid @RequestBody StudentRegistrationRequest request) {
-        return ResponseEntity.status(201).body(authService.registerStudent(request));
+            @Valid @RequestPart("student") StudentRegistrationRequest request, @RequestPart("photo") org.springframework.web.multipart.MultipartFile photo) {
+        return ResponseEntity.status(201).body(authService.registerStudent(request, photo));
     }
+
+    @PostMapping("/registration-otp/send") public Map<String, Boolean> sendRegistrationOtp(@Valid @RequestBody OtpRequest request) { authService.sendRegistrationOtp(request.getEmail()); return Map.of("success", true); }
+    @PostMapping("/registration-otp/verify") public Map<String, String> verifyRegistrationOtp(@Valid @RequestBody OtpRequest request) { return Map.of("verificationToken", authService.verifyRegistrationOtp(request.getEmail(), request.getOtp())); }
+    @PostMapping("/login/verify-otp") public ResponseEntity<LoginResponse> verifyLoginOtp(@Valid @RequestBody LoginOtpVerificationRequest request) { return ResponseEntity.ok(authService.verifyLoginOtp(request.getChallengeToken(), request.getOtp())); }
 
     @GetMapping("/register/student/roll-number-exists")
     public Map<String, Boolean> studentRollNumberExists(@RequestParam String rollNumber) {

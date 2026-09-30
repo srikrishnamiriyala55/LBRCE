@@ -6,6 +6,7 @@ import { useToast } from '../../components/common/Toast';
 const StudentProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [photoUrl, setPhotoUrl] = useState('');
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -16,6 +17,7 @@ const StudentProfilePage = () => {
     try {
       const res = await api.get('/student/profile');
       setProfile(res.data);
+      if (res.data.photoAvailable) { const photo = await api.get('/student/profile/photo', { responseType: 'blob' }); setPhotoUrl(URL.createObjectURL(photo.data)); }
     } catch (err) {
       addToast('Failed to load profile', 'error');
     } finally {
@@ -31,6 +33,7 @@ const StudentProfilePage = () => {
         <h2 className="text-xl font-bold text-gray-800">Student Profile</h2>
         <p className="text-sm text-gray-500">Profile information is maintained by the transport office.</p>
       </div>
+      <div className="mb-6 flex items-center gap-4"><div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border bg-gray-50 text-xs text-gray-400">{photoUrl ? <img src={photoUrl} alt="Student profile" className="h-full w-full object-cover"/> : 'Photo unavailable'}</div><p className="text-sm text-gray-500">Your registration photo is managed by the transport office.</p></div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>

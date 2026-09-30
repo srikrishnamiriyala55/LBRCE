@@ -95,6 +95,7 @@ public class StudentServiceImpl implements StudentService {
                     response.put("inchargeDesignation", incharge.getDesignation());
                     response.put("inchargeBranch", incharge.getDepartment());
                     response.put("inchargePhoneNumber", incharge.getPhoneNumber());
+                    response.put("inchargePhotoAvailable", incharge.getPhotoData() != null && incharge.getPhotoData().length > 0);
                 }
                 if (alloc.getBoardingPoint() != null) {
                     response.put("boardingPoint", alloc.getBoardingPoint().getStationName());
