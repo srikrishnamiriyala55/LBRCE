@@ -21,6 +21,7 @@ export default function AdminApplicationsPage() {
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+  const [pages, setPages] = useState(0);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(false);
