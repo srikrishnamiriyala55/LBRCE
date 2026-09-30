@@ -68,10 +68,16 @@ public class AuthService {
         return buildLogin(principal);
     }
 
+    public void resendLoginOtp(String challengeToken) {
+        try { otpService.send(tokenProvider.getVerifiedClaims(challengeToken, "LOGIN_OTP").get("email", String.class)); }
+        catch (BadRequestException e) { throw e; }
+        catch (Exception e) { throw new BadRequestException("Your login verification expired. Please sign in again."); }
+    }
+
     public void sendRegistrationOtp(String email) { otpService.send(email.trim().toLowerCase()); }
     public String verifyRegistrationOtp(String email, String otp) {
         String normalized = email.trim().toLowerCase(); otpService.verify(normalized, otp);
-        return tokenProvider.generateVerificationToken(normalized, "REGISTRATION_OTP", java.util.Map.of("email", normalized), 10 * 60 * 1000);
+        return tokenProvider.generateVerificationToken(normalized, "REGISTRATION_OTP", java.util.Map.of("email", normalized), 5 * 60 * 1000);
     }
 
     @Transactional

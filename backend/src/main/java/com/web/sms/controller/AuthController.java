@@ -50,6 +50,7 @@ public class AuthController {
     @PostMapping("/registration-otp/send") public Map<String, Boolean> sendRegistrationOtp(@Valid @RequestBody OtpRequest request) { authService.sendRegistrationOtp(request.getEmail()); return Map.of("success", true); }
     @PostMapping("/registration-otp/verify") public Map<String, String> verifyRegistrationOtp(@Valid @RequestBody OtpRequest request) { return Map.of("verificationToken", authService.verifyRegistrationOtp(request.getEmail(), request.getOtp())); }
     @PostMapping("/login/verify-otp") public ResponseEntity<LoginResponse> verifyLoginOtp(@Valid @RequestBody LoginOtpVerificationRequest request) { return ResponseEntity.ok(authService.verifyLoginOtp(request.getChallengeToken(), request.getOtp())); }
+    @PostMapping("/login/resend-otp") public Map<String, Boolean> resendLoginOtp(@RequestBody Map<String, String> request) { authService.resendLoginOtp(request.get("challengeToken")); return Map.of("success", true); }
 
     @GetMapping("/register/student/roll-number-exists")
     public Map<String, Boolean> studentRollNumberExists(@RequestParam String rollNumber) {
