@@ -279,12 +279,9 @@ public class AdminController {
     }
 
     @GetMapping("/applications")
-    public Page<ApplicationResponse> getApplications(@RequestParam(required = false) ApplicationStatus status, Pageable pageable) {
+    public Page<ApplicationResponse> getApplications(@RequestParam(required = false) String search, @RequestParam(required = false) ApplicationStatus status, Pageable pageable) {
         pageable=checked(pageable);
-        if (status != null) {
-            return applicationRepo.findByStatus(status, pageable).map(ApplicationResponse::fromApplication);
-        }
-        return applicationRepo.findAll(pageable).map(ApplicationResponse::fromApplication);
+        return applicationRepo.searchForAdmin(search == null ? "" : search.trim(), status, pageable).map(ApplicationResponse::fromApplication);
     }
 
     @GetMapping("/applications/summary")
