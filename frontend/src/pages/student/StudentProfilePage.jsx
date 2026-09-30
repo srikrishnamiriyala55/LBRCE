@@ -54,6 +54,13 @@ const StudentProfilePage = () => {
           <label className="block text-sm font-medium text-gray-500 mb-1">Phone Number</label>
           <p className="mt-1 text-gray-900 font-medium">{profile?.phoneNumber || profile?.phone || 'N/A'}</p>
         </div>
+        <div><label className="block text-sm font-medium text-gray-500">Department</label><p className="mt-1 text-gray-900 font-medium">{profile?.branch || '—'}</p></div>
+        <div><label className="block text-sm font-medium text-gray-500">Year / Semester</label><p className="mt-1 text-gray-900 font-medium">{profile?.year || '—'} / {profile?.semester || '—'}</p></div>
+        <div><label className="block text-sm font-medium text-gray-500">Date of Birth</label><p className="mt-1 text-gray-900 font-medium">{profile?.dob || '—'}</p></div>
+        <div><label className="block text-sm font-medium text-gray-500">Gender</label><p className="mt-1 text-gray-900 font-medium">{profile?.gender || '—'}</p></div>
+        <div><label className="block text-sm font-medium text-gray-500">Blood Group</label><p className="mt-1 text-gray-900 font-medium">{profile?.bloodGroup || '—'}</p></div>
+        <div><label className="block text-sm font-medium text-gray-500">Account Status</label><p className="mt-1 text-gray-900 font-medium">{profile?.status || '—'}</p></div>
+        <div><label className="block text-sm font-medium text-gray-500">Parent / Guardian Name</label><p className="mt-1 text-gray-900 font-medium">{profile?.parentName || '—'}</p></div>
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-500 mb-1">Address</label>
           <p className="mt-1 text-gray-900 font-medium">{profile?.address || 'N/A'}</p>

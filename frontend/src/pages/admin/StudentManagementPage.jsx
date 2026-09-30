@@ -10,8 +10,8 @@ import {DEPARTMENTS} from '../../utils/academicOptions';
 
 export default function StudentManagementPage(){
  const [students,setStudents]=useState([]),[loading,setLoading]=useState(true),[page,setPage]=useState(0),[totalPages,setTotalPages]=useState(0),[search,setSearch]=useState(''),[branch,setBranch]=useState(''),[modal,setModal]=useState(false),[editing,setEditing]=useState(null);const {addToast}=useToast();
- const load=async()=>{setLoading(true);try{const q=new URLSearchParams({search,branch,page,size:10});const r=await api.get(`/admin/students?${q}`);setStudents(r.data.content||[]);setTotalPages(r.data.totalPages||0);}catch(e){addToast(e.response?.data?.message||'Failed to load students','error')}finally{setLoading(false)}};
- useEffect(()=>{load()},[page,branch]);
+ const load=async()=>{setLoading(true);try{const q=new URLSearchParams({search:search.trim(),branch,page,size:25});const r=await api.get(`/admin/students?${q}`);setStudents(r.data.content||[]);setTotalPages(r.data.totalPages||0);}catch(e){addToast(e.response?.data?.message||'Failed to load students','error')}finally{setLoading(false)}};
+ useEffect(()=>{load()},[page,branch,search]);
  const open=student=>{setEditing(student||null);setModal(true)};
  const save=async(form,photo)=>{try{const data=new FormData();const payload={...form,year:Number(form.year),semester:Number(form.semester)};if(editing)delete payload.password;data.append('student',new Blob([JSON.stringify(payload)],{type:'application/json'}));if(photo)data.append('photo',photo);if(editing)await api.put(`/admin/students/${editing.id}`,data);else await api.post('/admin/students',data);addToast(`Student ${editing?'updated':'created'} successfully`,'success');setModal(false);setEditing(null);load();}catch(e){addToast(e.response?.data?.message||'Failed to save student','error');throw e;}};
  const changeStatus=async student=>{const next=student.status==='ACTIVE'?'INACTIVE':'ACTIVE';try{await api.put(`/admin/students/${student.id}/status`,{status:next});addToast(`Student ${next.toLowerCase()}`,'success');load()}catch(e){addToast(e.response?.data?.message||'Status update failed','error')}};

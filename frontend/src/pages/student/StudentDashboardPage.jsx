@@ -49,7 +49,7 @@ const StudentDashboardPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         <DashboardCard 
           title="Bus Number" 
           value={data?.busNumber || 'Not Assigned'} 
@@ -57,9 +57,9 @@ const StudentDashboardPage = () => {
           color="blue" 
           subtitle={data?.startingPoint && data?.endingPoint ? `${data.startingPoint} → ${data.endingPoint}` : undefined}
         />
-        <div className="card hover:shadow-md transition-shadow md:col-span-2">
+        <div className="card hover:shadow-md transition-shadow">
           <p className="text-sm font-medium text-gray-500 mb-2">Bus In-Charge</p>
-          {data?.inchargeName ? <div className="flex gap-4"><div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-gray-50 text-center text-xs text-gray-400">{inchargePhotoUrl?<img src={inchargePhotoUrl} alt={`${data.inchargeName} profile`} className="h-full w-full object-cover"/>:'Photo unavailable'}</div><div className="space-y-1"><p className="text-lg font-bold text-gray-800">{data.inchargeName}</p><p className="text-sm text-gray-600">{data.inchargeDesignation || '—'} · {data.inchargeBranch || '—'}</p><p className="text-sm text-blue-800">Phone: {data.inchargePhoneNumber || '—'}</p><p className="text-xs text-gray-500">Bus {data.busNumber} · {data.startingPoint || '—'} → {data.endingPoint || '—'}</p></div></div> : <p className="text-sm text-gray-500">In-Charge details will appear after a bus is assigned.</p>}
+          {data?.inchargeName ? <div className="flex items-center gap-3"><div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-gray-50 text-center text-xs text-gray-400">{inchargePhotoUrl?<img src={inchargePhotoUrl} alt={`${data.inchargeName} profile`} className="h-full w-full object-cover"/>:'Photo'}</div><div className="min-w-0 space-y-0.5"><p className="truncate text-base font-bold text-gray-800">{data.inchargeName}</p><p className="truncate text-xs text-gray-600">{data.inchargeDesignation || '—'} · {data.inchargeBranch || '—'}</p><p className="text-xs text-blue-800">{data.inchargePhoneNumber || '—'}</p></div></div> : <p className="text-sm text-gray-500">In-Charge details will appear after a bus is assigned.</p>}
         </div>
         <DashboardCard 
           title="Boarding Point" 

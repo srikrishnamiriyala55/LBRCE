@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Eye, Edit2, Trash2 } from 'lucide-react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
@@ -23,6 +23,7 @@ export default function AdminApplicationsPage() {
   const [page, setPage] = useState(0);
   const [pages, setPages] = useState(0);
   const [status, setStatus] = useState('');
+  const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(false);
   const [current, setCurrent] = useState(null);
   const [action, setAction] = useState('');
@@ -36,7 +37,7 @@ export default function AdminApplicationsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const query = `page=${page}&size=10${status ? `&status=${status}` : ''}`;
+      const query = 'page=0&size=6000';
       const [applications, busResponse, summaryResponse] = await Promise.all([
         api.get(`/admin/applications?${query}`),
         api.get('/admin/buses'),
@@ -53,7 +54,14 @@ export default function AdminApplicationsPage() {
     }
   };
 
-  useEffect(() => { load(); }, [page, status]);
+  useEffect(() => { load(); }, []);
+
+  const filteredRows = useMemo(() => rows.filter((row) => {
+    const text = [row.studentName, row.rollNumber, row.busNumber, row.boardingPointName, row.academicYear, row.status].join(' ').toLowerCase();
+    return (!status || row.status === status) && (!search || text.includes(search.toLowerCase()));
+  }), [rows, status, search]);
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / 25));
+  const visibleRows = filteredRows.slice(page * 25, page * 25 + 25);
 
   const openDecision = (row, nextAction) => {
     setCurrent(row);
@@ -148,7 +156,7 @@ export default function AdminApplicationsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-2xl font-bold text-gray-800">Transportation Applications</h2><p className="text-sm text-gray-500">Review, correct and manage student bus applications</p></div><select className="input-field w-auto" value={status} onChange={(event) => { setStatus(event.target.value); setPage(0); }}><option value="">All Applications</option><option>PENDING</option><option>UNDER_REVIEW</option><option>APPROVED</option><option>REJECTED</option><option>CANCELLED</option></select></div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{[['Registered',summary.registered],['Pending',summary.pending],['Under review',summary.under_review],['Approved',summary.approved],['Rejected',summary.rejected],['Cancelled',summary.cancelled]].map(([label,value])=><div key={label} className="rounded-lg border bg-white p-3"><p className="text-xs text-gray-500">{label}</p><p className="text-xl font-bold text-blue-900">{value || 0}</p></div>)}</div>
-      <div className="card"><DataTable columns={columns} data={rows} loading={loading} /><p className="mt-3 text-xs text-gray-500">Approved applications are linked to allocations, fees and passes. They can be viewed here but must be changed through the relevant transport workflow.</p><Pagination page={page} totalPages={pages} onPageChange={setPage} /></div>
+      <div className="card"><div className="mb-4"><input className="input-field" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} placeholder="Search student, roll number, bus, boarding point, year or status" /></div><DataTable columns={columns} data={visibleRows} loading={loading} /><p className="mt-3 text-xs text-gray-500">Showing {filteredRows.length} matching application(s). Approved applications are linked to allocations, fees and passes.</p><Pagination page={page} totalPages={totalPages} onPageChange={setPage} /></div>
     </div>
 
     <ConfirmDialog isOpen={dialog} title={`${action === 'APPROVE' ? 'Approve' : 'Reject'} Application`} message={<div className="space-y-3"><p>Confirm {action.toLowerCase()} for {current?.rollNumber || 'this student'}?</p>{action === 'REJECT' && <textarea autoFocus maxLength="500" className="input-field" placeholder="Enter rejection reason" value={remarks} onChange={(event) => setRemarks(event.target.value)} />}</div>} onConfirm={() => action !== 'REJECT' || remarks.trim() ? decide() : addToast('A rejection reason is required', 'error')} onCancel={() => setDialog(false)} />
