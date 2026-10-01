@@ -255,10 +255,9 @@ public class ApplicationService {
         allocation.setCreatedAt(LocalDateTime.now());
         TransportAllocation savedAllocation = allocationRepo.save(allocation);
 
-        if (bus.getAvailableSeats() != null && bus.getAvailableSeats() > 0) {
-            bus.setAvailableSeats(bus.getAvailableSeats() - 1);
-            busRepo.save(bus);
-        }
+        long occupiedSeats = allocationRepo.countByBusIdAndStatus(bus.getId(), EntityStatus.ACTIVE);
+        bus.setAvailableSeats(Math.max(0, (bus.getTotalSeats() != null ? bus.getTotalSeats() : 0) - (int) occupiedSeats));
+        busRepo.save(bus);
 
         Fee fee = new Fee();
         fee.setStudent(app.getStudent());

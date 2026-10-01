@@ -298,16 +298,22 @@ public class AdminController {
     }
 
     @PutMapping("/applications/{id}/reject")
-    public ApplicationResponse rejectApplication(@PathVariable Long id, @RequestBody(required = false) String remarks) {
-        String cleanRemarks = parseRemarks(remarks);
-        return applicationService.rejectApplication(id, cleanRemarks != null ? cleanRemarks : "Rejected by Administrator", getCurrentUser().getUsername());
+    public ApplicationResponse rejectApplication(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
+        // Accept both {"remarks":"..."} JSON body and null/empty
+        String remarks = (body != null) ? body.getOrDefault("remarks", "").trim() : "";
+        String finalRemarks = remarks.isEmpty() ? "Rejected by Administrator" : remarks;
+        return applicationService.rejectApplication(id, finalRemarks, getCurrentUser().getUsername());
     }
     @PutMapping("/applications/{id}") public ApplicationResponse updateApplication(@PathVariable Long id,@Valid @RequestBody UpdateApplicationRequest req){return applicationService.updateApplication(id,req,getCurrentUser().getUsername());}
     @DeleteMapping("/applications/{id}") public void deleteApplication(@PathVariable Long id){applicationService.deleteApplication(id,getCurrentUser().getUsername());}
 
     @GetMapping("/fees")
-    public Page<FeeResponse> getFees(Pageable pageable) {
-        return feeRepo.findAll(checked(pageable)).map(FeeResponse::fromFee);
+    public Page<FeeResponse> getFees(@RequestParam(required = false) String search, Pageable pageable) {
+        String trimmed = (search == null || search.isBlank()) ? null : search.trim();
+        if (trimmed == null) {
+            return feeRepo.findAll(checked(pageable)).map(FeeResponse::fromFee);
+        }
+        return feeRepo.searchForAdmin(trimmed, checked(pageable)).map(FeeResponse::fromFee);
     }
 
     @PostMapping("/fees/{id}/manual-payment")
@@ -319,7 +325,16 @@ public class AdminController {
     }
 
     @GetMapping("/transfers")
-    public Page<TransferResponse> getTransfers(Pageable pageable) {
+    public Page<TransferResponse> getTransfers(@RequestParam(required = false) String status, Pageable pageable) {
+        // Simple status filter; full text search can be added to TransferRequestRepository if needed
+        if (status != null && !status.isBlank()) {
+            try {
+                com.web.sms.enums.TransferStatus ts = com.web.sms.enums.TransferStatus.valueOf(status.trim().toUpperCase());
+                return transferRepo.findByStatus(ts, checked(pageable)).map(TransferResponse::fromTransfer);
+            } catch (IllegalArgumentException e) {
+                throw new com.web.sms.exception.BadRequestException("Invalid transfer status: " + status);
+            }
+        }
         return transferRepo.findAllWithDetails(checked(pageable)).map(TransferResponse::fromTransfer);
     }
     @GetMapping("/transfers/summary") public Map<String, Long> transferSummary(){Map<String,Long> summary=new LinkedHashMap<>();summary.put("total",transferRepo.count());summary.put("accepted",transferRepo.countByStatus(TransferStatus.TRANSFER_COMPLETED));summary.put("rejected",transferRepo.countByStatus(TransferStatus.OLD_INCHARGE_REJECTED)+transferRepo.countByStatus(TransferStatus.NEW_INCHARGE_REJECTED));return summary;}
@@ -374,6 +389,6 @@ public class AdminController {
     @GetMapping("/reports/students") public Page<TransportReportRow> studentReport(@ModelAttribute TransportReportFilter filter,Pageable pageable){return reportService.report(null,filter,checked(pageable));}
     @GetMapping("/reports/students/export/{format}") public ResponseEntity<byte[]> exportStudentReport(@PathVariable String format,@ModelAttribute TransportReportFilter filter){return reportDownload(format,filter,null,"LBRCE College Transport Report");}
     private ResponseEntity<byte[]> reportDownload(String format,TransportReportFilter filter,Long busId,String title){boolean excel="excel".equalsIgnoreCase(format)||"xlsx".equalsIgnoreCase(format);boolean pdf="pdf".equalsIgnoreCase(format);if(!excel&&!pdf)throw new com.web.sms.exception.BadRequestException("Export format must be excel or pdf");byte[] body=excel?reportService.excel(busId,filter,title):reportService.pdf(busId,filter,title);String ext=excel?"xlsx":"pdf";MediaType type=excel?MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):MediaType.APPLICATION_PDF;return ResponseEntity.ok().contentType(type).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=transport-report."+ext).body(body);}
-    private Pageable checked(Pageable p){if(p.getPageNumber()<0||p.getPageSize()<1||p.getPageSize()>100)throw new com.web.sms.exception.BadRequestException("Page size must be between 1 and 100");return p;}
+    private Pageable checked(Pageable p){if(p.getPageNumber()<0||p.getPageSize()<1||p.getPageSize()>200)throw new com.web.sms.exception.BadRequestException("Page size must be between 1 and 200");return p;}
     private EntityStatus parseEntityStatus(String s){try{return EntityStatus.valueOf(s.toUpperCase());}catch(Exception e){throw new com.web.sms.exception.BadRequestException("Invalid status");}}
 }

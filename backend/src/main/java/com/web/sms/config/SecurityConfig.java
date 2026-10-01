@@ -76,6 +76,11 @@ public class SecurityConfig {
                 // All API authorization rules are declared above. Remaining paths serve the React SPA.
                 .anyRequest().permitAll()
             )
+            .headers(headers -> headers
+                .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
+                .frameOptions(frame -> frame.deny())
+                .contentTypeOptions(contentType -> {})
+            )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

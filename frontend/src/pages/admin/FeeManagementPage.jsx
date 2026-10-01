@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import Pagination from '../../components/common/Pagination';
@@ -15,25 +15,41 @@ const FeeManagementPage = () => {
   const [selectedFee, setSelectedFee] = useState(null);
   const [payment, setPayment] = useState({ amount: '', reference: '', remarks: '' });
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debounceTimer = useRef(null);
 
   const { addToast } = useToast();
 
-  useEffect(() => {
-    fetchFees();
-  }, [page]);
+  const handleSearchChange = (e) => {
+    const v = e.target.value;
+    setSearch(v);
+    setPage(0);
+    clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => setDebouncedSearch(v), 300);
+  };
 
-  const fetchFees = async () => {
+  const fetchFees = useCallback(async (signal) => {
     setLoading(true);
     try {
-      const res = await api.get(`/admin/fees?page=${page}&size=10`);
+      const params = { page, size: 10 };
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      const res = await api.get('/admin/fees', { signal, params });
       setFees(res.data.content || []);
       setTotalPages(res.data.totalPages || 0);
     } catch (err) {
-      addToast('Failed to load fees records', 'error');
+      if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED')
+        addToast('Failed to load fees records', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, debouncedSearch]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchFees(controller.signal);
+    return () => controller.abort();
+  }, [fetchFees]);
 
   const openPayment = (fee) => {
     setSelectedFee(fee);
@@ -52,7 +68,7 @@ const FeeManagementPage = () => {
       await api.post(`/admin/fees/${selectedFee.id}/manual-payment`, { ...payment, amount });
       addToast('Manual fee payment recorded successfully', 'success');
       setSelectedFee(null);
-      await fetchFees();
+      fetchFees(new AbortController().signal);
     } catch (error) {
       addToast(error.response?.data?.message || 'Unable to record the payment', 'error');
     } finally {
@@ -105,7 +121,15 @@ const FeeManagementPage = () => {
       </div>
 
       <div className="card">
-        <DataTable columns={columns} data={fees} loading={loading} searchPlaceholder="Search student, roll number, year, fee or status..." />
+        <div className="mb-4">
+          <input
+            className="input-field"
+            value={search}
+            onChange={handleSearchChange}
+            placeholder="Search student name, roll number, academic year or status..."
+          />
+        </div>
+        <DataTable columns={columns} data={fees} loading={loading} searchable={false} />
         <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
       <Modal isOpen={Boolean(selectedFee)} onClose={() => !saving && setSelectedFee(null)} title="Record Manual Fee Payment">

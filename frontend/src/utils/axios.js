@@ -21,6 +21,8 @@ api.interceptors.response.use(
   (error) => {
     // Only redirect to /login on 401 if we are NOT already on the login endpoint or page
     if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login') && window.location.pathname !== '/login') {
+      // Save current location so login can redirect back after successful auth
+      sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

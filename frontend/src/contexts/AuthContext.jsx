@@ -12,12 +12,21 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (storedUser && token && storedUser !== 'undefined' && storedUser !== 'null') {
       try {
-        const parsedUser = JSON.parse(storedUser);
-        if (parsedUser && typeof parsedUser === 'object' && parsedUser.role) {
-          setUser(parsedUser);
-        } else {
+        // Decode JWT payload (base64) and check expiry client-side
+        // This prevents showing protected pages to users with expired tokens
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const isExpired = payload.exp && payload.exp * 1000 < Date.now();
+        if (isExpired) {
           localStorage.removeItem('user');
           localStorage.removeItem('token');
+        } else {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser && typeof parsedUser === 'object' && parsedUser.role) {
+            setUser(parsedUser);
+          } else {
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+          }
         }
       } catch {
         localStorage.removeItem('user');

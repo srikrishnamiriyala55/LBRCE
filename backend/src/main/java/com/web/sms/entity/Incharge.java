@@ -24,7 +24,9 @@ public class Incharge {
     private String department;
     private String designation;
 
+    @JsonIgnore
     @Lob
+    @Basic(fetch = FetchType.LAZY)
     @Column(name = "photo_data", columnDefinition = "MEDIUMBLOB")
     private byte[] photoData;
 

@@ -3,7 +3,7 @@ import { Search, X } from 'lucide-react';
 import EmptyState from './EmptyState';
 import LoadingSpinner from './LoadingSpinner';
 
-const DataTable = ({ columns, data, loading, emptyMessage = 'No data found', searchable = true, searchPlaceholder = 'Search these records...' }) => {
+const DataTable = ({ columns, data, loading, emptyMessage = 'No data found', searchable = false, searchPlaceholder = 'Search these records...' }) => {
   const [search, setSearch] = useState('');
   const filteredData = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();

@@ -30,6 +30,13 @@ const Login = () => {
   const navigate = useNavigate();
 
   const navigateForRole = (user) => {
+    // After a 401, axios.js saves the current URL so we can redirect back after login
+    const savedRedirect = sessionStorage.getItem('redirectAfterLogin');
+    if (savedRedirect) {
+      sessionStorage.removeItem('redirectAfterLogin');
+      navigate(savedRedirect);
+      return;
+    }
     if (user.role === 'STUDENT') navigate('/student/dashboard');
     else if (user.role === 'INCHARGE') navigate('/incharge/dashboard');
     else if (user.role === 'ADMIN') navigate('/admin/dashboard');

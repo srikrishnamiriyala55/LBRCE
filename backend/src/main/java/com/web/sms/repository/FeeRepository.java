@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
@@ -27,4 +28,17 @@ public interface FeeRepository extends JpaRepository<Fee, Long> {
     long countByPassEligibleTrue();
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select f from Fee f where f.id=:id") Optional<Fee> findByIdForUpdate(Long id);
+
+    /**
+     * Server-side search for Admin fee management page.
+     * Searches across student roll number, student name, academic year name, and fee status.
+     */
+    @Query("select f from Fee f where " +
+           "(:search is null or :search = '' or " +
+           " lower(f.student.rollNumber) like lower(concat('%', :search, '%')) or " +
+           " lower(f.student.name) like lower(concat('%', :search, '%')) or " +
+           " lower(f.academicYear.yearName) like lower(concat('%', :search, '%')) or " +
+           " lower(f.status) like lower(concat('%', :search, '%')))")
+    Page<Fee> searchForAdmin(@Param("search") String search, Pageable pageable);
 }
+

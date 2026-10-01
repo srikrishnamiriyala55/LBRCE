@@ -295,10 +295,9 @@ public class AdminService {
         LocalDate end=req.getEndDate()!=null&&!req.getEndDate().isBlank()?LocalDate.parse(req.getEndDate()):null;
         if(start!=null&&end!=null&&!end.isAfter(start))throw new BadRequestException("Academic year end date must be after its start date");
         // A single active academic year is maintained transactionally.
-        academicYearRepo.findAll().forEach(y -> {
-            y.setActive(false);
-            academicYearRepo.save(y);
-        });
+        List<AcademicYear> allYears = academicYearRepo.findAll();
+        allYears.forEach(yearItem -> yearItem.setActive(false));
+        academicYearRepo.saveAll(allYears);
 
         AcademicYear y = new AcademicYear();
         y.setYearName(req.getYearName());

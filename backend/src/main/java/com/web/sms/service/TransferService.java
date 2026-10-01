@@ -66,7 +66,23 @@ public class TransferService {
   recalc(old.getBus());recalc(t.getRequestedBus());
   Fee fee=fees.findByStudentIdAndAcademicYearId(t.getStudent().getId(),t.getAcademicYear().getId()).orElseThrow(()->new BadRequestException("Student fee record was not found"));long total=t.getRequestedBoardingPoint().getFeeAmount()==null?0L:t.getRequestedBoardingPoint().getFeeAmount();if(total<=0)throw new BadRequestException("Requested boarding point does not have a valid fee");long paid=fee.getPaidAmount()==null?0L:fee.getPaidAmount();fee.setAllocation(next);fee.setTotalAmount(total);fee.setStatus(paid>=total?"PAID":paid>0?"PARTIALLY_PAID":"PENDING");fee.setPassEligible(paid*2>=total);fee.setUpdatedAt(now);fees.save(fee);
   Optional<BusPass> previousPass=passes.findByStudentIdAndAcademicYearIdAndStatus(t.getStudent().getId(),t.getAcademicYear().getId(),PassStatus.ACTIVE);previousPass.ifPresent(p->{p.setStatus(PassStatus.REVOKED);p.setRevokedAt(now);p.setUpdatedAt(now);passes.save(p);});
-  if(fee.isPassEligible()){BusPass replacement=new BusPass();replacement.setStudent(t.getStudent());replacement.setAllocation(next);replacement.setAcademicYear(t.getAcademicYear());replacement.setPassNumber(previousPass.map(BusPass::getPassNumber).orElse("LBRCE-PASS-"+t.getAcademicYear().getYearName().replace("-","")+"-"+t.getStudent().getRollNumber())+"-T"+t.getId());replacement.setVerificationToken(UUID.randomUUID().toString());replacement.setStatus(PassStatus.ACTIVE);replacement.setValidFrom(previousPass.map(BusPass::getValidFrom).orElse(LocalDate.now()));replacement.setValidUntil(previousPass.map(BusPass::getValidUntil).orElse(t.getAcademicYear().getEndDate()!=null?t.getAcademicYear().getEndDate():LocalDate.now().plusMonths(10)));replacement.setGeneratedAt(now);replacement.setCreatedAt(now);passes.save(replacement);}
+  if(fee.isPassEligible()){
+   BusPass replacement=new BusPass();
+   replacement.setStudent(t.getStudent());
+   replacement.setAllocation(next);
+   replacement.setAcademicYear(t.getAcademicYear());
+   // FIX: Always generate a fresh pass number. Appending to old pass number caused chained suffixes
+   // (e.g. PASS-T5-T12-T23) which violate the UNIQUE constraint on pass_number after multiple transfers.
+   String yearName=t.getAcademicYear().getYearName().replace("-","");
+   replacement.setPassNumber("LBRCE-PASS-"+yearName+"-"+t.getStudent().getRollNumber()+"-T"+t.getId());
+   replacement.setVerificationToken(UUID.randomUUID().toString());
+   replacement.setStatus(PassStatus.ACTIVE);
+   replacement.setValidFrom(previousPass.map(BusPass::getValidFrom).orElse(LocalDate.now()));
+   replacement.setValidUntil(previousPass.map(BusPass::getValidUntil).orElse(t.getAcademicYear().getEndDate()!=null?t.getAcademicYear().getEndDate():LocalDate.now().plusMonths(10)));
+   replacement.setGeneratedAt(now);
+   replacement.setCreatedAt(now);
+   passes.save(replacement);
+  }
   t.setStatus(TransferStatus.TRANSFER_COMPLETED);t.setCompletedAt(now);t.setProcessedAt(now);t.setUpdatedAt(now);transfers.save(t);audit(t,adminApproval?"ADMIN":"SYSTEM",actor,adminApproval?startingStatus:TransferStatus.NEW_INCHARGE_APPROVED,t.getStatus());notify(t,"Bus Transfer Completed",adminApproval?"Your bus transfer has been approved directly by the Transport Administrator after verifying vacancy.":"Your bus transfer has been approved. Your transportation assignment has been changed successfully.");return TransferResponse.fromTransfer(t);
  }
  @Transactional public void cancel(Long sid,Long id){TransferRequest t=locked(id);if(!t.getStudent().getId().equals(sid))throw new ForbiddenException("This transfer request is not yours");stage(t,TransferStatus.TRANSFER_REQUESTED);TransferStatus old=t.getStatus();t.setStatus(TransferStatus.CANCELLED);finishDecision(t,"Cancelled by student");audit(t,"STUDENT",t.getStudent().getRollNumber(),old,t.getStatus());}

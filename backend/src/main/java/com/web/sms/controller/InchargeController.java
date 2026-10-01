@@ -193,10 +193,11 @@ public class InchargeController {
     }
 
     @PutMapping("/applications/{id}/reject")
-    public ApplicationResponse rejectApplication(@PathVariable Long id, @RequestBody(required = false) String remarks) {
+    public ApplicationResponse rejectApplication(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         Bus bus=requireAssignedBus();
-        String cleanRemarks = parseRemarks(remarks);
-        return applicationService.rejectApplication(id, cleanRemarks != null ? cleanRemarks : "Rejected by Incharge", getCurrentUser().getUsername(), bus.getId());
+        String remarks = (body != null) ? body.getOrDefault("remarks", "").trim() : "";
+        String finalRemarks = remarks.isEmpty() ? "Rejected by Incharge" : remarks;
+        return applicationService.rejectApplication(id, finalRemarks, getCurrentUser().getUsername(), bus.getId());
     }
 
     @GetMapping("/students")
@@ -229,10 +230,11 @@ public class InchargeController {
     }
 
     @PostMapping("/transfers/{id}/reject-release")
-    public TransferResponse rejectRelease(@PathVariable Long id, @RequestBody(required = false) String remarks) {
+    public TransferResponse rejectRelease(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         requireTransferAccess(id);
-        String cleanRemarks = parseRemarks(remarks);
-        return transferService.rejectRelease(id, getCurrentUser().getId(), getCurrentUser().getUsername(), cleanRemarks != null ? cleanRemarks : "Rejected by current In-Charge");
+        String remarks = (body != null) ? body.getOrDefault("remarks", "").trim() : "";
+        String finalRemarks = remarks.isEmpty() ? "Rejected by current In-Charge" : remarks;
+        return transferService.rejectRelease(id, getCurrentUser().getId(), getCurrentUser().getUsername(), finalRemarks);
     }
 
     @PostMapping("/transfers/{id}/accept")
@@ -242,28 +244,11 @@ public class InchargeController {
     }
 
     @PostMapping("/transfers/{id}/reject")
-    public TransferResponse rejectAcceptance(@PathVariable Long id, @RequestBody(required = false) String remarks) {
+    public TransferResponse rejectAcceptance(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         requireTransferAccess(id);
-        String cleanRemarks = parseRemarks(remarks);
-        return transferService.rejectAcceptance(id, getCurrentUser().getId(), getCurrentUser().getUsername(), cleanRemarks != null ? cleanRemarks : "Rejected by new In-Charge");
-    }
-
-    private String parseRemarks(String raw) {
-        if (raw == null || raw.isBlank()) return null;
-        if (raw.contains("\"remarks\"")) {
-            try {
-                int idx = raw.indexOf("\"remarks\"");
-                int start = raw.indexOf(":", idx);
-                if (start != -1) {
-                    String sub = raw.substring(start + 1).trim();
-                    if (sub.startsWith("\"")) {
-                        int end = sub.indexOf("\"", 1);
-                        if (end != -1) return sub.substring(1, end);
-                    }
-                }
-            } catch (Exception ignored) {}
-        }
-        return raw.trim();
+        String remarks = (body != null) ? body.getOrDefault("remarks", "").trim() : "";
+        String finalRemarks = remarks.isEmpty() ? "Rejected by new In-Charge" : remarks;
+        return transferService.rejectAcceptance(id, getCurrentUser().getId(), getCurrentUser().getUsername(), finalRemarks);
     }
 
 }

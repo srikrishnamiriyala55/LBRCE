@@ -33,34 +33,14 @@ const FeeViewPage = () => {
 
   const handleOpenPayment = (fee) => {
     setSelectedFee(fee);
-    setAmountToPay(fee.remainingAmount);
+    // Note: online payment not yet live — show Coming Soon modal
     setPayModalOpen(true);
   };
 
-  const handleProcessPayment = async (e) => {
+  // Dummy handler: actual payment gateway not yet integrated
+  const handleProcessPayment = (e) => {
     e.preventDefault();
-    if (!selectedFee || !amountToPay) return;
-
-    setProcessing(true);
-    try {
-      // 1. Initiate payment in backend
-      const res = await api.post('/student/payments', {
-        feeId: selectedFee.id,
-        amount: parseInt(amountToPay)
-      });
-
-      setPayModalOpen(false);
-      if (res.data.status === 'SUCCESS') {
-        addToast('Payment processed successfully. Your pass will be generated after the 50% threshold.', 'success');
-      } else {
-        addToast(`Payment order ${res.data.orderId} created. Complete it through the configured gateway.`, 'info');
-      }
-      fetchFees();
-    } catch (err) {
-      addToast(err.response?.data?.message || 'Payment processing failed', 'error');
-    } finally {
-      setProcessing(false);
-    }
+    setPayModalOpen(false);
   };
 
   if (loading) return <LoadingSpinner />;
@@ -128,38 +108,34 @@ const FeeViewPage = () => {
         ))
       )}
 
-      {/* Payment Gateway Modal */}
+      {/* Dummy Payment Modal — Online payment coming soon */}
       <Modal isOpen={payModalOpen} onClose={() => setPayModalOpen(false)} title="Transportation Fee Payment">
-        <form onSubmit={handleProcessPayment} className="space-y-4">
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h4 className="font-semibold text-blue-900 text-sm">LBRCE Fee Portal</h4>
-            <p className="text-xs text-blue-700 mt-1">Payment Gateway ready for secure institutional fee collection.</p>
-            <div className="mt-2 text-sm font-medium text-gray-800">
-              Remaining Balance: ₹{selectedFee?.remainingAmount}
+        <div className="space-y-5">
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-4">
+            <div className="flex items-start gap-3">
+              <CreditCard className="mt-0.5 shrink-0 text-amber-600" size={22} />
+              <div>
+                <p className="font-semibold text-amber-900">Online Payment — Coming Soon</p>
+                <p className="mt-1 text-sm text-amber-800">
+                  The online payment gateway is currently under development and will be available soon.
+                </p>
+              </div>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Enter Amount to Pay (₹) *</label>
-            <input
-              type="number"
-              min="100"
-              max={selectedFee?.remainingAmount || 50000}
-              required
-              className="input-field"
-              value={amountToPay}
-              onChange={(e) => setAmountToPay(e.target.value)}
-            />
-            <p className="text-xs text-gray-500 mt-1">Minimum 50% total fee is required to unlock your active digital bus pass.</p>
+          <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+            <p className="text-sm font-semibold text-blue-900 mb-2">Pay via Cash / DD at the Transport Office:</p>
+            <ul className="text-sm text-blue-800 list-disc list-inside space-y-1">
+              <li>Visit the LBRCE Transport Office with your student ID</li>
+              <li>Pay the required fee amount: <strong>₹{selectedFee?.remainingAmount}</strong></li>
+              <li>Your payment will be recorded and your pass status will be updated</li>
+            </ul>
           </div>
 
-          <div className="flex justify-end gap-3 mt-6">
-            <button type="button" onClick={() => setPayModalOpen(false)} className="btn-secondary">Cancel</button>
-            <button type="submit" disabled={processing} className="btn-primary">
-              {processing ? 'Processing...' : `Pay ₹${amountToPay}`}
-            </button>
+          <div className="flex justify-end">
+            <button type="button" className="btn-primary" onClick={() => setPayModalOpen(false)}>Close</button>
           </div>
-        </form>
+        </div>
       </Modal>
     </div>
   );
