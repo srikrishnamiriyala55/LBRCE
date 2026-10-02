@@ -42,6 +42,4 @@ public interface TransferRequestRepository extends JpaRepository<TransferRequest
     long countByCurrentBusIdAndStatusIn(Long busId, List<TransferStatus> statuses);
     long countByRequestedBusIdAndStatusIn(Long busId, List<TransferStatus> statuses);
     Page<TransferRequest> findByStatus(TransferStatus status, Pageable pageable);
-    /** Count-based method for incharge applicationSummary — avoids loading entities. */
-    long countByBusApplication_BusId(Long busId);
 }

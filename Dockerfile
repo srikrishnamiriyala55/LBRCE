@@ -24,4 +24,4 @@ USER btms
 EXPOSE 10000
 ENV SESSION_STORE_DIR=/tmp/tomcat-sessions
 # Render injects PORT at runtime. Bind explicitly on all interfaces so its port scanner can reach Tomcat.
-ENTRYPOINT ["sh", "-c", "exec java -Dserver.address=0.0.0.0 -Dserver.port=${PORT:-10000} -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "exec java -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xss512k -Dserver.address=0.0.0.0 -Dserver.port=${PORT:-10000} -jar /app/app.jar"]
