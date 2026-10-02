@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  // Production serves the React build and Spring API from the same Render host.
+  // Keep /api as a safe default if a build environment omitted VITE_API_URL.
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: Number(import.meta.env.VITE_API_TIMEOUT_MS),
 });
 
