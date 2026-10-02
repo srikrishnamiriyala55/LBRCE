@@ -289,7 +289,7 @@ public class AdminController {
     public List<ApplicationResponse> getAllApplications(@RequestParam(required = false) String search,
                                                         @RequestParam(required = false) ApplicationStatus status) {
         String term = search == null ? "" : search.trim().toLowerCase();
-        return applicationRepo.findAll().stream()
+        return applicationRepo.findAllForAdminList().stream()
                 .filter(application -> status == null || application.getStatus() == status)
                 .map(ApplicationResponse::fromApplication)
                 .filter(application -> term.isEmpty() || String.join(" ",

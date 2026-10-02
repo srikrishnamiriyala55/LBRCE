@@ -27,6 +27,8 @@ public interface BusApplicationRepository extends JpaRepository<BusApplication, 
     @Query("select a from BusApplication a where a.id=:id")
     Optional<BusApplication> findByIdForUpdate(Long id);
     long countByStatus(ApplicationStatus status);
+    @Query("select a from BusApplication a join fetch a.student join fetch a.bus join fetch a.boardingPoint join fetch a.academicYear order by a.appliedAt desc")
+    List<BusApplication> findAllForAdminList();
     @Query(value = "select a from BusApplication a where (:status is null or a.status=:status) and (:search is null or :search='' or lower(a.student.name) like lower(concat('%',:search,'%')) or lower(a.student.rollNumber) like lower(concat('%',:search,'%')) or lower(a.bus.busNumber) like lower(concat('%',:search,'%')) or lower(a.boardingPoint.stationName) like lower(concat('%',:search,'%')) or lower(a.academicYear.yearName) like lower(concat('%',:search,'%')))",
            countQuery = "select count(a) from BusApplication a where (:status is null or a.status=:status) and (:search is null or :search='' or lower(a.student.name) like lower(concat('%',:search,'%')) or lower(a.student.rollNumber) like lower(concat('%',:search,'%')) or lower(a.bus.busNumber) like lower(concat('%',:search,'%')) or lower(a.boardingPoint.stationName) like lower(concat('%',:search,'%')) or lower(a.academicYear.yearName) like lower(concat('%',:search,'%')))")
     Page<BusApplication> searchForAdmin(@Param("search") String search, @Param("status") ApplicationStatus status, Pageable pageable);
