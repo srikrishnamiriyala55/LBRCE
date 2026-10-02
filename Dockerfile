@@ -18,9 +18,10 @@ RUN mvn -B package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-RUN addgroup -S btms && adduser -S btms -G btms
-COPY --from=backend-build /workspace/backend/target/sms-0.0.1-SNAPSHOT.jar app.jar
+RUN addgroup -S btms && adduser -S btms -G btms && mkdir -p /tmp/tomcat-sessions && chown -R btms:btms /app /tmp/tomcat-sessions
+COPY --chown=btms:btms --from=backend-build /workspace/backend/target/sms-0.0.1-SNAPSHOT.jar app.jar
 USER btms
 EXPOSE 10000
+ENV SESSION_STORE_DIR=/tmp/tomcat-sessions
 # Render injects PORT at runtime. Bind explicitly on all interfaces so its port scanner can reach Tomcat.
 ENTRYPOINT ["sh", "-c", "exec java -Dserver.address=0.0.0.0 -Dserver.port=${PORT:-10000} -jar /app/app.jar"]
