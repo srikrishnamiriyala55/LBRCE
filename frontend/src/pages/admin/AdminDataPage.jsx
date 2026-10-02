@@ -81,36 +81,77 @@ export default function AdminDataPage({ type }) {
     passes: [{ key: 'studentName', label: 'Student' }, { key: 'rollNumber', label: 'Roll Number' }, { key: 'passNumber', label: 'Pass ID' }, { key: 'busNumber', label: 'Bus' }, { key: 'boardingPoint', label: 'Boarding Point' }, { key: 'validUntil', label: 'Valid Until' }, { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> }, { key: 'actions', label: 'Action', render: (r) => <button type="button" className="text-sm font-medium text-blue-700 hover:underline" onClick={() => viewPass(r)}>View</button> }],
     notifications: [{ key: 'title', label: 'Title' }, { key: 'recipientRollNumber', label: 'Recipient' }, { key: 'message', label: 'Message' }, { key: 'createdAt', label: 'Date', render: (r) => r.createdAt ? new Date(r.createdAt).toLocaleString() : '—' }]
   };
-  const transferCounts=transferSummary;
-  return <><div className="card"><div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-2xl font-bold capitalize">{type}</h2>{type==='passes'&&<p className="text-sm text-gray-500">Passes generated: {total}</p>}{type==='transfers'&&<p className="text-sm text-gray-500">Total: {transferCounts.total || 0} · Accepted: {transferCounts.accepted || 0} · Rejected: {transferCounts.rejected || 0}</p>}{lastUpdated && <p className="text-xs text-gray-500">Updated {lastUpdated.toLocaleTimeString()}</p>}</div><button type="button" className="btn-secondary inline-flex items-center justify-center gap-2" disabled={loading} onClick={() => setRefreshKey((value) => value + 1)}><RefreshCw size={16} className={loading?'animate-spin':''}/> Refresh</button></div>
+  const transferCounts = transferSummary;
+  return (
+    <>
+      <div className="card">
+        {/* Header */}
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold capitalize">{type}</h2>
+            {type === 'passes' && <p className="text-sm text-gray-500">Passes generated: {total}</p>}
+            {type === 'transfers' && <p className="text-sm text-gray-500">Total: {transferCounts.total || 0} · Accepted: {transferCounts.accepted || 0} · Rejected: {transferCounts.rejected || 0}</p>}
+            {lastUpdated && <p className="text-xs text-gray-500">Updated {lastUpdated.toLocaleTimeString()}</p>}
+          </div>
+          <button type="button" className="btn-secondary inline-flex items-center justify-center gap-2" disabled={loading} onClick={() => setRefreshKey((value) => value + 1)}>
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh
+          </button>
+        </div>
 
-  {type === 'transfers' && (
-    <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-      <div className="relative flex-1">
-        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} aria-hidden="true" />
-        <input type="text" className="input-field pl-9" placeholder="Search student, roll number, bus or reason..." value={inlineSearch} onChange={(e) => setInlineSearch(e.target.value)} aria-label="Search transfers" />
+        {/* Search + status filter for transfers */}
+        {type === 'transfers' && (
+          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="relative sm:col-span-2">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} aria-hidden="true" />
+              <input type="text" className="input-field pl-9" placeholder="Search student, roll number, bus or reason..." value={inlineSearch} onChange={(e) => setInlineSearch(e.target.value)} aria-label="Search transfers" />
+            </div>
+            <select className="input-field" value={transferStatusFilter} onChange={(e) => setTransferStatusFilter(e.target.value)} aria-label="Filter by transfer status">
+              <option value="">All Statuses</option>
+              <option value="TRANSFER_REQUESTED">Transfer Requested</option>
+              <option value="OLD_INCHARGE_APPROVED">Old Incharge Approved</option>
+              <option value="OLD_INCHARGE_REJECTED">Old Incharge Rejected</option>
+              <option value="NEW_INCHARGE_APPROVED">New Incharge Approved</option>
+              <option value="NEW_INCHARGE_REJECTED">New Incharge Rejected</option>
+              <option value="TRANSFER_COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+        )}
+
+        {/* Search for payments */}
+        {type === 'payments' && (
+          <div className="mb-4 relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} aria-hidden="true" />
+            <input type="text" className="input-field pl-9" placeholder="Search by student, roll number, order ID or status..." value={inlineSearch} onChange={(e) => setInlineSearch(e.target.value)} aria-label="Search payments" />
+          </div>
+        )}
+
+        {/* Search for notifications */}
+        {type === 'notifications' && (
+          <div className="mb-4 relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} aria-hidden="true" />
+            <input type="text" className="input-field pl-9" placeholder="Search by title, recipient or message..." value={inlineSearch} onChange={(e) => setInlineSearch(e.target.value)} aria-label="Search notifications" />
+          </div>
+        )}
+
+        {/* Server-side search for passes */}
+        {type === 'passes' && (
+          <form className="mb-5 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); setAppliedSearch(search.trim()); }}>
+            <input className="input-field sm:max-w-md" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search pass ID, student, roll number or bus" aria-label="Search bus passes" />
+            <button className="btn-primary" type="submit">Search</button>
+            {appliedSearch && <button className="btn-secondary" type="button" onClick={() => { setSearch(''); setAppliedSearch(''); }}>Clear</button>}
+          </form>
+        )}
+
+        {!loading && type !== 'passes' && (
+          <p className="mb-3 text-xs text-gray-500">
+            {filteredRows.length} of {rows.length} record(s){inlineSearch || transferStatusFilter ? ' matching filters' : ''}
+          </p>
+        )}
+
+        <DataTable columns={configs[type]} data={type === 'passes' ? rows : filteredRows} loading={loading} searchable={false} />
       </div>
-      <select className="input-field w-auto" value={transferStatusFilter} onChange={(e) => setTransferStatusFilter(e.target.value)} aria-label="Filter by transfer status">
-        <option value="">All Statuses</option>
-        <option value="TRANSFER_REQUESTED">Transfer Requested</option>
-        <option value="OLD_INCHARGE_APPROVED">Old Incharge Approved</option>
-        <option value="OLD_INCHARGE_REJECTED">Old Incharge Rejected</option>
-        <option value="NEW_INCHARGE_APPROVED">New Incharge Approved</option>
-        <option value="NEW_INCHARGE_REJECTED">New Incharge Rejected</option>
-        <option value="TRANSFER_COMPLETED">Completed</option>
-        <option value="CANCELLED">Cancelled</option>
-      </select>
-    </div>
-  )}
-
-  {(type === 'payments' || type === 'notifications') && (
-    <div className="mb-4 relative">
-      <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} aria-hidden="true" />
-      <input type="text" className="input-field pl-9" placeholder={`Search ${type}...`} value={inlineSearch} onChange={(e) => setInlineSearch(e.target.value)} aria-label={`Search ${type}`} />
-    </div>
-  )}
-
-  {type === 'passes' && <form className="mb-5 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); setAppliedSearch(search.trim()); }}><input className="input-field sm:max-w-md" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search pass ID, student, roll number or bus" aria-label="Search bus passes"/><button className="btn-primary" type="submit">Search</button>{appliedSearch && <button className="btn-secondary" type="button" onClick={() => { setSearch(''); setAppliedSearch(''); }}>Clear</button>}</form>}
-  {!loading && type !== 'passes' && <p className="mb-3 text-xs text-gray-500">{filteredRows.length} of {rows.length} record(s){inlineSearch || transferStatusFilter ? ' matching filters' : ''}</p>}
-  <DataTable columns={configs[type]} data={type === 'passes' ? rows : filteredRows} loading={loading} searchable={false} /></div><PassViewerModal pass={selectedPass} photoUrl={photoUrl} onClose={closePass} onDownload={downloadPass} downloading={downloading} /></>;
+      <PassViewerModal pass={selectedPass} photoUrl={photoUrl} onClose={closePass} onDownload={downloadPass} downloading={downloading} />
+    </>
+  );
 }

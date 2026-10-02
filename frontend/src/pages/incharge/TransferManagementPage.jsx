@@ -91,17 +91,17 @@ const TransferManagementPage = () => {
   return (
     <div className="card">
       <h2 className="text-xl font-bold mb-4">Transfer Requests</h2>
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <input
           type="text"
-          className="input-field flex-1"
+          className="input-field sm:col-span-2"
           placeholder="Search student, roll number, bus or reason..."
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
           aria-label="Search transfers"
         />
         <select
-          className="input-field w-auto"
+          className="input-field"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           aria-label="Filter by status"

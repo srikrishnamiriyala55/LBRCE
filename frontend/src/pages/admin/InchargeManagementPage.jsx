@@ -142,8 +142,8 @@ const InchargeManagementPage = () => {
       </div>
 
       <div className="card">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-          <div className="relative flex-1">
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="relative sm:col-span-2">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} aria-hidden="true" />
             <input
               type="text"
@@ -155,7 +155,7 @@ const InchargeManagementPage = () => {
             />
           </div>
           <select
-            className="input-field w-auto"
+            className="input-field"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             aria-label="Filter by status"
