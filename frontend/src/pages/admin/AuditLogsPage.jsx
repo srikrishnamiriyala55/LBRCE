@@ -17,7 +17,7 @@ const AuditLogsPage = () => {
     setLoading(true);
     try {
       const res = await api.get('/admin/audit-logs?unpaged=true');
-      setLogs(res.data.content || []);
+      setLogs(Array.isArray(res.data) ? res.data : (res.data?.content || []));
     } catch (err) {
       addToast('Failed to load audit logs', 'error');
     } finally {

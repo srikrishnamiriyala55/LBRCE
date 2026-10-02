@@ -23,7 +23,7 @@ export default function AdminDataPage({ type }) {
     const params = new URLSearchParams({ unpaged: 'true' });
     if (type === 'passes' && appliedSearch) params.set('search', appliedSearch);
     params.set('_ts', String(Date.now()));
-    api.get(`/admin/${type}?${params}`, { headers: { 'Cache-Control': 'no-cache' } }).then((r) => { setRows(r.data.content || []); setTotal(r.data.totalElements ?? (r.data.content || []).length); setLastUpdated(new Date()); })
+    api.get(`/admin/${type}?${params}`, { headers: { 'Cache-Control': 'no-cache' } }).then((r) => { const list = Array.isArray(r.data) ? r.data : (r.data?.content || []); setRows(list); setTotal(Array.isArray(r.data) ? r.data.length : (r.data?.totalElements ?? list.length)); setLastUpdated(new Date()); })
       .catch((e) => addToast(e.response?.data?.message || `Failed to load ${type}`, 'error')).finally(() => setLoading(false));
   }, [type, appliedSearch, refreshKey]);
 

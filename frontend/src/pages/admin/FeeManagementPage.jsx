@@ -31,7 +31,7 @@ const FeeManagementPage = () => {
       const params = { unpaged: true };
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       const res = await api.get('/admin/fees', { signal, params });
-      setFees(res.data.content || []);
+      setFees(Array.isArray(res.data) ? res.data : (res.data?.content || []));
     } catch (err) {
       if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED')
         addToast('Failed to load fees records', 'error');

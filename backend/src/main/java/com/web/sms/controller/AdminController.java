@@ -11,7 +11,6 @@ import com.web.sms.repository.*;
 import com.web.sms.security.UserPrincipal;
 import com.web.sms.service.*;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +19,6 @@ import org.springframework.http.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.LinkedHashMap;
 
@@ -153,7 +151,9 @@ public class AdminController {
         bp.setBus(bus);
         bp.setStationName(stationName);
         bp.setFeeAmount(req.getFeeAmount());
-        bp.setOrderIndex(req.getOrderIndex() != null ? req.getOrderIndex() : 0);
+        if (req.getOrderIndex() != null) {
+            bp.setOrderIndex(req.getOrderIndex());
+        }
         bp.setStatus(EntityStatus.ACTIVE);
 
         BoardingPoints saved = boardingPointsRepo.save(bp);
@@ -213,7 +213,11 @@ public class AdminController {
         String oldValue = point.getStationName() + " / ₹" + point.getFeeAmount();
         point.setStationName(stationName);
         point.setFeeAmount(req.getFeeAmount());
-        point.setOrderIndex(req.getOrderIndex() == null ? 0 : req.getOrderIndex());
+        if (req.getOrderIndex() != null) {
+            point.setOrderIndex(req.getOrderIndex());
+        } else {
+            point.setOrderIndex(0);
+        }
         BoardingPoints saved = boardingPointsRepo.save(point);
         auditService.log(getCurrentUser().getUsername(), "ADMIN", "BOARDING_POINT_UPDATED",
                 "BOARDING_POINT", String.valueOf(id), oldValue,
@@ -255,12 +259,22 @@ public class AdminController {
     @GetMapping("/incharges/{id}/photo") public ResponseEntity<byte[]> inchargePhoto(@PathVariable Long id){Incharge i=inchargeService.getInchargeById(id);if(i.getPhotoData()==null||i.getPhotoData().length==0)throw new ResourceNotFoundException("In-Charge photo not found");return ResponseEntity.ok().contentType(MediaType.parseMediaType(i.getPhotoContentType()==null?MediaType.APPLICATION_OCTET_STREAM_VALUE:i.getPhotoContentType())).body(i.getPhotoData());}
     @PutMapping(value="/incharges/{id}/photo",consumes=MediaType.MULTIPART_FORM_DATA_VALUE) @Transactional public Map<String,Boolean> uploadInchargePhoto(@PathVariable Long id,@RequestPart("photo") MultipartFile photo) throws java.io.IOException {if(photo==null||photo.isEmpty()||photo.getSize()>2L*1024*1024)throw new com.web.sms.exception.BadRequestException("Photo must be a JPEG or PNG image up to 2 MB");byte[] bytes=photo.getBytes();boolean jpeg=bytes.length>=3&&(bytes[0]&0xff)==0xff&&(bytes[1]&0xff)==0xd8&&(bytes[2]&0xff)==0xff;boolean png=bytes.length>=8&&(bytes[0]&0xff)==0x89&&bytes[1]==0x50&&bytes[2]==0x4e&&bytes[3]==0x47;if(!jpeg&&!png)throw new com.web.sms.exception.BadRequestException("Photo must be a valid JPEG or PNG image");Incharge i=inchargeService.getInchargeById(id);i.setPhotoData(bytes);i.setPhotoContentType(jpeg?MediaType.IMAGE_JPEG_VALUE:MediaType.IMAGE_PNG_VALUE);auditService.log(getCurrentUser().getUsername(),"ADMIN","INCHARGE_PHOTO_UPDATED","INCHARGE",String.valueOf(id),null,i.getTeacherId(),null);return Map.of("photoAvailable",true);}
 
-    @GetMapping("/students")
-    public Page<StudentProfileResponse> getStudents(@RequestParam(required = false) String search,
-                                                   @RequestParam(required = false) String branch,
-                                                   @RequestParam(defaultValue = "false") boolean unpaged, Pageable pageable) {
-        return studentRepo.searchStudents(search, branch, requestedPage(unpaged, pageable))
-                .map(StudentProfileResponse::fromStudent);
+    @GetMapping({"/students", "/students/all"})
+    public List<StudentProfileResponse> getStudents(@RequestParam(required = false) String search,
+                                                    @RequestParam(required = false) String branch) {
+        String term = search == null ? "" : search.trim().toLowerCase();
+        String branchFilter = (branch == null || branch.isBlank()) ? null : branch.trim();
+        return studentRepo.findAll().stream()
+                .filter(s -> branchFilter == null || branchFilter.equalsIgnoreCase(s.getBranch()))
+                .map(StudentProfileResponse::fromStudent)
+                .filter(s -> term.isEmpty() || String.join(" ",
+                        safe(s.getName()), safe(s.getRollNumber()), safe(s.getEmail()),
+                        safe(s.getPhoneNumber()), safe(s.getBranch()),
+                        s.getYear() == null ? "" : String.valueOf(s.getYear()),
+                        s.getSemester() == null ? "" : String.valueOf(s.getSemester()),
+                        safe(s.getStatus()))
+                        .toLowerCase().contains(term))
+                .toList();
     }
 
     @PostMapping(value="/students",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -278,18 +292,17 @@ public class AdminController {
         return adminService.updateStudentStatus(id, req.getStatus(), getCurrentUser().getUsername());
     }
 
-    @GetMapping("/applications")
-    public Page<ApplicationResponse> getApplications(@RequestParam(required = false) String search, @RequestParam(required = false) ApplicationStatus status, @RequestParam(defaultValue = "false") boolean unpaged, Pageable pageable) {
-        pageable=requestedPage(unpaged, pageable);
-        return applicationRepo.searchForAdmin(search == null ? "" : search.trim(), status, pageable).map(ApplicationResponse::fromApplication);
-    }
-
-    /** Full admin list used by the management screen. Filtering in Java avoids database-specific enum casting. */
-    @GetMapping("/applications/all")
-    public List<ApplicationResponse> getAllApplications(@RequestParam(required = false) String search,
-                                                        @RequestParam(required = false) ApplicationStatus status) {
+    @GetMapping({"/applications", "/applications/all"})
+    public List<ApplicationResponse> getApplications(@RequestParam(required = false) String search,
+                                                     @RequestParam(required = false) ApplicationStatus status) {
         String term = search == null ? "" : search.trim().toLowerCase();
-        return applicationRepo.findAllForAdminList().stream()
+        List<BusApplication> list;
+        try {
+            list = applicationRepo.findAllForAdminList();
+        } catch (Exception e) {
+            list = applicationRepo.findAll();
+        }
+        return list.stream()
                 .filter(application -> status == null || application.getStatus() == status)
                 .map(ApplicationResponse::fromApplication)
                 .filter(application -> term.isEmpty() || String.join(" ",
@@ -325,13 +338,13 @@ public class AdminController {
     @PutMapping("/applications/{id}") public ApplicationResponse updateApplication(@PathVariable Long id,@Valid @RequestBody UpdateApplicationRequest req){return applicationService.updateApplication(id,req,getCurrentUser().getUsername());}
     @DeleteMapping("/applications/{id}") public void deleteApplication(@PathVariable Long id){applicationService.deleteApplication(id,getCurrentUser().getUsername());}
 
-    @GetMapping("/fees")
-    public Page<FeeResponse> getFees(@RequestParam(required = false) String search, @RequestParam(defaultValue = "false") boolean unpaged, Pageable pageable) {
+    @GetMapping({"/fees", "/fees/all"})
+    public List<FeeResponse> getFees(@RequestParam(required = false) String search) {
         String trimmed = (search == null || search.isBlank()) ? null : search.trim();
         if (trimmed == null) {
-            return feeRepo.findAll(requestedPage(unpaged, pageable)).map(FeeResponse::fromFee);
+            return feeRepo.findAll().stream().map(FeeResponse::fromFee).toList();
         }
-        return feeRepo.searchForAdmin(trimmed, requestedPage(unpaged, pageable)).map(FeeResponse::fromFee);
+        return feeRepo.searchForAdmin(trimmed, Pageable.unpaged()).map(FeeResponse::fromFee).getContent();
     }
 
     @PostMapping("/fees/{id}/manual-payment")
@@ -342,48 +355,31 @@ public class AdminController {
         return result;
     }
 
-    @GetMapping("/transfers")
-    public Page<TransferResponse> getTransfers(@RequestParam(required = false) String status, @RequestParam(defaultValue = "false") boolean unpaged, Pageable pageable) {
+    @GetMapping({"/transfers", "/transfers/all"})
+    public List<TransferResponse> getTransfers(@RequestParam(required = false) String status) {
         // Simple status filter; full text search can be added to TransferRequestRepository if needed
         if (status != null && !status.isBlank()) {
             try {
                 com.web.sms.enums.TransferStatus ts = com.web.sms.enums.TransferStatus.valueOf(status.trim().toUpperCase());
-                return transferRepo.findByStatus(ts, requestedPage(unpaged, pageable)).map(TransferResponse::fromTransfer);
+                return transferRepo.findByStatus(ts, Pageable.unpaged()).map(TransferResponse::fromTransfer).getContent();
             } catch (IllegalArgumentException e) {
                 throw new com.web.sms.exception.BadRequestException("Invalid transfer status: " + status);
             }
         }
-        return transferRepo.findAllWithDetails(requestedPage(unpaged, pageable)).map(TransferResponse::fromTransfer);
+        return transferRepo.findAllWithDetails(Pageable.unpaged()).map(TransferResponse::fromTransfer).getContent();
     }
     @GetMapping("/transfers/summary") public Map<String, Long> transferSummary(){Map<String,Long> summary=new LinkedHashMap<>();summary.put("total",transferRepo.count());summary.put("accepted",transferRepo.countByStatus(TransferStatus.TRANSFER_COMPLETED));summary.put("rejected",transferRepo.countByStatus(TransferStatus.OLD_INCHARGE_REJECTED)+transferRepo.countByStatus(TransferStatus.NEW_INCHARGE_REJECTED));return summary;}
     @PostMapping("/transfers/{id}/approve") public TransferResponse approveTransfer(@PathVariable Long id){return transferService.approveByAdmin(id,getCurrentUser().getUsername());}
 
-    @GetMapping("/payments") public Page<PaymentResponse> payments(@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable){return paymentRepo.findAll(requestedPage(unpaged,pageable)).map(PaymentResponse::fromPayment);}
-    @GetMapping("/passes") public Page<PassResponse> passes(@RequestParam(required=false) String search,@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable){return passRepo.search(search==null?null:search.trim(),requestedPage(unpaged,pageable)).map(PassResponse::fromBusPass);}
+    @GetMapping("/payments") public List<PaymentResponse> payments(){return paymentRepo.findAll().stream().map(PaymentResponse::fromPayment).toList();}
+    @GetMapping("/passes") public List<PassResponse> passes(@RequestParam(required=false) String search){return passRepo.search(search==null?null:search.trim(),Pageable.unpaged()).map(PassResponse::fromBusPass).getContent();}
     @GetMapping("/passes/{id}") public PassResponse pass(@PathVariable Long id){return passService.getPassForAdmin(id);}
     @GetMapping("/passes/{id}/photo") public ResponseEntity<byte[]> passPhoto(@PathVariable Long id){return passService.passPhotoForAdmin(id);}
     @GetMapping("/passes/{id}/download") public ResponseEntity<byte[]> downloadPass(@PathVariable Long id){PassResponse pass=passService.getPassForAdmin(id);return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=bus-pass-"+pass.getRollNumber()+".pdf").body(passService.generatePdfForAdmin(id));}
-    @GetMapping("/notifications") public Page<NotificationResponse> notifications(@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable){return notificationRepo.findAll(requestedPage(unpaged,pageable)).map(NotificationResponse::fromNotification);}
+    @GetMapping("/notifications") public List<NotificationResponse> notifications(){return notificationRepo.findAll().stream().map(NotificationResponse::fromNotification).toList();}
     @GetMapping("/profile") public Map<String,Object> profile(){Admin a=adminRepo.findById(getCurrentUser().getId()).orElseThrow(()->new ResourceNotFoundException("Admin not found"));Map<String,Object> r=new LinkedHashMap<>();r.put("adminId",a.getAdminId());r.put("name",a.getName());r.put("email",a.getEmail());r.put("phoneNumber",a.getPhoneNumber());r.put("status",a.getStatus());return r;}
     @GetMapping("/students/{id}/transport") public Map<String,Object> studentTransport(@PathVariable Long id){Student s=studentRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("Student not found"));Map<String,Object> r=new LinkedHashMap<>();r.put("student",StudentProfileResponse.fromStudent(s));java.util.List<TransportAllocation> history=allocationRepo.findByStudentId(id);r.put("assignments",history.stream().map(a->{Map<String,Object>x=new LinkedHashMap<>();x.put("id",a.getId());x.put("bus",a.getBus().getBusNumber());x.put("boardingPoint",a.getBoardingPoint().getStationName());x.put("status",a.getStatus());return x;}).toList());r.put("fees",feeRepo.findByStudentId(id).stream().map(FeeResponse::fromFee).toList());r.put("passes",passRepo.findByStudentId(id).stream().map(PassResponse::fromBusPass).toList());r.put("transfers",transferRepo.findByStudentId(id).stream().map(TransferResponse::fromTransfer).toList());return r;}
 
-    private String parseRemarks(String raw) {
-        if (raw == null || raw.isBlank()) return null;
-        if (raw.contains("\"remarks\"")) {
-            try {
-                int idx = raw.indexOf("\"remarks\"");
-                int start = raw.indexOf(":", idx);
-                if (start != -1) {
-                    String sub = raw.substring(start + 1).trim();
-                    if (sub.startsWith("\"")) {
-                        int end = sub.indexOf("\"", 1);
-                        if (end != -1) return sub.substring(1, end);
-                    }
-                }
-            } catch (Exception ignored) {}
-        }
-        return raw.trim();
-    }
 
     @PostMapping("/academic-years")
     public AcademicYear createAcademicYear(@Valid @RequestBody CreateAcademicYearRequest req) {
@@ -396,18 +392,16 @@ public class AdminController {
     }
 
     @GetMapping("/audit-logs")
-    public Page<AuditLog> getAuditLogs(@RequestParam(defaultValue="false") boolean unpaged, Pageable pageable) {
-        return auditService.getLogs(requestedPage(unpaged, pageable));
+    public List<AuditLog> getAuditLogs() {
+        return auditService.getLogs(Pageable.unpaged()).getContent();
     }
 
     @GetMapping("/reports/summary")
     public DashboardResponse getSummaryReport() {
         return adminService.getDashboard();
     }
-    @GetMapping("/reports/students") public Page<TransportReportRow> studentReport(@ModelAttribute TransportReportFilter filter,@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable){return reportService.report(null,filter,requestedPage(unpaged,pageable));}
+    @GetMapping("/reports/students") public List<TransportReportRow> studentReport(@ModelAttribute TransportReportFilter filter){return reportService.report(null,filter,Pageable.unpaged()).getContent();}
     @GetMapping("/reports/students/export/{format}") public ResponseEntity<byte[]> exportStudentReport(@PathVariable String format,@ModelAttribute TransportReportFilter filter){return reportDownload(format,filter,null,"LBRCE College Transport Report");}
     private ResponseEntity<byte[]> reportDownload(String format,TransportReportFilter filter,Long busId,String title){boolean excel="excel".equalsIgnoreCase(format)||"xlsx".equalsIgnoreCase(format);boolean pdf="pdf".equalsIgnoreCase(format);if(!excel&&!pdf)throw new com.web.sms.exception.BadRequestException("Export format must be excel or pdf");byte[] body=excel?reportService.excel(busId,filter,title):reportService.pdf(busId,filter,title);String ext=excel?"xlsx":"pdf";MediaType type=excel?MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):MediaType.APPLICATION_PDF;return ResponseEntity.ok().contentType(type).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=transport-report."+ext).body(body);}
-    private Pageable requestedPage(boolean unpaged, Pageable p){return unpaged ? Pageable.unpaged() : checked(p);}
-    private Pageable checked(Pageable p){if(p.getPageNumber()<0||p.getPageSize()<1||p.getPageSize()>200)throw new com.web.sms.exception.BadRequestException("Page size must be between 1 and 200");return p;}
     private EntityStatus parseEntityStatus(String s){try{return EntityStatus.valueOf(s.toUpperCase());}catch(Exception e){throw new com.web.sms.exception.BadRequestException("Invalid status");}}
 }
