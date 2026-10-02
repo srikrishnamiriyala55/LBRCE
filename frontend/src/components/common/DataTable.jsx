@@ -54,7 +54,7 @@ const DataTable = ({ columns, data, loading, emptyMessage = 'No data found', sea
         </thead>
         <tbody className="divide-y divide-gray-200">
           {filteredData.map((row, rowIndex) => (
-            <tr key={rowIndex} className="hover:bg-gray-50">
+            <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white hover:bg-gray-100' : 'bg-gray-50 hover:bg-gray-100'}>
               {columns.map((col, colIndex) => (
                 <td key={colIndex} className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-700">
                   {col.render ? col.render(row, rowIndex) : row[col.key]}

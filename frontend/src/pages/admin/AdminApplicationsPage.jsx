@@ -43,14 +43,19 @@ export default function AdminApplicationsPage() {
   const load = useCallback(async (signal) => {
     setLoading(true);
     try {
-      const [applications, busResponse, summaryResponse] = await Promise.all([
-        api.get('/admin/applications', { signal, params: { unpaged: true, search: debouncedSearch.trim() || undefined, status: status || undefined } }),
-        api.get('/admin/buses'),
-        api.get('/admin/applications/summary'),
-      ]);
+      // The applications list is the only required request for this screen.
+      // A temporary failure in summary cards or bus options must not hide valid records.
+      const applications = await api.get('/admin/applications', {
+        signal,
+        params: { unpaged: true, search: debouncedSearch.trim() || undefined, status: status || undefined },
+      });
       setRows(applications.data.content || []);
-      setBuses(busResponse.data || []);
-      setSummary(summaryResponse.data || {});
+      const [busResult, summaryResult] = await Promise.allSettled([
+        api.get('/admin/buses', { signal }),
+        api.get('/admin/applications/summary', { signal }),
+      ]);
+      if (busResult.status === 'fulfilled') setBuses(busResult.value.data || []);
+      if (summaryResult.status === 'fulfilled') setSummary(summaryResult.value.data || {});
     } catch (error) {
       if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED')
         addToast(error.response?.data?.message || 'Failed to load applications', 'error');
