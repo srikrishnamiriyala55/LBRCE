@@ -45,11 +45,22 @@ export default function AdminApplicationsPage() {
     try {
       // The applications list is the only required request for this screen.
       // A temporary failure in summary cards or bus options must not hide valid records.
-      const applications = await api.get('/admin/applications/all', {
-        signal,
-        params: { search: debouncedSearch.trim() || undefined, status: status || undefined },
-      });
-      setRows(applications.data || []);
+      let applications;
+      try {
+        applications = await api.get('/admin/applications/all', {
+          signal,
+          params: { search: debouncedSearch.trim() || undefined, status: status || undefined },
+        });
+      } catch (error) {
+        // During a rolling deployment, a new frontend can briefly meet the prior backend.
+        // Keep the screen usable while the deployment converges.
+        if (error.response?.status !== 404) throw error;
+        applications = await api.get('/admin/applications', {
+          signal,
+          params: { unpaged: true, search: debouncedSearch.trim() || undefined, status: status || undefined },
+        });
+      }
+      setRows(Array.isArray(applications.data) ? applications.data : (applications.data.content || []));
       const [busResult, summaryResult] = await Promise.allSettled([
         api.get('/admin/buses', { signal }),
         api.get('/admin/applications/summary', { signal }),

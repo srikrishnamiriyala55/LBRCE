@@ -19,8 +19,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Only redirect to /login on 401 if we are NOT already on the login endpoint or page
-    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login') && window.location.pathname !== '/login') {
+    // A stale/invalid token may receive either 401 or 403 after a deployment.
+    // Clear it and ask the user to authenticate again instead of leaving a broken dashboard.
+    if ([401, 403].includes(error.response?.status) && !error.config?.url?.includes('/auth/login') && window.location.pathname !== '/login') {
       // Save current location so login can redirect back after successful auth
       sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search);
       localStorage.removeItem('token');
