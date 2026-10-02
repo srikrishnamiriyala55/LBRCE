@@ -294,7 +294,8 @@ public class AdminController {
                 .map(ApplicationResponse::fromApplication)
                 .filter(application -> term.isEmpty() || String.join(" ",
                         safe(application.getStudentName()), safe(application.getRollNumber()), safe(application.getBusNumber()),
-                        safe(application.getBoardingPointName()), safe(application.getAcademicYear()), safe(application.getStatus()))
+                        safe(application.getBoardingPointName()), safe(application.getAcademicYear()),
+                        application.getStatus() == null ? "" : application.getStatus().name())
                         .toLowerCase().contains(term))
                 .toList();
     }
