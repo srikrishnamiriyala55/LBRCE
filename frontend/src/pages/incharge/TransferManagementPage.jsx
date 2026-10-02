@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -6,10 +7,12 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { useToast } from '../../components/common/Toast';
 
 const TransferManagementPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  // Initialize from URL (e.g. ?status=TRANSFER_REQUESTED from dashboard card click)
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '');
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentTransfer, setCurrentTransfer] = useState(null);
@@ -103,7 +106,7 @@ const TransferManagementPage = () => {
         <select
           className="input-field"
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => { setStatusFilter(e.target.value); if (e.target.value) setSearchParams({ status: e.target.value }); else setSearchParams({}); }}
           aria-label="Filter by status"
         >
           <option value="">All Statuses</option>

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -10,12 +11,16 @@ import { formatINR } from '../../utils/currency';
 export default function AdminDataPage({ type }) {
   const [rows, setRows] = useState([]), [total, setTotal] = useState(0), [loading, setLoading] = useState(true);
   const [selectedPass, setSelectedPass] = useState(null), [photoUrl, setPhotoUrl] = useState(''), [downloading, setDownloading] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(''), [appliedSearch, setAppliedSearch] = useState('');
   const [refreshKey, setRefreshKey] = useState(0), [lastUpdated, setLastUpdated] = useState(null);
   const [approvingTransfer, setApprovingTransfer] = useState(null);
   const [transferSummary, setTransferSummary] = useState({ total: 0, accepted: 0, rejected: 0 });
   const [inlineSearch, setInlineSearch] = useState('');
-  const [transferStatusFilter, setTransferStatusFilter] = useState('');
+  // Initialize transfer status filter from URL search param (e.g. navigating from dashboard)
+  const [transferStatusFilter, setTransferStatusFilter] = useState(() =>
+    type === 'transfers' ? (searchParams.get('status') || '') : ''
+  );
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -27,7 +32,13 @@ export default function AdminDataPage({ type }) {
       .catch((e) => addToast(e.response?.data?.message || `Failed to load ${type}`, 'error')).finally(() => setLoading(false));
   }, [type, appliedSearch, refreshKey]);
 
-  useEffect(() => { setSearch(''); setAppliedSearch(''); setInlineSearch(''); setTransferStatusFilter(''); }, [type]);
+  useEffect(() => {
+    setSearch('');
+    setAppliedSearch('');
+    setInlineSearch('');
+    // When type changes, re-read status from URL (in case we navigated from dashboard)
+    setTransferStatusFilter(type === 'transfers' ? (searchParams.get('status') || '') : '');
+  }, [type]);
   useEffect(() => { if (type === 'transfers') api.get('/admin/transfers/summary').then((response) => setTransferSummary(response.data || {})).catch(() => {}); }, [type, refreshKey]);
   // Auto-refresh on tab focus is intentionally removed: for 6000+ users it causes
   // excessive DB load every time a user switches browser tabs.
@@ -105,7 +116,7 @@ export default function AdminDataPage({ type }) {
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} aria-hidden="true" />
               <input type="text" className="input-field pl-9" placeholder="Search student, roll number, bus or reason..." value={inlineSearch} onChange={(e) => setInlineSearch(e.target.value)} aria-label="Search transfers" />
             </div>
-            <select className="input-field" value={transferStatusFilter} onChange={(e) => setTransferStatusFilter(e.target.value)} aria-label="Filter by transfer status">
+            <select className="input-field" value={transferStatusFilter} onChange={(e) => { setTransferStatusFilter(e.target.value); if (e.target.value) setSearchParams({ status: e.target.value }); else setSearchParams({}); }} aria-label="Filter by transfer status">
               <option value="">All Statuses</option>
               <option value="TRANSFER_REQUESTED">Transfer Requested</option>
               <option value="OLD_INCHARGE_APPROVED">Old Incharge Approved</option>

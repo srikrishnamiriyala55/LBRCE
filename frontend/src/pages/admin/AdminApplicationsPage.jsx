@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Eye, Edit2, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -14,12 +15,24 @@ const detail = (label, value) => (
   </div>
 );
 
+const STATUS_OPTIONS = [
+  { value: '', label: 'All Applications' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'UNDER_REVIEW', label: 'Under Review' },
+  { value: 'APPROVED', label: 'Approved' },
+  { value: 'REJECTED', label: 'Rejected' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+];
+
 export default function AdminApplicationsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [rows, setRows] = useState([]);
   const [buses, setBuses] = useState([]);
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState('');
+  // Initialize status from URL search params (e.g. ?status=PENDING from dashboard click)
+  const [status, setStatus] = useState(() => searchParams.get('status') || '');
   const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(false);
   const [current, setCurrent] = useState(null);
@@ -40,11 +53,19 @@ export default function AdminApplicationsPage() {
     debounceTimer.current = setTimeout(() => setDebouncedSearch(v), 300);
   };
 
+  // Keep URL in sync with status filter
+  const handleStatusChange = (newStatus) => {
+    setStatus(newStatus);
+    if (newStatus) {
+      setSearchParams({ status: newStatus });
+    } else {
+      setSearchParams({});
+    }
+  };
+
   const load = useCallback(async (signal) => {
     setLoading(true);
     try {
-      // The applications list is the only required request for this screen.
-      // A temporary failure in summary cards or bus options must not hide valid records.
       const applications = await api.get('/admin/applications', {
         signal,
         params: { search: debouncedSearch.trim() || undefined, status: status || undefined },
@@ -76,7 +97,6 @@ export default function AdminApplicationsPage() {
   const decide = async () => {
     try {
       if (action === 'APPROVE') await api.put(`/admin/applications/${current.id}/approve`);
-      // Send remarks as JSON object — not plain text — to match the backend DTO
       else await api.put(`/admin/applications/${current.id}/reject`, { remarks: remarks.trim() });
       addToast(action === 'APPROVE' ? 'Application approved' : 'Application rejected', 'success');
       setDialog(false);
@@ -137,6 +157,7 @@ export default function AdminApplicationsPage() {
   const editable = (row) => ['PENDING', 'UNDER_REVIEW'].includes(row.status);
   const deletable = (row) => row.status !== 'APPROVED';
   const formatDateTime = (value) => value ? new Date(value).toLocaleString() : '—';
+
   const columns = [
     { key: 'appliedAt', label: 'Date', render: (row) => new Date(row.appliedAt).toLocaleDateString() },
     { key: 'student', label: 'Student', render: (row) => <div><div className="font-medium">{row.studentName || '—'}</div><div className="text-xs text-gray-500">{row.rollNumber || '—'}</div></div> },
@@ -144,26 +165,91 @@ export default function AdminApplicationsPage() {
     { key: 'boardingPointName', label: 'Boarding Point' },
     { key: 'academicYear', label: 'Academic Year' },
     { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },
-    { key: 'actions', label: 'Actions', render: (row) => <div className="flex min-w-[220px] flex-wrap items-center gap-2">
-      <button type="button" onClick={() => setViewing(row)} className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800"><Eye size={14} /> View</button>
-      {editable(row) && <>
-        <button type="button" onClick={() => openDecision(row, 'APPROVE')} className="rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-700">Approve</button>
-        <button type="button" onClick={() => openDecision(row, 'REJECT')} className="rounded bg-red-100 px-2 py-1 text-xs font-medium text-red-700">Reject</button>
-        <button type="button" onClick={() => openEdit(row)} className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700"><Edit2 size={14} /> Edit</button>
-      </>}
-      {deletable(row) && <button type="button" onClick={() => remove(row)} className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700"><Trash2 size={14} /> Delete</button>}
-      {row.status === 'APPROVED' && <span title="Linked to active transport records" className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-500">Allocated · Locked</span>}
-    </div> },
+    {
+      key: 'actions', label: 'Actions', render: (row) => (
+        <div className="flex min-w-[220px] flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setViewing(row)} className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800"><Eye size={14} /> View</button>
+          {editable(row) && <>
+            <button type="button" onClick={() => openDecision(row, 'APPROVE')} className="rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-700">Approve</button>
+            <button type="button" onClick={() => openDecision(row, 'REJECT')} className="rounded bg-red-100 px-2 py-1 text-xs font-medium text-red-700">Reject</button>
+            <button type="button" onClick={() => openEdit(row)} className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700"><Edit2 size={14} /> Edit</button>
+          </>}
+          {deletable(row) && <button type="button" onClick={() => remove(row)} className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700"><Trash2 size={14} /> Delete</button>}
+          {row.status === 'APPROVED' && <span title="Linked to active transport records" className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-500">Allocated · Locked</span>}
+        </div>
+      )
+    },
+  ];
+
+  // Summary stat chips – clicking sets the status filter
+  const summaryChips = [
+    { label: 'Registered', value: summary.registered, statusFilter: '' },
+    { label: 'Pending', value: summary.pending, statusFilter: 'PENDING' },
+    { label: 'Under review', value: summary.under_review, statusFilter: 'UNDER_REVIEW' },
+    { label: 'Approved', value: summary.approved, statusFilter: 'APPROVED' },
+    { label: 'Rejected', value: summary.rejected, statusFilter: 'REJECTED' },
+    { label: 'Cancelled', value: summary.cancelled, statusFilter: 'CANCELLED' },
   ];
 
   return <>
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-2xl font-bold text-gray-800">Transportation Applications</h2><p className="text-sm text-gray-500">Review, correct and manage student bus applications</p></div><select className="input-field w-auto" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All Applications</option><option>PENDING</option><option>UNDER_REVIEW</option><option>APPROVED</option><option>REJECTED</option><option>CANCELLED</option></select></div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{[['Registered',summary.registered],['Pending',summary.pending],['Under review',summary.under_review],['Approved',summary.approved],['Rejected',summary.rejected],['Cancelled',summary.cancelled]].map(([label,value])=><div key={label} className="rounded-lg border bg-white p-3"><p className="text-xs text-gray-500">{label}</p><p className="text-xl font-bold text-blue-900">{value || 0}</p></div>)}</div>
-      <div className="card"><div className="mb-4"><input className="input-field" value={search} onChange={handleSearchChange} placeholder="Search student, roll number, bus, boarding point, year or status" /></div><DataTable columns={columns} data={rows} loading={loading} searchable={false} /><p className="mt-3 text-xs text-gray-500">{rows.length ? `${rows.length} matching record(s) displayed.` : 'No matching applications.'} Approved applications are linked to allocations, fees and passes.</p></div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Transportation Applications</h2>
+          <p className="text-sm text-gray-500">Review, correct and manage student bus applications</p>
+        </div>
+        <select
+          className="input-field w-auto"
+          value={status}
+          onChange={(event) => handleStatusChange(event.target.value)}
+        >
+          {STATUS_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Clickable summary chips */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {summaryChips.map(({ label, value, statusFilter }) => (
+          <div
+            key={label}
+            onClick={() => handleStatusChange(statusFilter)}
+            className={`rounded-lg border bg-white p-3 cursor-pointer transition-all hover:shadow-md hover:ring-2 hover:ring-blue-300 ${status === statusFilter ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStatusChange(statusFilter); }}
+            title={`Filter by ${label}`}
+          >
+            <p className="text-xs text-gray-500">{label}</p>
+            <p className="text-xl font-bold text-blue-900">{value || 0}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="card">
+        <div className="mb-4">
+          <input
+            className="input-field"
+            value={search}
+            onChange={handleSearchChange}
+            placeholder="Search student, roll number, bus, boarding point, year or status"
+          />
+        </div>
+        <DataTable columns={columns} data={rows} loading={loading} searchable={false} />
+        <p className="mt-3 text-xs text-gray-500">
+          {rows.length ? `${rows.length} matching record(s) displayed.` : 'No matching applications.'} Approved applications are linked to allocations, fees and passes.
+        </p>
+      </div>
     </div>
 
-    <ConfirmDialog isOpen={dialog} title={`${action === 'APPROVE' ? 'Approve' : 'Reject'} Application`} message={<div className="space-y-3"><p>Confirm {action.toLowerCase()} for {current?.rollNumber || 'this student'}?</p>{action === 'REJECT' && <textarea autoFocus maxLength="500" className="input-field" placeholder="Enter rejection reason" value={remarks} onChange={(event) => setRemarks(event.target.value)} />}</div>} onConfirm={() => action !== 'REJECT' || remarks.trim() ? decide() : addToast('A rejection reason is required', 'error')} onCancel={() => setDialog(false)} />
+    <ConfirmDialog
+      isOpen={dialog}
+      title={`${action === 'APPROVE' ? 'Approve' : 'Reject'} Application`}
+      message={<div className="space-y-3"><p>Confirm {action.toLowerCase()} for {current?.rollNumber || 'this student'}?</p>{action === 'REJECT' && <textarea autoFocus maxLength="500" className="input-field" placeholder="Enter rejection reason" value={remarks} onChange={(event) => setRemarks(event.target.value)} />}</div>}
+      onConfirm={() => action !== 'REJECT' || remarks.trim() ? decide() : addToast('A rejection reason is required', 'error')}
+      onCancel={() => setDialog(false)}
+    />
 
     <Modal isOpen={Boolean(viewing)} onClose={() => setViewing(null)} title="Application Details" size="lg">
       {viewing && <div className="space-y-5"><div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{detail('Student', viewing.studentName)}{detail('Roll Number', viewing.rollNumber)}{detail('Bus', viewing.busNumber)}{detail('Route', `${viewing.startingPoint || '—'} → ${viewing.endingPoint || '—'}`)}{detail('Boarding Point', viewing.boardingPointName)}{detail('Academic Year', viewing.academicYear)}{detail('Applied At', formatDateTime(viewing.appliedAt))}{detail('Reviewed At', formatDateTime(viewing.reviewedAt))}{detail('Remarks', viewing.remarks)}<div><p className="text-xs font-medium uppercase tracking-wide text-gray-500">Status</p><div className="mt-1"><StatusBadge status={viewing.status} /></div></div></div><div className="flex flex-wrap justify-end gap-2">{editable(viewing) && <button type="button" className="btn-secondary" onClick={() => { setViewing(null); openEdit(viewing); }}>Edit</button>}<button type="button" className="btn-primary" onClick={() => setViewing(null)}>Close</button></div></div>}
