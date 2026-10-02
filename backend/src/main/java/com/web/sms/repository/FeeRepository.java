@@ -40,5 +40,18 @@ public interface FeeRepository extends JpaRepository<Fee, Long> {
            " lower(f.academicYear.yearName) like lower(concat('%', :search, '%')) or " +
            " lower(f.status) like lower(concat('%', :search, '%')))")
     Page<Fee> searchForAdmin(@Param("search") String search, Pageable pageable);
+
+    /** List-based variant used by admin endpoint (no pagination overhead). */
+    @Query("select f from Fee f where " +
+           "(:search is null or :search = '' or " +
+           " lower(f.student.rollNumber) like lower(concat('%', :search, '%')) or " +
+           " lower(f.student.name) like lower(concat('%', :search, '%')) or " +
+           " lower(f.academicYear.yearName) like lower(concat('%', :search, '%')) or " +
+           " lower(f.status) like lower(concat('%', :search, '%')))" +
+           " order by f.student.rollNumber asc")
+    List<Fee> searchForAdminList(@Param("search") String search);
+
+    /** All fees for a bus's active students — returns a list for incharge view. */
+    List<Fee> findByAllocationBusIdAndAllocationStatus(Long busId, EntityStatus status);
 }
 

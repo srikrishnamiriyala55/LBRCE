@@ -11,7 +11,6 @@ import com.web.sms.repository.*;
 import com.web.sms.security.UserPrincipal;
 import com.web.sms.service.*;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
@@ -318,7 +317,7 @@ public class AdminController {
     @GetMapping("/applications/summary")
     public Map<String, Long> applicationSummary() {
         Map<String, Long> summary = new LinkedHashMap<>();
-        summary.put("registered", studentRepo.count());
+        summary.put("registered", applicationRepo.count());
         for (ApplicationStatus status : ApplicationStatus.values()) summary.put(status.name().toLowerCase(), applicationRepo.countByStatus(status));
         return summary;
     }
@@ -344,7 +343,7 @@ public class AdminController {
         if (trimmed == null) {
             return feeRepo.findAll().stream().map(FeeResponse::fromFee).toList();
         }
-        return feeRepo.searchForAdmin(trimmed, Pageable.unpaged()).map(FeeResponse::fromFee).getContent();
+        return feeRepo.searchForAdminList(trimmed).stream().map(FeeResponse::fromFee).toList();
     }
 
     @PostMapping("/fees/{id}/manual-payment")
@@ -361,18 +360,18 @@ public class AdminController {
         if (status != null && !status.isBlank()) {
             try {
                 com.web.sms.enums.TransferStatus ts = com.web.sms.enums.TransferStatus.valueOf(status.trim().toUpperCase());
-                return transferRepo.findByStatus(ts, Pageable.unpaged()).map(TransferResponse::fromTransfer).getContent();
+                return transferRepo.findByStatusList(ts).stream().map(TransferResponse::fromTransfer).toList();
             } catch (IllegalArgumentException e) {
                 throw new com.web.sms.exception.BadRequestException("Invalid transfer status: " + status);
             }
         }
-        return transferRepo.findAllWithDetails(Pageable.unpaged()).map(TransferResponse::fromTransfer).getContent();
+        return transferRepo.findAllWithDetailsList().stream().map(TransferResponse::fromTransfer).toList();
     }
     @GetMapping("/transfers/summary") public Map<String, Long> transferSummary(){Map<String,Long> summary=new LinkedHashMap<>();summary.put("total",transferRepo.count());summary.put("accepted",transferRepo.countByStatus(TransferStatus.TRANSFER_COMPLETED));summary.put("rejected",transferRepo.countByStatus(TransferStatus.OLD_INCHARGE_REJECTED)+transferRepo.countByStatus(TransferStatus.NEW_INCHARGE_REJECTED));return summary;}
     @PostMapping("/transfers/{id}/approve") public TransferResponse approveTransfer(@PathVariable Long id){return transferService.approveByAdmin(id,getCurrentUser().getUsername());}
 
     @GetMapping("/payments") public List<PaymentResponse> payments(){return paymentRepo.findAll().stream().map(PaymentResponse::fromPayment).toList();}
-    @GetMapping("/passes") public List<PassResponse> passes(@RequestParam(required=false) String search){return passRepo.search(search==null?null:search.trim(),Pageable.unpaged()).map(PassResponse::fromBusPass).getContent();}
+    @GetMapping("/passes") public List<PassResponse> passes(@RequestParam(required=false) String search){return passRepo.searchList(search==null?null:search.trim()).stream().map(PassResponse::fromBusPass).toList();}
     @GetMapping("/passes/{id}") public PassResponse pass(@PathVariable Long id){return passService.getPassForAdmin(id);}
     @GetMapping("/passes/{id}/photo") public ResponseEntity<byte[]> passPhoto(@PathVariable Long id){return passService.passPhotoForAdmin(id);}
     @GetMapping("/passes/{id}/download") public ResponseEntity<byte[]> downloadPass(@PathVariable Long id){PassResponse pass=passService.getPassForAdmin(id);return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=bus-pass-"+pass.getRollNumber()+".pdf").body(passService.generatePdfForAdmin(id));}
@@ -393,7 +392,7 @@ public class AdminController {
 
     @GetMapping("/audit-logs")
     public List<AuditLog> getAuditLogs() {
-        return auditService.getLogs(Pageable.unpaged()).getContent();
+        return auditService.getLogsList();
     }
 
     @GetMapping("/reports/summary")

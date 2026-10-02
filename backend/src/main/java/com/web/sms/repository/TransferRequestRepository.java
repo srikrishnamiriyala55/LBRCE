@@ -17,6 +17,17 @@ public interface TransferRequestRepository extends JpaRepository<TransferRequest
             "newIncharge", "academicYear"})
     @Query(value = "select t from TransferRequest t", countQuery = "select count(t) from TransferRequest t")
     Page<TransferRequest> findAllWithDetails(Pageable pageable);
+
+    /** List variant — no pagination overhead. Used by admin /transfers endpoint. */
+    @EntityGraph(attributePaths = {"student", "currentBus", "currentBus.incharge", "requestedBus",
+            "requestedBus.incharge", "currentBoardingPoint", "requestedBoardingPoint", "oldIncharge",
+            "newIncharge", "academicYear"})
+    @Query("select t from TransferRequest t order by t.id desc")
+    List<TransferRequest> findAllWithDetailsList();
+
+    /** List variant filtered by status. Used by admin /transfers?status=... endpoint. */
+    @Query("select t from TransferRequest t where t.status = :status order by t.id desc")
+    List<TransferRequest> findByStatusList(@org.springframework.data.repository.query.Param("status") TransferStatus status);
     long countByCurrentBoardingPointIdOrRequestedBoardingPointId(Long currentBoardingPointId, Long requestedBoardingPointId);
     List<TransferRequest> findByStudentId(Long studentId);
     void deleteByStudentId(Long studentId);
@@ -31,4 +42,6 @@ public interface TransferRequestRepository extends JpaRepository<TransferRequest
     long countByCurrentBusIdAndStatusIn(Long busId, List<TransferStatus> statuses);
     long countByRequestedBusIdAndStatusIn(Long busId, List<TransferStatus> statuses);
     Page<TransferRequest> findByStatus(TransferStatus status, Pageable pageable);
+    /** Count-based method for incharge applicationSummary — avoids loading entities. */
+    long countByBusApplication_BusId(Long busId);
 }

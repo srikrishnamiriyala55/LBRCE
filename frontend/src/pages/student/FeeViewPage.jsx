@@ -92,7 +92,7 @@ const FeeViewPage = () => {
               </div>
             </div>
 
-            {fee.remainingAmount > 0 ? (
+            {fee.remainingAmount > 0 && fee.status !== 'PAID' ? (
               <div className="border-t pt-4 flex justify-end">
                 <button
                   onClick={() => handleOpenPayment(fee)}

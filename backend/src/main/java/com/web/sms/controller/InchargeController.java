@@ -65,6 +65,7 @@ public class InchargeController {
     private final NotificationService notificationService;
     private final TransportReportService reportService;
     private final PassService passService;
+    private final AdminService adminService;
 
     public InchargeController(InchargeService inchargeService,
                               ApplicationService applicationService,
@@ -92,8 +93,6 @@ public class InchargeController {
         this.passService = passService;
         this.adminService=adminService;
     }
-
-    private final AdminService adminService;
 
     private UserPrincipal getCurrentUser() {
         return (UserPrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -161,10 +160,16 @@ public class InchargeController {
     @GetMapping("/profile/photo") public ResponseEntity<byte[]> profilePhoto(){com.web.sms.entity.Incharge i=inchargeService.getInchargeById(getCurrentUser().getId());if(i.getPhotoData()==null||i.getPhotoData().length==0)throw new ResourceNotFoundException("Profile photo not found");return ResponseEntity.ok().contentType(MediaType.parseMediaType(i.getPhotoContentType()==null?MediaType.APPLICATION_OCTET_STREAM_VALUE:i.getPhotoContentType())).body(i.getPhotoData());}
 
     @GetMapping("/fees")
-    public Page<com.web.sms.dto.response.FeeResponse> fees(@RequestParam(defaultValue="false") boolean unpaged, Pageable pageable){return feeRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(),EntityStatus.ACTIVE,requestedPage(unpaged,pageable)).map(com.web.sms.dto.response.FeeResponse::fromFee);}
+    public List<com.web.sms.dto.response.FeeResponse> fees() {
+        return feeRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(), EntityStatus.ACTIVE)
+                .stream().map(com.web.sms.dto.response.FeeResponse::fromFee).toList();
+    }
 
     @GetMapping("/passes")
-    public Page<PassResponse> passes(@RequestParam(defaultValue="false") boolean unpaged, Pageable pageable){return passRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(),EntityStatus.ACTIVE,requestedPage(unpaged,pageable)).map(PassResponse::fromBusPass);}
+    public List<PassResponse> passes() {
+        return passRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(), EntityStatus.ACTIVE)
+                .stream().map(PassResponse::fromBusPass).toList();
+    }
     @GetMapping("/passes/{id}") public PassResponse pass(@PathVariable Long id){return passService.getPassForIncharge(id,requireAssignedBus().getId());}
     @GetMapping("/passes/{id}/photo") public ResponseEntity<byte[]> passPhoto(@PathVariable Long id){return passService.passPhotoForIncharge(id,requireAssignedBus().getId());}
     @GetMapping("/passes/{id}/download") public ResponseEntity<byte[]> downloadPass(@PathVariable Long id){PassResponse pass=passService.getPassForIncharge(id,requireAssignedBus().getId());return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=bus-pass-"+pass.getRollNumber()+".pdf").body(passService.generatePdfForIncharge(id,requireAssignedBus().getId()));}
@@ -175,7 +180,9 @@ public class InchargeController {
     @GetMapping("/reports/students/export/{format}") public ResponseEntity<byte[]> exportStudentReport(@PathVariable String format,@ModelAttribute com.web.sms.dto.request.TransportReportFilter filter){Bus bus=requireAssignedBus();boolean excel="excel".equalsIgnoreCase(format)||"xlsx".equalsIgnoreCase(format);boolean pdf="pdf".equalsIgnoreCase(format);if(!excel&&!pdf)throw new com.web.sms.exception.BadRequestException("Export format must be excel or pdf");byte[] body=excel?reportService.excel(bus.getId(),filter,"Transport Report - "+bus.getBusNumber()):reportService.pdf(bus.getId(),filter,"Transport Report - "+bus.getBusNumber());String ext=excel?"xlsx":"pdf";MediaType type=excel?MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):MediaType.APPLICATION_PDF;return ResponseEntity.ok().contentType(type).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename="+bus.getBusNumber()+"-transport-report."+ext).body(body);}
 
     @GetMapping("/notifications")
-    public Page<com.web.sms.dto.response.NotificationResponse> notifications(@RequestParam(defaultValue="false") boolean unpaged, Pageable pageable){return notificationService.getNotifications(getCurrentUser().getUsername(),requestedPage(unpaged,pageable));}
+    public List<com.web.sms.dto.response.NotificationResponse> notifications() {
+        return notificationService.getNotifications(getCurrentUser().getUsername(), Pageable.unpaged()).getContent();
+    }
     @PutMapping("/notifications/{id}/read") public void markNotificationRead(@PathVariable Long id){notificationService.markAsRead(id,getCurrentUser().getUsername());}
 
     @GetMapping("/applications")
@@ -185,7 +192,14 @@ public class InchargeController {
         return applicationService.getApplicationsByBus(bus.getId(), status, requestedPage(unpaged,pageable));
     }
     @GetMapping("/applications/summary")
-    public Map<String,Long> applicationSummary(){Bus bus=requireAssignedBus();Map<String,Long> result=new LinkedHashMap<>();result.put("total",(long)applicationRepo.findByBusId(bus.getId()).size());for(ApplicationStatus status:ApplicationStatus.values())result.put(status.name().toLowerCase(),(long)applicationRepo.findByBusIdAndStatus(bus.getId(),status).size());return result;}
+    public Map<String,Long> applicationSummary() {
+        Bus bus = requireAssignedBus();
+        Map<String,Long> result = new LinkedHashMap<>();
+        result.put("total", applicationRepo.countByBusId(bus.getId()));
+        for (ApplicationStatus status : ApplicationStatus.values())
+            result.put(status.name().toLowerCase(), applicationRepo.countByBusIdAndStatus(bus.getId(), status));
+        return result;
+    }
 
     @PutMapping("/applications/{id}/approve")
     public ApplicationResponse approveApplication(@PathVariable Long id) {

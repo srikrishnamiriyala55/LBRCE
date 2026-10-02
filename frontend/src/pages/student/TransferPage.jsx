@@ -83,27 +83,29 @@ const TransferPage = () => {
         ) : <p className="mb-4 text-sm text-amber-700">Transfer is available only after an approved active bus assignment.</p>}
         {allocated && dashboard?.hasActiveTransfer && <p className="mb-4 text-sm text-amber-700">You already have a transfer request in progress. Wait for a decision or cancel it before creating another.</p>}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">New Bus</label>
-              <select className="input-field" required value={formData.requestedBusId} onChange={handleBusChange}>
-                <option value="">Select Bus</option>
-                {buses.filter(b => b.busNumber !== dashboard?.busNumber).map(b => <option key={b.id} value={b.id}>{b.busNumber} — {b.startingPoint} to {b.endingPoint}</option>)}
-              </select>
+          <fieldset disabled={!!dashboard?.hasActiveTransfer} className="space-y-4 disabled:opacity-60">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Bus</label>
+                <select className="input-field" required value={formData.requestedBusId} onChange={handleBusChange}>
+                  <option value="">Select Bus</option>
+                  {buses.filter(b => b.busNumber !== dashboard?.busNumber).map(b => <option key={b.id} value={b.id}>{b.busNumber} — {b.startingPoint} to {b.endingPoint}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Boarding Point</label>
+                <select className="input-field" required value={formData.requestedBoardingPointId} onChange={(e) => setFormData({...formData, requestedBoardingPointId: e.target.value})}>
+                  <option value="">Select Point</option>
+                  {boardingPoints.map(p => <option key={p.id} value={p.id}>{p.stationName}</option>)}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Transfer</label>
+                <textarea required rows="3" className="input-field" value={formData.reason} onChange={(e) => setFormData({...formData, reason: e.target.value})}></textarea>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">New Boarding Point</label>
-              <select className="input-field" required value={formData.requestedBoardingPointId} onChange={(e) => setFormData({...formData, requestedBoardingPointId: e.target.value})}>
-                <option value="">Select Point</option>
-                {boardingPoints.map(p => <option key={p.id} value={p.id}>{p.stationName}</option>)}
-              </select>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Transfer</label>
-              <textarea required rows="3" className="input-field" value={formData.reason} onChange={(e) => setFormData({...formData, reason: e.target.value})}></textarea>
-            </div>
-          </div>
-          <button type="submit" disabled={!eligible} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">Submit Request</button>
+            <button type="submit" disabled={!eligible} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">Submit Request</button>
+          </fieldset>
         </form>
       </div>
 

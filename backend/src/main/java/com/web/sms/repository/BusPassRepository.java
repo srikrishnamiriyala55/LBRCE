@@ -20,5 +20,12 @@ public interface BusPassRepository extends JpaRepository<BusPass, Long> {
     long countByStatus(PassStatus status);
     void deleteByStudentId(Long studentId);
     @Query("select p from BusPass p where :search is null or :search='' or lower(p.passNumber) like lower(concat('%',:search,'%')) or lower(p.student.name) like lower(concat('%',:search,'%')) or lower(p.student.rollNumber) like lower(concat('%',:search,'%')) or lower(p.allocation.bus.busNumber) like lower(concat('%',:search,'%'))")
-    Page<BusPass> search(@Param("search") String search,Pageable pageable);
+    Page<BusPass> search(@Param("search") String search, Pageable pageable);
+
+    /** List variant for admin passes endpoint (no pagination overhead). */
+    @Query("select p from BusPass p where :search is null or :search='' or lower(p.passNumber) like lower(concat('%',:search,'%')) or lower(p.student.name) like lower(concat('%',:search,'%')) or lower(p.student.rollNumber) like lower(concat('%',:search,'%')) or lower(p.allocation.bus.busNumber) like lower(concat('%',:search,'%')) order by p.student.rollNumber asc")
+    List<BusPass> searchList(@Param("search") String search);
+
+    /** All passes for a bus’s active students — returns a list for incharge view. */
+    List<BusPass> findByAllocationBusIdAndAllocationStatus(Long busId, EntityStatus status);
 }
