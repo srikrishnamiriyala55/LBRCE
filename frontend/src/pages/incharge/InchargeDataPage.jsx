@@ -19,7 +19,7 @@ export default function InchargeDataPage({ type }) {
   const [filters, setFilters] = useState(feeFilters);
   const [selectedPass, setSelectedPass] = useState(null), [photoUrl, setPhotoUrl] = useState(''), [downloading, setDownloading] = useState(false);
   const { addToast } = useToast();
-  const load = () => { setLoading(true); api.get(`/incharge/${type}`, { params: { page: 0, size: 6000 } }).then((response) => setData(response.data.content || response.data || [])).catch((error) => addToast(error.response?.data?.message || `Failed to load ${type}`, 'error')).finally(() => setLoading(false)); };
+  const load = () => { setLoading(true); api.get(`/incharge/${type}`, { params: { unpaged: true } }).then((response) => setData(response.data.content || response.data || [])).catch((error) => addToast(error.response?.data?.message || `Failed to load ${type}`, 'error')).finally(() => setLoading(false)); };
   useEffect(() => { setFilters(feeFilters); load(); }, [type]);
   const markRead = async (row) => { if (!row.read) { await api.put(`/incharge/notifications/${row.id}/read`); load(); } };
   const closePass = () => { if (photoUrl) URL.revokeObjectURL(photoUrl); setPhotoUrl(''); setSelectedPass(null); };

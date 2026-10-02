@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Eye, Edit2, Trash2 } from 'lucide-react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
-import Pagination from '../../components/common/Pagination';
 import StatusBadge from '../../components/common/StatusBadge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import Modal from '../../components/common/Modal';
@@ -20,8 +19,6 @@ export default function AdminApplicationsPage() {
   const [buses, setBuses] = useState([]);
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [pages, setPages] = useState(0);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(false);
@@ -39,7 +36,6 @@ export default function AdminApplicationsPage() {
   const handleSearchChange = (e) => {
     const v = e.target.value;
     setSearch(v);
-    setPage(0);
     clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => setDebouncedSearch(v), 300);
   };
@@ -48,12 +44,11 @@ export default function AdminApplicationsPage() {
     setLoading(true);
     try {
       const [applications, busResponse, summaryResponse] = await Promise.all([
-        api.get('/admin/applications', { signal, params: { page, size: 20, search: debouncedSearch.trim() || undefined, status: status || undefined } }),
+        api.get('/admin/applications', { signal, params: { unpaged: true, search: debouncedSearch.trim() || undefined, status: status || undefined } }),
         api.get('/admin/buses'),
         api.get('/admin/applications/summary'),
       ]);
       setRows(applications.data.content || []);
-      setPages(applications.data.totalPages || 0);
       setBuses(busResponse.data || []);
       setSummary(summaryResponse.data || {});
     } catch (error) {
@@ -62,7 +57,7 @@ export default function AdminApplicationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, status, debouncedSearch]);
+  }, [status, debouncedSearch]);
 
   useEffect(() => { const c = new AbortController(); load(c.signal); return () => c.abort(); }, [load]);
 
@@ -158,9 +153,9 @@ export default function AdminApplicationsPage() {
 
   return <>
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-2xl font-bold text-gray-800">Transportation Applications</h2><p className="text-sm text-gray-500">Review, correct and manage student bus applications</p></div><select className="input-field w-auto" value={status} onChange={(event) => { setStatus(event.target.value); setPage(0); }}><option value="">All Applications</option><option>PENDING</option><option>UNDER_REVIEW</option><option>APPROVED</option><option>REJECTED</option><option>CANCELLED</option></select></div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-2xl font-bold text-gray-800">Transportation Applications</h2><p className="text-sm text-gray-500">Review, correct and manage student bus applications</p></div><select className="input-field w-auto" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All Applications</option><option>PENDING</option><option>UNDER_REVIEW</option><option>APPROVED</option><option>REJECTED</option><option>CANCELLED</option></select></div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{[['Registered',summary.registered],['Pending',summary.pending],['Under review',summary.under_review],['Approved',summary.approved],['Rejected',summary.rejected],['Cancelled',summary.cancelled]].map(([label,value])=><div key={label} className="rounded-lg border bg-white p-3"><p className="text-xs text-gray-500">{label}</p><p className="text-xl font-bold text-blue-900">{value || 0}</p></div>)}</div>
-      <div className="card"><div className="mb-4"><input className="input-field" value={search} onChange={handleSearchChange} placeholder="Search student, roll number, bus, boarding point, year or status" /></div><DataTable columns={columns} data={rows} loading={loading} searchable={false} /><p className="mt-3 text-xs text-gray-500">{pages ? `All matching records are available across ${pages} page(s).` : 'No matching applications.'} Approved applications are linked to allocations, fees and passes.</p><Pagination page={page} totalPages={pages} onPageChange={setPage} /></div>
+      <div className="card"><div className="mb-4"><input className="input-field" value={search} onChange={handleSearchChange} placeholder="Search student, roll number, bus, boarding point, year or status" /></div><DataTable columns={columns} data={rows} loading={loading} searchable={false} /><p className="mt-3 text-xs text-gray-500">{rows.length ? `${rows.length} matching record(s) displayed.` : 'No matching applications.'} Approved applications are linked to allocations, fees and passes.</p></div>
     </div>
 
     <ConfirmDialog isOpen={dialog} title={`${action === 'APPROVE' ? 'Approve' : 'Reject'} Application`} message={<div className="space-y-3"><p>Confirm {action.toLowerCase()} for {current?.rollNumber || 'this student'}?</p>{action === 'REJECT' && <textarea autoFocus maxLength="500" className="input-field" placeholder="Enter rejection reason" value={remarks} onChange={(event) => setRemarks(event.target.value)} />}</div>} onConfirm={() => action !== 'REJECT' || remarks.trim() ? decide() : addToast('A rejection reason is required', 'error')} onCancel={() => setDialog(false)} />

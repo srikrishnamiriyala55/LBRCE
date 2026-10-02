@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
-import Pagination from '../../components/common/Pagination';
 import StatusBadge from '../../components/common/StatusBadge';
 import { useToast } from '../../components/common/Toast';
 import { formatINR } from '../../utils/currency';
@@ -10,8 +9,6 @@ import Modal from '../../components/common/Modal';
 const FeeManagementPage = () => {
   const [fees, setFees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   const [selectedFee, setSelectedFee] = useState(null);
   const [payment, setPayment] = useState({ amount: '', reference: '', remarks: '' });
   const [saving, setSaving] = useState(false);
@@ -24,7 +21,6 @@ const FeeManagementPage = () => {
   const handleSearchChange = (e) => {
     const v = e.target.value;
     setSearch(v);
-    setPage(0);
     clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => setDebouncedSearch(v), 300);
   };
@@ -32,18 +28,17 @@ const FeeManagementPage = () => {
   const fetchFees = useCallback(async (signal) => {
     setLoading(true);
     try {
-      const params = { page, size: 10 };
+      const params = { unpaged: true };
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       const res = await api.get('/admin/fees', { signal, params });
       setFees(res.data.content || []);
-      setTotalPages(res.data.totalPages || 0);
     } catch (err) {
       if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED')
         addToast('Failed to load fees records', 'error');
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch]);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -130,7 +125,6 @@ const FeeManagementPage = () => {
           />
         </div>
         <DataTable columns={columns} data={fees} loading={loading} searchable={false} />
-        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
       <Modal isOpen={Boolean(selectedFee)} onClose={() => !saving && setSelectedFee(null)} title="Record Manual Fee Payment">
         {selectedFee && <form className="space-y-4" onSubmit={submitPayment}>

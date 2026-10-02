@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
-import Pagination from '../../components/common/Pagination';
 import StatusBadge from '../../components/common/StatusBadge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { useToast } from '../../components/common/Toast';
@@ -9,8 +8,6 @@ import { useToast } from '../../components/common/Toast';
 const TransferManagementPage = () => {
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentTransfer, setCurrentTransfer] = useState(null);
@@ -20,19 +17,18 @@ const TransferManagementPage = () => {
 
   useEffect(() => {
     fetchTransfers();
-  }, [page]);
+  }, []);
 
   const fetchTransfers = async () => {
     setLoading(true);
     try {
       const [release, acceptance] = await Promise.all([
-        api.get(`/incharge/transfers/pending-release?page=${page}&size=10`),
-        api.get(`/incharge/transfers/pending-acceptance?page=${page}&size=10`)
+        api.get('/incharge/transfers/pending-release?unpaged=true'),
+        api.get('/incharge/transfers/pending-acceptance?unpaged=true')
       ]);
       const releaseRows = (release.data.content || []).map(t => ({...t, approvalStage: 'RELEASE'}));
       const acceptanceRows = (acceptance.data.content || []).map(t => ({...t, approvalStage: 'ACCEPTANCE'}));
       setTransfers([...releaseRows, ...acceptanceRows]);
-      setTotalPages(Math.max(release.data.totalPages || 1, acceptance.data.totalPages || 1));
     } catch (err) {
       addToast('Failed to load transfers', 'error');
     } finally {
@@ -79,8 +75,7 @@ const TransferManagementPage = () => {
   return (
     <div className="card">
       <h2 className="text-xl font-bold mb-6">Transfer Requests</h2>
-      <DataTable columns={columns} data={transfers} loading={loading} />
-      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      <DataTable columns={columns} data={transfers} loading={loading} searchable={false} />
 
       <ConfirmDialog 
         isOpen={dialogOpen} 

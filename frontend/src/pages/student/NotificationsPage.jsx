@@ -1,24 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/axios';
-import Pagination from '../../components/common/Pagination';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const NotificationsPage = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     fetchNotifications();
-  }, [page]);
+  }, []);
 
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/student/notifications?page=${page}&size=10`);
+      const res = await api.get('/student/notifications?unpaged=true');
       setNotifications(res.data.content || res.data);
-      setTotalPages(res.data.totalPages || 1);
     } catch (err) {
       console.error(err);
     } finally {
@@ -60,9 +56,6 @@ const NotificationsPage = () => {
         )}
       </div>
       
-      <div className="mt-6">
-        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-      </div>
     </div>
   );
 };

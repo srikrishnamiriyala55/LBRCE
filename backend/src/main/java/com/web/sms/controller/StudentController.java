@@ -103,8 +103,8 @@ public class StudentController {
     }
 
     @GetMapping("/applications")
-    public Page<ApplicationResponse> getApplications(Pageable pageable) {
-        return applicationService.getStudentApplications(getCurrentUser().getId(), checked(pageable));
+    public Page<ApplicationResponse> getApplications(@RequestParam(defaultValue="false") boolean unpaged, Pageable pageable) {
+        return applicationService.getStudentApplications(getCurrentUser().getId(), unpaged ? Pageable.unpaged() : checked(pageable));
     }
 
     @GetMapping("/fees")
@@ -158,8 +158,8 @@ public class StudentController {
     }
 
     @GetMapping("/notifications")
-    public Page<NotificationResponse> getNotifications(Pageable pageable) {
-        return notificationService.getNotifications(getCurrentUser().getUsername(), checked(pageable));
+    public Page<NotificationResponse> getNotifications(@RequestParam(defaultValue="false") boolean unpaged, Pageable pageable) {
+        return notificationService.getNotifications(getCurrentUser().getUsername(), unpaged ? Pageable.unpaged() : checked(pageable));
     }
 
     @PutMapping("/notifications/{id}/read")

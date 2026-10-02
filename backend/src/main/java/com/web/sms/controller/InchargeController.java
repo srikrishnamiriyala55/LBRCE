@@ -110,6 +110,7 @@ public class InchargeController {
         return bus;
     }
 
+    private Pageable requestedPage(boolean unpaged, Pageable pageable) { return unpaged ? Pageable.unpaged() : checked(pageable); }
     private Pageable checked(Pageable pageable) {
         if (pageable.getPageNumber() < 0 || pageable.getPageSize() < 1 || pageable.getPageSize() > 6000) {
             throw new com.web.sms.exception.BadRequestException("Page size must be between 1 and 6000");
@@ -160,28 +161,28 @@ public class InchargeController {
     @GetMapping("/profile/photo") public ResponseEntity<byte[]> profilePhoto(){com.web.sms.entity.Incharge i=inchargeService.getInchargeById(getCurrentUser().getId());if(i.getPhotoData()==null||i.getPhotoData().length==0)throw new ResourceNotFoundException("Profile photo not found");return ResponseEntity.ok().contentType(MediaType.parseMediaType(i.getPhotoContentType()==null?MediaType.APPLICATION_OCTET_STREAM_VALUE:i.getPhotoContentType())).body(i.getPhotoData());}
 
     @GetMapping("/fees")
-    public Page<com.web.sms.dto.response.FeeResponse> fees(Pageable pageable){return feeRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(),EntityStatus.ACTIVE,checked(pageable)).map(com.web.sms.dto.response.FeeResponse::fromFee);}
+    public Page<com.web.sms.dto.response.FeeResponse> fees(@RequestParam(defaultValue="false") boolean unpaged, Pageable pageable){return feeRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(),EntityStatus.ACTIVE,requestedPage(unpaged,pageable)).map(com.web.sms.dto.response.FeeResponse::fromFee);}
 
     @GetMapping("/passes")
-    public Page<PassResponse> passes(Pageable pageable){return passRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(),EntityStatus.ACTIVE,checked(pageable)).map(PassResponse::fromBusPass);}
+    public Page<PassResponse> passes(@RequestParam(defaultValue="false") boolean unpaged, Pageable pageable){return passRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(),EntityStatus.ACTIVE,requestedPage(unpaged,pageable)).map(PassResponse::fromBusPass);}
     @GetMapping("/passes/{id}") public PassResponse pass(@PathVariable Long id){return passService.getPassForIncharge(id,requireAssignedBus().getId());}
     @GetMapping("/passes/{id}/photo") public ResponseEntity<byte[]> passPhoto(@PathVariable Long id){return passService.passPhotoForIncharge(id,requireAssignedBus().getId());}
     @GetMapping("/passes/{id}/download") public ResponseEntity<byte[]> downloadPass(@PathVariable Long id){PassResponse pass=passService.getPassForIncharge(id,requireAssignedBus().getId());return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=bus-pass-"+pass.getRollNumber()+".pdf").body(passService.generatePdfForIncharge(id,requireAssignedBus().getId()));}
 
     @GetMapping("/reports")
     public DashboardResponse reports(){return operations.dashboard(requireAssignedBus());}
-    @GetMapping("/reports/students") public Page<TransportReportRow> studentReport(@ModelAttribute com.web.sms.dto.request.TransportReportFilter filter,Pageable pageable){return reportService.report(requireAssignedBus().getId(),filter,checked(pageable));}
+    @GetMapping("/reports/students") public Page<TransportReportRow> studentReport(@ModelAttribute com.web.sms.dto.request.TransportReportFilter filter,@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable){return reportService.report(requireAssignedBus().getId(),filter,requestedPage(unpaged,pageable));}
     @GetMapping("/reports/students/export/{format}") public ResponseEntity<byte[]> exportStudentReport(@PathVariable String format,@ModelAttribute com.web.sms.dto.request.TransportReportFilter filter){Bus bus=requireAssignedBus();boolean excel="excel".equalsIgnoreCase(format)||"xlsx".equalsIgnoreCase(format);boolean pdf="pdf".equalsIgnoreCase(format);if(!excel&&!pdf)throw new com.web.sms.exception.BadRequestException("Export format must be excel or pdf");byte[] body=excel?reportService.excel(bus.getId(),filter,"Transport Report - "+bus.getBusNumber()):reportService.pdf(bus.getId(),filter,"Transport Report - "+bus.getBusNumber());String ext=excel?"xlsx":"pdf";MediaType type=excel?MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):MediaType.APPLICATION_PDF;return ResponseEntity.ok().contentType(type).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename="+bus.getBusNumber()+"-transport-report."+ext).body(body);}
 
     @GetMapping("/notifications")
-    public Page<com.web.sms.dto.response.NotificationResponse> notifications(Pageable pageable){return notificationService.getNotifications(getCurrentUser().getUsername(),checked(pageable));}
+    public Page<com.web.sms.dto.response.NotificationResponse> notifications(@RequestParam(defaultValue="false") boolean unpaged, Pageable pageable){return notificationService.getNotifications(getCurrentUser().getUsername(),requestedPage(unpaged,pageable));}
     @PutMapping("/notifications/{id}/read") public void markNotificationRead(@PathVariable Long id){notificationService.markAsRead(id,getCurrentUser().getUsername());}
 
     @GetMapping("/applications")
-    public Page<ApplicationResponse> getApplications(@RequestParam(required = false) ApplicationStatus status, Pageable pageable) {
+    public Page<ApplicationResponse> getApplications(@RequestParam(required = false) ApplicationStatus status, @RequestParam(defaultValue="false") boolean unpaged, Pageable pageable) {
         Bus bus = getAssignedBus();
         if (bus == null) return Page.empty();
-        return applicationService.getApplicationsByBus(bus.getId(), status, checked(pageable));
+        return applicationService.getApplicationsByBus(bus.getId(), status, requestedPage(unpaged,pageable));
     }
     @GetMapping("/applications/summary")
     public Map<String,Long> applicationSummary(){Bus bus=requireAssignedBus();Map<String,Long> result=new LinkedHashMap<>();result.put("total",(long)applicationRepo.findByBusId(bus.getId()).size());for(ApplicationStatus status:ApplicationStatus.values())result.put(status.name().toLowerCase(),(long)applicationRepo.findByBusIdAndStatus(bus.getId(),status).size());return result;}
@@ -201,26 +202,26 @@ public class InchargeController {
     }
 
     @GetMapping("/students")
-    public Page<InchargeStudentResponse> getStudents(@RequestParam(required=false) String search,@RequestParam(required=false) String branch,@RequestParam(required=false) Integer year,@RequestParam(required=false) Long boardingPointId,@RequestParam(required=false) String paymentStatus,@RequestParam(required=false) String passStatus,Pageable pageable) {
-        return operations.students(requireAssignedBus(),search,branch,year,boardingPointId,paymentStatus,passStatus,checked(pageable));
+    public Page<InchargeStudentResponse> getStudents(@RequestParam(required=false) String search,@RequestParam(required=false) String branch,@RequestParam(required=false) Integer year,@RequestParam(required=false) Long boardingPointId,@RequestParam(required=false) String paymentStatus,@RequestParam(required=false) String passStatus,@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable) {
+        return operations.students(requireAssignedBus(),search,branch,year,boardingPointId,paymentStatus,passStatus,requestedPage(unpaged,pageable));
     }
     @PutMapping(value="/students/{studentId}",consumes=MediaType.MULTIPART_FORM_DATA_VALUE) public StudentProfileResponse updateStudent(@PathVariable Long studentId,@Valid @RequestPart("student") UpdateStudentRequest req,@RequestPart(value="photo",required=false) org.springframework.web.multipart.MultipartFile photo){return adminService.updateStudentForIncharge(studentId,requireAssignedBus().getId(),req,photo,getCurrentUser().getUsername());}
 
     @GetMapping("/transfers")
-    public Page<TransferResponse> getTransfers(Pageable pageable) {
+    public Page<TransferResponse> getTransfers(@RequestParam(defaultValue="false") boolean unpaged, Pageable pageable) {
         Bus bus = getAssignedBus();
         if (bus == null) return Page.empty();
-        return transferService.getTransfersByBus(bus.getId(), checked(pageable));
+        return transferService.getTransfersByBus(bus.getId(), requestedPage(unpaged,pageable));
     }
 
     @GetMapping("/transfers/pending-release")
-    public Page<TransferResponse> pendingRelease(Pageable pageable) {
-        return transferService.getPendingRelease(requireAssignedBus().getId(), checked(pageable));
+    public Page<TransferResponse> pendingRelease(@RequestParam(defaultValue="false") boolean unpaged, Pageable pageable) {
+        return transferService.getPendingRelease(requireAssignedBus().getId(), requestedPage(unpaged,pageable));
     }
 
     @GetMapping("/transfers/pending-acceptance")
-    public Page<TransferResponse> pendingAcceptance(Pageable pageable) {
-        return transferService.getPendingAcceptance(requireAssignedBus().getId(), checked(pageable));
+    public Page<TransferResponse> pendingAcceptance(@RequestParam(defaultValue="false") boolean unpaged, Pageable pageable) {
+        return transferService.getPendingAcceptance(requireAssignedBus().getId(), requestedPage(unpaged,pageable));
     }
 
     @PostMapping("/transfers/{id}/approve-release")

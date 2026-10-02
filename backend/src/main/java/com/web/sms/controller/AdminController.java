@@ -258,8 +258,8 @@ public class AdminController {
     @GetMapping("/students")
     public Page<StudentProfileResponse> getStudents(@RequestParam(required = false) String search,
                                                    @RequestParam(required = false) String branch,
-                                                   Pageable pageable) {
-        return studentRepo.searchStudents(search, branch, checked(pageable))
+                                                   @RequestParam(defaultValue = "false") boolean unpaged, Pageable pageable) {
+        return studentRepo.searchStudents(search, branch, requestedPage(unpaged, pageable))
                 .map(StudentProfileResponse::fromStudent);
     }
 
@@ -279,8 +279,8 @@ public class AdminController {
     }
 
     @GetMapping("/applications")
-    public Page<ApplicationResponse> getApplications(@RequestParam(required = false) String search, @RequestParam(required = false) ApplicationStatus status, Pageable pageable) {
-        pageable=checked(pageable);
+    public Page<ApplicationResponse> getApplications(@RequestParam(required = false) String search, @RequestParam(required = false) ApplicationStatus status, @RequestParam(defaultValue = "false") boolean unpaged, Pageable pageable) {
+        pageable=requestedPage(unpaged, pageable);
         return applicationRepo.searchForAdmin(search == null ? "" : search.trim(), status, pageable).map(ApplicationResponse::fromApplication);
     }
 
@@ -308,12 +308,12 @@ public class AdminController {
     @DeleteMapping("/applications/{id}") public void deleteApplication(@PathVariable Long id){applicationService.deleteApplication(id,getCurrentUser().getUsername());}
 
     @GetMapping("/fees")
-    public Page<FeeResponse> getFees(@RequestParam(required = false) String search, Pageable pageable) {
+    public Page<FeeResponse> getFees(@RequestParam(required = false) String search, @RequestParam(defaultValue = "false") boolean unpaged, Pageable pageable) {
         String trimmed = (search == null || search.isBlank()) ? null : search.trim();
         if (trimmed == null) {
-            return feeRepo.findAll(checked(pageable)).map(FeeResponse::fromFee);
+            return feeRepo.findAll(requestedPage(unpaged, pageable)).map(FeeResponse::fromFee);
         }
-        return feeRepo.searchForAdmin(trimmed, checked(pageable)).map(FeeResponse::fromFee);
+        return feeRepo.searchForAdmin(trimmed, requestedPage(unpaged, pageable)).map(FeeResponse::fromFee);
     }
 
     @PostMapping("/fees/{id}/manual-payment")
@@ -325,27 +325,27 @@ public class AdminController {
     }
 
     @GetMapping("/transfers")
-    public Page<TransferResponse> getTransfers(@RequestParam(required = false) String status, Pageable pageable) {
+    public Page<TransferResponse> getTransfers(@RequestParam(required = false) String status, @RequestParam(defaultValue = "false") boolean unpaged, Pageable pageable) {
         // Simple status filter; full text search can be added to TransferRequestRepository if needed
         if (status != null && !status.isBlank()) {
             try {
                 com.web.sms.enums.TransferStatus ts = com.web.sms.enums.TransferStatus.valueOf(status.trim().toUpperCase());
-                return transferRepo.findByStatus(ts, checked(pageable)).map(TransferResponse::fromTransfer);
+                return transferRepo.findByStatus(ts, requestedPage(unpaged, pageable)).map(TransferResponse::fromTransfer);
             } catch (IllegalArgumentException e) {
                 throw new com.web.sms.exception.BadRequestException("Invalid transfer status: " + status);
             }
         }
-        return transferRepo.findAllWithDetails(checked(pageable)).map(TransferResponse::fromTransfer);
+        return transferRepo.findAllWithDetails(requestedPage(unpaged, pageable)).map(TransferResponse::fromTransfer);
     }
     @GetMapping("/transfers/summary") public Map<String, Long> transferSummary(){Map<String,Long> summary=new LinkedHashMap<>();summary.put("total",transferRepo.count());summary.put("accepted",transferRepo.countByStatus(TransferStatus.TRANSFER_COMPLETED));summary.put("rejected",transferRepo.countByStatus(TransferStatus.OLD_INCHARGE_REJECTED)+transferRepo.countByStatus(TransferStatus.NEW_INCHARGE_REJECTED));return summary;}
     @PostMapping("/transfers/{id}/approve") public TransferResponse approveTransfer(@PathVariable Long id){return transferService.approveByAdmin(id,getCurrentUser().getUsername());}
 
-    @GetMapping("/payments") public Page<PaymentResponse> payments(Pageable pageable){return paymentRepo.findAll(checked(pageable)).map(PaymentResponse::fromPayment);}
-    @GetMapping("/passes") public Page<PassResponse> passes(@RequestParam(required=false) String search,Pageable pageable){return passRepo.search(search==null?null:search.trim(),checked(pageable)).map(PassResponse::fromBusPass);}
+    @GetMapping("/payments") public Page<PaymentResponse> payments(@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable){return paymentRepo.findAll(requestedPage(unpaged,pageable)).map(PaymentResponse::fromPayment);}
+    @GetMapping("/passes") public Page<PassResponse> passes(@RequestParam(required=false) String search,@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable){return passRepo.search(search==null?null:search.trim(),requestedPage(unpaged,pageable)).map(PassResponse::fromBusPass);}
     @GetMapping("/passes/{id}") public PassResponse pass(@PathVariable Long id){return passService.getPassForAdmin(id);}
     @GetMapping("/passes/{id}/photo") public ResponseEntity<byte[]> passPhoto(@PathVariable Long id){return passService.passPhotoForAdmin(id);}
     @GetMapping("/passes/{id}/download") public ResponseEntity<byte[]> downloadPass(@PathVariable Long id){PassResponse pass=passService.getPassForAdmin(id);return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=bus-pass-"+pass.getRollNumber()+".pdf").body(passService.generatePdfForAdmin(id));}
-    @GetMapping("/notifications") public Page<NotificationResponse> notifications(Pageable pageable){return notificationRepo.findAll(checked(pageable)).map(NotificationResponse::fromNotification);}
+    @GetMapping("/notifications") public Page<NotificationResponse> notifications(@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable){return notificationRepo.findAll(requestedPage(unpaged,pageable)).map(NotificationResponse::fromNotification);}
     @GetMapping("/profile") public Map<String,Object> profile(){Admin a=adminRepo.findById(getCurrentUser().getId()).orElseThrow(()->new ResourceNotFoundException("Admin not found"));Map<String,Object> r=new LinkedHashMap<>();r.put("adminId",a.getAdminId());r.put("name",a.getName());r.put("email",a.getEmail());r.put("phoneNumber",a.getPhoneNumber());r.put("status",a.getStatus());return r;}
     @GetMapping("/students/{id}/transport") public Map<String,Object> studentTransport(@PathVariable Long id){Student s=studentRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("Student not found"));Map<String,Object> r=new LinkedHashMap<>();r.put("student",StudentProfileResponse.fromStudent(s));java.util.List<TransportAllocation> history=allocationRepo.findByStudentId(id);r.put("assignments",history.stream().map(a->{Map<String,Object>x=new LinkedHashMap<>();x.put("id",a.getId());x.put("bus",a.getBus().getBusNumber());x.put("boardingPoint",a.getBoardingPoint().getStationName());x.put("status",a.getStatus());return x;}).toList());r.put("fees",feeRepo.findByStudentId(id).stream().map(FeeResponse::fromFee).toList());r.put("passes",passRepo.findByStudentId(id).stream().map(PassResponse::fromBusPass).toList());r.put("transfers",transferRepo.findByStudentId(id).stream().map(TransferResponse::fromTransfer).toList());return r;}
 
@@ -378,17 +378,18 @@ public class AdminController {
     }
 
     @GetMapping("/audit-logs")
-    public Page<AuditLog> getAuditLogs(Pageable pageable) {
-        return auditService.getLogs(checked(pageable));
+    public Page<AuditLog> getAuditLogs(@RequestParam(defaultValue="false") boolean unpaged, Pageable pageable) {
+        return auditService.getLogs(requestedPage(unpaged, pageable));
     }
 
     @GetMapping("/reports/summary")
     public DashboardResponse getSummaryReport() {
         return adminService.getDashboard();
     }
-    @GetMapping("/reports/students") public Page<TransportReportRow> studentReport(@ModelAttribute TransportReportFilter filter,Pageable pageable){return reportService.report(null,filter,checked(pageable));}
+    @GetMapping("/reports/students") public Page<TransportReportRow> studentReport(@ModelAttribute TransportReportFilter filter,@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable){return reportService.report(null,filter,requestedPage(unpaged,pageable));}
     @GetMapping("/reports/students/export/{format}") public ResponseEntity<byte[]> exportStudentReport(@PathVariable String format,@ModelAttribute TransportReportFilter filter){return reportDownload(format,filter,null,"LBRCE College Transport Report");}
     private ResponseEntity<byte[]> reportDownload(String format,TransportReportFilter filter,Long busId,String title){boolean excel="excel".equalsIgnoreCase(format)||"xlsx".equalsIgnoreCase(format);boolean pdf="pdf".equalsIgnoreCase(format);if(!excel&&!pdf)throw new com.web.sms.exception.BadRequestException("Export format must be excel or pdf");byte[] body=excel?reportService.excel(busId,filter,title):reportService.pdf(busId,filter,title);String ext=excel?"xlsx":"pdf";MediaType type=excel?MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):MediaType.APPLICATION_PDF;return ResponseEntity.ok().contentType(type).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=transport-report."+ext).body(body);}
+    private Pageable requestedPage(boolean unpaged, Pageable p){return unpaged ? Pageable.unpaged() : checked(p);}
     private Pageable checked(Pageable p){if(p.getPageNumber()<0||p.getPageSize()<1||p.getPageSize()>200)throw new com.web.sms.exception.BadRequestException("Page size must be between 1 and 200");return p;}
     private EntityStatus parseEntityStatus(String s){try{return EntityStatus.valueOf(s.toUpperCase());}catch(Exception e){throw new com.web.sms.exception.BadRequestException("Invalid status");}}
 }

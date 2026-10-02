@@ -1,27 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
-import Pagination from '../../components/common/Pagination';
 import StatusBadge from '../../components/common/StatusBadge';
 import { useToast } from '../../components/common/Toast';
 
 const ApplicationHistoryPage = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   const { addToast } = useToast();
 
   useEffect(() => {
     fetchApplications();
-  }, [page]);
+  }, []);
 
   const fetchApplications = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/student/applications?page=${page}&size=10`);
+      const res = await api.get('/student/applications?unpaged=true');
       setData(res.data.content || res.data);
-      setTotalPages(res.data.totalPages || 1);
     } catch (err) {
       addToast('Failed to load applications', 'error');
     } finally {
@@ -45,7 +41,6 @@ const ApplicationHistoryPage = () => {
     <div className="card">
       <h2 className="text-xl font-bold text-gray-800 mb-6">Application History</h2>
       <DataTable columns={columns} data={data} loading={loading} searchable={false} />
-      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 };

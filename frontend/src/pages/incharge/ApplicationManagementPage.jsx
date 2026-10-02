@@ -21,7 +21,7 @@ export default function ApplicationManagementPage() {
   const fetchApplications = async () => {
     setLoading(true);
     try {
-      const [response, summaryResponse] = await Promise.all([api.get('/incharge/applications', { params: { size: 6000 } }), api.get('/incharge/applications/summary')]);
+      const [response, summaryResponse] = await Promise.all([api.get('/incharge/applications', { params: { unpaged: true } }), api.get('/incharge/applications/summary')]);
       setApplications(response.data.content || response.data || []);
       setSummary(summaryResponse.data || {});
     } catch (error) { addToast(error.response?.data?.message || 'Failed to load applications', 'error'); }
