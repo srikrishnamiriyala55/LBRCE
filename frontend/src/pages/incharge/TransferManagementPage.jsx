@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -8,6 +8,8 @@ import { useToast } from '../../components/common/Toast';
 const TransferManagementPage = () => {
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentTransfer, setCurrentTransfer] = useState(null);
@@ -35,6 +37,20 @@ const TransferManagementPage = () => {
       setLoading(false);
     }
   };
+
+  const filteredTransfers = useMemo(() => {
+    const term = searchText.trim().toLowerCase();
+    return transfers.filter((t) => {
+      const matchesSearch = !term ||
+        (t.studentName || '').toLowerCase().includes(term) ||
+        (t.studentRollNumber || '').toLowerCase().includes(term) ||
+        (t.currentBusNumber || '').toLowerCase().includes(term) ||
+        (t.requestedBusNumber || '').toLowerCase().includes(term) ||
+        (t.reason || '').toLowerCase().includes(term);
+      const matchesStatus = !statusFilter || (t.status || '') === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [transfers, searchText, statusFilter]);
 
   const handleAction = async () => {
     if(actionType==='REJECT'&&!remarks.trim()){addToast('A rejection reason is required','error');return;}
@@ -74,8 +90,34 @@ const TransferManagementPage = () => {
 
   return (
     <div className="card">
-      <h2 className="text-xl font-bold mb-6">Transfer Requests</h2>
-      <DataTable columns={columns} data={transfers} loading={loading} searchable={false} />
+      <h2 className="text-xl font-bold mb-4">Transfer Requests</h2>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+        <input
+          type="text"
+          className="input-field flex-1"
+          placeholder="Search student, roll number, bus or reason..."
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          aria-label="Search transfers"
+        />
+        <select
+          className="input-field w-auto"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          aria-label="Filter by status"
+        >
+          <option value="">All Statuses</option>
+          <option value="TRANSFER_REQUESTED">Transfer Requested</option>
+          <option value="OLD_INCHARGE_APPROVED">Old Incharge Approved</option>
+          <option value="OLD_INCHARGE_REJECTED">Old Incharge Rejected</option>
+          <option value="NEW_INCHARGE_APPROVED">New Incharge Approved</option>
+          <option value="NEW_INCHARGE_REJECTED">New Incharge Rejected</option>
+          <option value="TRANSFER_COMPLETED">Completed</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+      </div>
+      {!loading && <p className="mb-3 text-xs text-gray-500">{filteredTransfers.length} of {transfers.length} transfer(s){searchText || statusFilter ? ' matching filters' : ''}</p>}
+      <DataTable columns={columns} data={filteredTransfers} loading={loading} searchable={false} />
 
       <ConfirmDialog 
         isOpen={dialogOpen} 

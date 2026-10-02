@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import StatusBadge from '../../components/common/StatusBadge';
 import PassViewerModal from '../../components/passes/PassViewerModal';
 import { useToast } from '../../components/common/Toast';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
 import { formatINR } from '../../utils/currency';
 
 export default function AdminDataPage({ type }) {
@@ -14,6 +14,8 @@ export default function AdminDataPage({ type }) {
   const [refreshKey, setRefreshKey] = useState(0), [lastUpdated, setLastUpdated] = useState(null);
   const [approvingTransfer, setApprovingTransfer] = useState(null);
   const [transferSummary, setTransferSummary] = useState({ total: 0, accepted: 0, rejected: 0 });
+  const [inlineSearch, setInlineSearch] = useState('');
+  const [transferStatusFilter, setTransferStatusFilter] = useState('');
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -25,11 +27,24 @@ export default function AdminDataPage({ type }) {
       .catch((e) => addToast(e.response?.data?.message || `Failed to load ${type}`, 'error')).finally(() => setLoading(false));
   }, [type, appliedSearch, refreshKey]);
 
-  useEffect(() => { setSearch(''); setAppliedSearch(''); }, [type]);
+  useEffect(() => { setSearch(''); setAppliedSearch(''); setInlineSearch(''); setTransferStatusFilter(''); }, [type]);
   useEffect(() => { if (type === 'transfers') api.get('/admin/transfers/summary').then((response) => setTransferSummary(response.data || {})).catch(() => {}); }, [type, refreshKey]);
   // Auto-refresh on tab focus is intentionally removed: for 6000+ users it causes
   // excessive DB load every time a user switches browser tabs.
   // Use the manual Refresh button instead.
+
+  const filteredRows = useMemo(() => {
+    if (type === 'passes') return rows;
+    const term = inlineSearch.trim().toLowerCase();
+    return rows.filter((r) => {
+      const haystack = Object.values(r)
+        .filter(v => v !== null && v !== undefined && typeof v !== 'object')
+        .map(String).join(' ').toLowerCase();
+      const matchesSearch = !term || haystack.includes(term);
+      const matchesStatus = type !== 'transfers' || !transferStatusFilter || (r.status || '') === transferStatusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [rows, inlineSearch, transferStatusFilter, type]);
 
   const closePass = () => { if (photoUrl) URL.revokeObjectURL(photoUrl); setPhotoUrl(''); setSelectedPass(null); };
   const viewPass = async (row) => {
@@ -67,5 +82,35 @@ export default function AdminDataPage({ type }) {
     notifications: [{ key: 'title', label: 'Title' }, { key: 'recipientRollNumber', label: 'Recipient' }, { key: 'message', label: 'Message' }, { key: 'createdAt', label: 'Date', render: (r) => r.createdAt ? new Date(r.createdAt).toLocaleString() : '—' }]
   };
   const transferCounts=transferSummary;
-  return <><div className="card"><div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-2xl font-bold capitalize">{type}</h2>{type==='passes'&&<p className="text-sm text-gray-500">Passes generated: {total}</p>}{type==='transfers'&&<p className="text-sm text-gray-500">Total: {transferCounts.total || 0} · Accepted: {transferCounts.accepted || 0} · Rejected: {transferCounts.rejected || 0}</p>}{lastUpdated && <p className="text-xs text-gray-500">Updated {lastUpdated.toLocaleTimeString()}</p>}</div><button type="button" className="btn-secondary inline-flex items-center justify-center gap-2" disabled={loading} onClick={() => setRefreshKey((value) => value + 1)}><RefreshCw size={16} className={loading?'animate-spin':''}/> Refresh</button></div>{type === 'passes' && <form className="mb-5 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); setAppliedSearch(search.trim()); }}><input className="input-field sm:max-w-md" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search pass ID, student, roll number or bus" aria-label="Search bus passes"/><button className="btn-primary" type="submit">Search</button>{appliedSearch && <button className="btn-secondary" type="button" onClick={() => { setSearch(''); setAppliedSearch(''); }}>Clear</button>}</form>}<DataTable columns={configs[type]} data={rows} loading={loading} searchable={false} /></div><PassViewerModal pass={selectedPass} photoUrl={photoUrl} onClose={closePass} onDownload={downloadPass} downloading={downloading} /></>;
+  return <><div className="card"><div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-2xl font-bold capitalize">{type}</h2>{type==='passes'&&<p className="text-sm text-gray-500">Passes generated: {total}</p>}{type==='transfers'&&<p className="text-sm text-gray-500">Total: {transferCounts.total || 0} · Accepted: {transferCounts.accepted || 0} · Rejected: {transferCounts.rejected || 0}</p>}{lastUpdated && <p className="text-xs text-gray-500">Updated {lastUpdated.toLocaleTimeString()}</p>}</div><button type="button" className="btn-secondary inline-flex items-center justify-center gap-2" disabled={loading} onClick={() => setRefreshKey((value) => value + 1)}><RefreshCw size={16} className={loading?'animate-spin':''}/> Refresh</button></div>
+
+  {type === 'transfers' && (
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+      <div className="relative flex-1">
+        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} aria-hidden="true" />
+        <input type="text" className="input-field pl-9" placeholder="Search student, roll number, bus or reason..." value={inlineSearch} onChange={(e) => setInlineSearch(e.target.value)} aria-label="Search transfers" />
+      </div>
+      <select className="input-field w-auto" value={transferStatusFilter} onChange={(e) => setTransferStatusFilter(e.target.value)} aria-label="Filter by transfer status">
+        <option value="">All Statuses</option>
+        <option value="TRANSFER_REQUESTED">Transfer Requested</option>
+        <option value="OLD_INCHARGE_APPROVED">Old Incharge Approved</option>
+        <option value="OLD_INCHARGE_REJECTED">Old Incharge Rejected</option>
+        <option value="NEW_INCHARGE_APPROVED">New Incharge Approved</option>
+        <option value="NEW_INCHARGE_REJECTED">New Incharge Rejected</option>
+        <option value="TRANSFER_COMPLETED">Completed</option>
+        <option value="CANCELLED">Cancelled</option>
+      </select>
+    </div>
+  )}
+
+  {(type === 'payments' || type === 'notifications') && (
+    <div className="mb-4 relative">
+      <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} aria-hidden="true" />
+      <input type="text" className="input-field pl-9" placeholder={`Search ${type}...`} value={inlineSearch} onChange={(e) => setInlineSearch(e.target.value)} aria-label={`Search ${type}`} />
+    </div>
+  )}
+
+  {type === 'passes' && <form className="mb-5 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); setAppliedSearch(search.trim()); }}><input className="input-field sm:max-w-md" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search pass ID, student, roll number or bus" aria-label="Search bus passes"/><button className="btn-primary" type="submit">Search</button>{appliedSearch && <button className="btn-secondary" type="button" onClick={() => { setSearch(''); setAppliedSearch(''); }}>Clear</button>}</form>}
+  {!loading && type !== 'passes' && <p className="mb-3 text-xs text-gray-500">{filteredRows.length} of {rows.length} record(s){inlineSearch || transferStatusFilter ? ' matching filters' : ''}</p>}
+  <DataTable columns={configs[type]} data={type === 'passes' ? rows : filteredRows} loading={loading} searchable={false} /></div><PassViewerModal pass={selectedPass} photoUrl={photoUrl} onClose={closePass} onDownload={downloadPass} downloading={downloading} /></>;
 }

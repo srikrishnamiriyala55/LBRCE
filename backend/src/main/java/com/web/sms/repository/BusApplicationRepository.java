@@ -27,7 +27,8 @@ public interface BusApplicationRepository extends JpaRepository<BusApplication, 
     @Query("select a from BusApplication a where a.id=:id")
     Optional<BusApplication> findByIdForUpdate(Long id);
     long countByStatus(ApplicationStatus status);
-    @Query("select a from BusApplication a where (:status is null or a.status=:status) and (:search is null or :search='' or lower(a.student.name) like lower(concat('%',:search,'%')) or lower(a.student.rollNumber) like lower(concat('%',:search,'%')) or lower(a.bus.busNumber) like lower(concat('%',:search,'%')) or lower(a.boardingPoint.stationName) like lower(concat('%',:search,'%')) or lower(a.academicYear.yearName) like lower(concat('%',:search,'%')) or lower(cast(a.status as string)) like lower(concat('%',:search,'%')))")
+    @Query(value = "select a from BusApplication a where (:status is null or a.status=:status) and (:search is null or :search='' or lower(a.student.name) like lower(concat('%',:search,'%')) or lower(a.student.rollNumber) like lower(concat('%',:search,'%')) or lower(a.bus.busNumber) like lower(concat('%',:search,'%')) or lower(a.boardingPoint.stationName) like lower(concat('%',:search,'%')) or lower(a.academicYear.yearName) like lower(concat('%',:search,'%')))",
+           countQuery = "select count(a) from BusApplication a where (:status is null or a.status=:status) and (:search is null or :search='' or lower(a.student.name) like lower(concat('%',:search,'%')) or lower(a.student.rollNumber) like lower(concat('%',:search,'%')) or lower(a.bus.busNumber) like lower(concat('%',:search,'%')) or lower(a.boardingPoint.stationName) like lower(concat('%',:search,'%')) or lower(a.academicYear.yearName) like lower(concat('%',:search,'%')))")
     Page<BusApplication> searchForAdmin(@Param("search") String search, @Param("status") ApplicationStatus status, Pageable pageable);
     long countByBusIdAndStatusIn(Long busId, List<ApplicationStatus> statuses);
 }

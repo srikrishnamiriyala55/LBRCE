@@ -68,14 +68,28 @@ const StudentDashboardPage = () => {
           color="purple" 
         />
         <div className="card hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
               <p className="text-sm font-medium text-gray-500 mb-1">Fee Status</p>
-              <div className="mt-1">
+              <div className="mt-1 mb-3">
                 <StatusBadge status={data?.feeStatus || 'UNPAID'} />
               </div>
+              {data?.totalFee != null && (
+                <div className="space-y-1 text-sm">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-gray-500">Total Fee:</span>
+                    <span className="font-semibold text-gray-800">₹{Number(data.totalFee).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-gray-500">Pending Fee:</span>
+                    <span className={`font-semibold ${(data.totalFee - (data.paidAmount || 0)) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      ₹{Number(Math.max(0, data.totalFee - (data.paidAmount || 0))).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="p-3 rounded-lg bg-green-50 text-green-600">
+            <div className="p-3 rounded-lg bg-green-50 text-green-600 ml-3">
               <CreditCard size={24} />
             </div>
           </div>

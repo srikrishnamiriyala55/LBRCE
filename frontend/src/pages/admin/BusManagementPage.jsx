@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Edit2, Trash2, Search } from 'lucide-react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import Modal from '../../components/common/Modal';
@@ -9,6 +9,8 @@ import { useToast } from '../../components/common/Toast';
 
 const BusManagementPage = () => {
   const [buses, setBuses] = useState([]);
+  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [incharges, setIncharges] = useState([]);
   const [boardingPoints, setBoardingPoints] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +41,19 @@ const BusManagementPage = () => {
       addToast('Failed to load existing boarding points', 'error');
     });
   }, []);
+
+  const filteredBuses = useMemo(() => {
+    const term = searchText.trim().toLowerCase();
+    return buses.filter((bus) => {
+      const matchesSearch = !term ||
+        (bus.busNumber || '').toLowerCase().includes(term) ||
+        (bus.startingPoint || '').toLowerCase().includes(term) ||
+        (bus.endingPoint || '').toLowerCase().includes(term) ||
+        (bus.inchargeName || '').toLowerCase().includes(term);
+      const matchesStatus = !statusFilter || bus.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [buses, searchText, statusFilter]);
 
   const existingStartingPoints = Array.from(
     new Map(
@@ -181,7 +196,31 @@ const BusManagementPage = () => {
       </div>
 
       <div className="card">
-        <DataTable columns={columns} data={buses} loading={loading} />
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} aria-hidden="true" />
+            <input
+              type="text"
+              className="input-field pl-9"
+              placeholder="Search bus number, route or in-charge..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              aria-label="Search buses"
+            />
+          </div>
+          <select
+            className="input-field w-auto"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filter by status"
+          >
+            <option value="">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+        </div>
+        {!loading && <p className="mb-2 text-xs text-gray-500">{filteredBuses.length} bus(es) found{searchText || statusFilter ? ' matching filters' : ''}</p>}
+        <DataTable columns={columns} data={filteredBuses} loading={loading} searchable={false} />
       </div>
 
       {/* Add/Edit Bus Modal */}

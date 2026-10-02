@@ -1,5 +1,5 @@
-import { Eye, EyeOff, Plus, Upload } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Eye, EyeOff, Plus, Upload, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import DataTable from '../../components/common/DataTable';
 import Modal from '../../components/common/Modal';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -10,6 +10,8 @@ import api from '../../utils/axios';
 const InchargeManagementPage = () => {
   const [incharges, setIncharges] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingIncharge, setEditingIncharge] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -96,6 +98,21 @@ const InchargeManagementPage = () => {
   const viewIncharge = async (incharge) => { try { if (photoUrl) URL.revokeObjectURL(photoUrl); let nextPhoto = ''; try { const response = await api.get(`/admin/incharges/${incharge.id}/photo`, { responseType: 'blob' }); nextPhoto = URL.createObjectURL(response.data); } catch (error) { if (error.response?.status !== 404) throw error; } setPhotoUrl(nextPhoto); setViewing(incharge); } catch (error) { addToast(error.response?.data?.message || 'Unable to load In-Charge details', 'error'); } };
   const uploadPhoto = async (incharge, file) => { if (!file) return; if (!['image/jpeg','image/png'].includes(file.type) || file.size > 2 * 1024 * 1024) { addToast('Choose a JPEG or PNG photo up to 2 MB', 'error'); return; } try { const data = new FormData(); data.append('photo', file); await api.put(`/admin/incharges/${incharge.id}/photo`, data); addToast('In-Charge photo updated', 'success'); await viewIncharge(incharge); } catch (error) { addToast(error.response?.data?.message || 'Unable to update photo', 'error'); } };
 
+  const filteredIncharges = useMemo(() => {
+    const term = searchText.trim().toLowerCase();
+    return incharges.filter((ic) => {
+      const matchesSearch = !term ||
+        (ic.teacherId || '').toLowerCase().includes(term) ||
+        (ic.name || '').toLowerCase().includes(term) ||
+        (ic.email || '').toLowerCase().includes(term) ||
+        (ic.phoneNumber || '').toLowerCase().includes(term) ||
+        (ic.department || '').toLowerCase().includes(term) ||
+        (ic.designation || '').toLowerCase().includes(term);
+      const matchesStatus = !statusFilter || (ic.status || 'ACTIVE') === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [incharges, searchText, statusFilter]);
+
   const columns = [
     { key: 'teacherId', label: 'Teacher ID', render: (row) => <span className="font-bold text-blue-900">{row.teacherId}</span> },
     { key: 'name', label: 'Faculty Name' },
@@ -125,7 +142,31 @@ const InchargeManagementPage = () => {
       </div>
 
       <div className="card">
-        <DataTable columns={columns} data={incharges} loading={loading} />
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} aria-hidden="true" />
+            <input
+              type="text"
+              className="input-field pl-9"
+              placeholder="Search by name, teacher ID, email, phone, department..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              aria-label="Search incharges"
+            />
+          </div>
+          <select
+            className="input-field w-auto"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filter by status"
+          >
+            <option value="">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+        </div>
+        {!loading && <p className="mb-2 text-xs text-gray-500">{filteredIncharges.length} incharge(s) found{searchText || statusFilter ? ' matching filters' : ''}</p>}
+        <DataTable columns={columns} data={filteredIncharges} loading={loading} searchable={false} />
       </div>
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingIncharge ? 'Edit Faculty Incharge' : 'Create Faculty Incharge'}>
