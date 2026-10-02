@@ -284,6 +284,23 @@ public class AdminController {
         return applicationRepo.searchForAdmin(search == null ? "" : search.trim(), status, pageable).map(ApplicationResponse::fromApplication);
     }
 
+    /** Full admin list used by the management screen. Filtering in Java avoids database-specific enum casting. */
+    @GetMapping("/applications/all")
+    public List<ApplicationResponse> getAllApplications(@RequestParam(required = false) String search,
+                                                        @RequestParam(required = false) ApplicationStatus status) {
+        String term = search == null ? "" : search.trim().toLowerCase();
+        return applicationRepo.findAll().stream()
+                .filter(application -> status == null || application.getStatus() == status)
+                .map(ApplicationResponse::fromApplication)
+                .filter(application -> term.isEmpty() || String.join(" ",
+                        safe(application.getStudentName()), safe(application.getRollNumber()), safe(application.getBusNumber()),
+                        safe(application.getBoardingPointName()), safe(application.getAcademicYear()), safe(application.getStatus()))
+                        .toLowerCase().contains(term))
+                .toList();
+    }
+
+    private String safe(String value) { return value == null ? "" : value; }
+
     @GetMapping("/applications/summary")
     public Map<String, Long> applicationSummary() {
         Map<String, Long> summary = new LinkedHashMap<>();
