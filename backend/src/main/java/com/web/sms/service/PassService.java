@@ -31,6 +31,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.Optional;
 
 @Service
@@ -42,6 +43,9 @@ public class PassService {
 
     @Value("${btms.pass.verification-url}")
     private String verificationUrl;
+
+    @Value("${btms.pass.frontend-verify-url}")
+    private String frontendVerifyUrl;
 
     public PassService(BusPassRepository passRepo, AcademicYearRepository academicYearRepo,
                        StudentRepository studentRepo) {
@@ -121,6 +125,19 @@ public class PassService {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(type).body(student.getPhotoData());
     }
 
+    private Image loadHeaderImage() {
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream("header_image.png")) {
+            if (in == null) return null;
+            byte[] bytes = in.readAllBytes();
+            Image img = Image.getInstance(bytes);
+            img.setAlignment(Element.ALIGN_CENTER);
+            img.setSpacingAfter(6);
+            return img;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private byte[] generatePdf(BusPass entity) {
         PassResponse pass = PassResponse.fromBusPass(entity);
         ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -129,10 +146,20 @@ public class PassService {
             PdfWriter.getInstance(document, output);
             document.open();
 
-            Paragraph college = new Paragraph("LAKIREDDY BALI REDDY COLLEGE OF ENGINEERING",
-                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, new Color(30, 64, 175)));
-            college.setAlignment(Element.ALIGN_CENTER);
-            document.add(college);
+            // College header image
+            Image header = loadHeaderImage();
+            if (header != null) {
+                // Scale to fit the page width (A5 width minus margins = 420 - 56 = 364pt)
+                header.scaleToFit(364, 80);
+                document.add(header);
+            } else {
+                // Fallback to text if image not found
+                Paragraph college = new Paragraph("LAKIREDDY BALI REDDY COLLEGE OF ENGINEERING",
+                        FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, new Color(30, 64, 175)));
+                college.setAlignment(Element.ALIGN_CENTER);
+                document.add(college);
+            }
+
             Paragraph heading = new Paragraph("DIGITAL BUS PASS",
                     FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11));
             heading.setAlignment(Element.ALIGN_CENTER);
@@ -168,7 +195,7 @@ public class PassService {
 
             ByteArrayOutputStream qrOutput = new ByteArrayOutputStream();
             MatrixToImageWriter.writeToStream(new QRCodeWriter().encode(
-                    verificationUrl + entity.getVerificationToken(), BarcodeFormat.QR_CODE, 220, 220), "PNG", qrOutput);
+                    frontendVerifyUrl + entity.getVerificationToken(), BarcodeFormat.QR_CODE, 220, 220), "PNG", qrOutput);
             Image qr = Image.getInstance(qrOutput.toByteArray());
             qr.scaleToFit(105, 105);
             qr.setAlignment(Element.ALIGN_CENTER);
@@ -207,5 +234,15 @@ public class PassService {
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid or revoked bus pass verification token"));
 
         return PassResponse.fromBusPass(pass);
+    }
+
+    /**
+     * Returns the student photo identified by a public verification token.
+     * No authentication required – used by the QR-scan verification page.
+     */
+    public ResponseEntity<byte[]> passPhotoByToken(String token) {
+        BusPass pass = passRepo.findByVerificationToken(token)
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid or revoked bus pass verification token"));
+        return photoResponse(pass.getStudent());
     }
 }

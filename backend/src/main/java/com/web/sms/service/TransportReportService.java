@@ -2,7 +2,9 @@ package com.web.sms.service;
 
 import com.lowagie.text.Chunk;
 import com.lowagie.text.Document;
+import com.lowagie.text.Element;
 import com.lowagie.text.FontFactory;
+import com.lowagie.text.Image;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -52,9 +55,41 @@ public class TransportReportService {
     public byte[] pdf(Long scopeBusId,TransportReportFilter f,String title){
         List<TransportReportRow> rows=exportRows(scopeBusId,f);ByteArrayOutputStream out=new ByteArrayOutputStream();
         Document doc=new Document(PageSize.A3.rotate(),24,24,28,28);
-        try{PdfWriter.getInstance(doc,out);doc.open();com.lowagie.text.Font heading=FontFactory.getFont(FontFactory.HELVETICA_BOLD,15,new Color(20,60,120));doc.add(new Paragraph(title,heading));doc.add(new Paragraph("Generated: "+LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm"))+" | Records: "+rows.size(),FontFactory.getFont(FontFactory.HELVETICA,9)));doc.add(Chunk.NEWLINE);
+        try{
+            PdfWriter.getInstance(doc,out);doc.open();
+
+            // College header image
+            Image headerImg = loadHeaderImage();
+            if (headerImg != null) {
+                // A3 landscape width minus margins = 1190 - 48 = 1142pt, max height 70pt
+                headerImg.scaleToFit(1142, 70);
+                doc.add(headerImg);
+            } else {
+                com.lowagie.text.Font colHeading=FontFactory.getFont(FontFactory.HELVETICA_BOLD,13,new Color(20,60,120));
+                Paragraph col=new Paragraph("LAKIREDDY BALI REDDY COLLEGE OF ENGINEERING",colHeading);
+                col.setAlignment(Element.ALIGN_CENTER);
+                doc.add(col);
+            }
+
+            com.lowagie.text.Font heading=FontFactory.getFont(FontFactory.HELVETICA_BOLD,15,new Color(20,60,120));
+            doc.add(new Paragraph(title,heading));
+            doc.add(new Paragraph("Generated: "+LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm"))+" | Records: "+rows.size(),FontFactory.getFont(FontFactory.HELVETICA,9)));
+            doc.add(Chunk.NEWLINE);
             PdfPTable table=new PdfPTable(HEADERS.length);table.setWidthPercentage(100);table.setHeaderRows(1);for(String h:HEADERS){PdfPCell c=new PdfPCell(new Phrase(h,FontFactory.getFont(FontFactory.HELVETICA_BOLD,6,Color.WHITE)));c.setBackgroundColor(new Color(20,60,120));c.setPadding(4);table.addCell(c);}for(TransportReportRow r:rows)for(Object v:values(r)){PdfPCell c=new PdfPCell(new Phrase(text(v),FontFactory.getFont(FontFactory.HELVETICA,6)));c.setPadding(3);table.addCell(c);}doc.add(table);doc.close();return out.toByteArray();
         }catch(Exception e){if(doc.isOpen())doc.close();throw new IllegalStateException("Unable to generate PDF report",e);}
+    }
+
+    private Image loadHeaderImage() {
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream("header_image.png")) {
+            if (in == null) return null;
+            byte[] bytes = in.readAllBytes();
+            Image img = Image.getInstance(bytes);
+            img.setAlignment(Element.ALIGN_CENTER);
+            img.setSpacingAfter(6);
+            return img;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private List<TransportReportRow> exportRows(Long scopeBusId,TransportReportFilter f){validate(f);Page<TransportReportRow> page=query(scopeBusId,f,PageRequest.of(0,EXPORT_LIMIT));if(page.getTotalElements()>EXPORT_LIMIT)throw new BadRequestException("Export exceeds 10,000 records. Apply more filters and try again");return page.getContent();}

@@ -9,6 +9,7 @@ public class SpaController {
 
     @GetMapping({
             "/login",
+            "/verify-pass",
             "/student", "/student/**",
             "/incharge", "/incharge/**",
             "/admin", "/admin/**"

@@ -2,6 +2,7 @@ package com.web.sms.controller;
 
 import com.web.sms.dto.response.PassResponse;
 import com.web.sms.service.PassService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -30,5 +31,15 @@ public class PublicController {
         // Phone numbers are included on the student's private pass, never in public verification.
         response.setPhoneNumber(null);
         return response;
+    }
+
+    /**
+     * Returns the student photo for a given pass verification token.
+     * This endpoint is public so that the QR-scan verification page can display the photo
+     * without requiring the viewer to be logged in.
+     */
+    @GetMapping("/pass-photo")
+    public ResponseEntity<byte[]> passPhotoByToken(@RequestParam String token) {
+        return passService.passPhotoByToken(token);
     }
 }

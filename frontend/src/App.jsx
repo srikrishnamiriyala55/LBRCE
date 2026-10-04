@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+import VerifyPassPage from './pages/VerifyPassPage';
 import { ToastProvider } from './components/common/Toast';
 
 // Layouts
@@ -48,6 +49,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/verify-pass" element={<VerifyPassPage />} />
 
         {/* Student Routes */}
         <Route path="/student" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentLayout /></ProtectedRoute>}>

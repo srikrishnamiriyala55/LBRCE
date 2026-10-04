@@ -14,13 +14,189 @@ img, svg { max-width: 100%; }
 .input-field { @apply w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500; }
 
 @media (max-width: 639px) {
-  /* A 16px control font prevents unwanted automatic zoom on mobile browsers. */
   input, select, textarea { font-size: 16px; }
   h1 { overflow-wrap: anywhere; }
 }
 
-@media print {
-  nav, aside, button { display: none !important; }
-  main { overflow: visible !important; padding: 0 !important; }
-  .card { box-shadow: none; border-color: #d1d5db; }
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
+
+/* ── PassCard ID-card styles ─────────────────────────────────────── */
+.pass-card {
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1.5px solid #dbeafe;
+  background: #fff;
+  box-shadow: 0 4px 20px rgba(30,64,175,0.10);
+}
+.pass-header {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #fff;
+}
+.pass-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fff;
+  padding: 3px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.pass-college-name {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  margin: 0;
+  line-height: 1.3;
+  color: #fff;
+}
+.pass-subtitle {
+  font-size: 11px;
+  color: #93c5fd;
+  margin: 3px 0 0;
+  letter-spacing: 1.5px;
+  font-weight: 600;
+}
+.pass-body { padding: 16px 18px 14px; }
+.pass-top-section {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: flex-start;
+}
+.pass-photo-wrap {
+  flex-shrink: 0;
+}
+.pass-photo {
+  width: 110px;
+  height: 130px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2.5px solid #bfdbfe;
+}
+.pass-photo-placeholder {
+  width: 110px;
+  height: 130px;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: center;
+}
+.pass-id-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.pass-pass-number {
+  font-weight: 700;
+  font-size: 15px;
+  color: #1e3a8a;
+}
+.pass-status-wrap { margin-top: 4px; }
+.pass-qr-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 6px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 8px 4px;
+}
+.pass-qr-caption {
+  font-size: 9px;
+  color: #64748b;
+  text-align: center;
+  margin: 2px 0 0;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+.pass-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+}
+.pass-detail-item {
+  padding: 6px 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+.pass-detail-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #64748b;
+  font-weight: 600;
+  margin: 0 0 2px;
+}
+.pass-detail-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+  word-break: break-word;
+}
+.pass-footer {
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 8px 18px;
+  text-align: center;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+/* ── Print: show only the bus pass card ──────────────────────────── */
+@media print {
+  /* Hide everything */
+  body > * { display: none !important; }
+
+  /* Show only the pass card wrapper */
+  #root { display: block !important; }
+  nav, aside, header, footer, button,
+  .btn-primary, .btn-secondary,
+  [class*="sidebar"], [class*="layout"],
+  [class*="toast"], [class*="modal"] { display: none !important; }
+
+  /* Make the pass card fill the page */
+  #bus-pass {
+    display: block !important;
+    width: 100% !important;
+    max-width: 540px !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    border: 1.5px solid #cbd5e1 !important;
+    page-break-inside: avoid;
+  }
+
+  /* Force parent containers to be visible */
+  main, div[class*="max-w"], div[class*="space-y"],
+  div[class*="mx-auto"] {
+    display: block !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Show the pass QR which is hidden by button display:none rules above */
+  .pass-qr-inline, .pass-qr-inline * { display: flex !important; }
+  .pass-qr-caption { display: block !important; }
+
+  /* Ensure grid layouts print correctly */
+  .pass-details-grid { grid-template-columns: 1fr 1fr !important; }
+  .pass-top-section { flex-direction: row !important; }
+}
+
