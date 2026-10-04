@@ -2,14 +2,20 @@ import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import StatusBadge from '../common/StatusBadge';
 
+const PUBLIC_VERIFY_BASE = 'https://lbrce-btms-web.onrender.com/verify-pass?token=';
+
 const FRONTEND_VERIFY_BASE =
   import.meta.env.VITE_PASS_FRONTEND_VERIFY_URL ||
-  `${window.location.origin}/verify-pass?token=`;
+  (typeof window !== 'undefined' &&
+   window.location.hostname !== 'localhost' &&
+   window.location.hostname !== '127.0.0.1'
+    ? `${window.location.origin}/verify-pass?token=`
+    : PUBLIC_VERIFY_BASE);
 
 export default function PassCard({ pass, photoUrl }) {
-  const qrValue = pass.verificationToken
-    ? FRONTEND_VERIFY_BASE + pass.verificationToken
-    : '';
+  const qrValue =
+    pass.verificationUrl ||
+    (pass.verificationToken ? FRONTEND_VERIFY_BASE + pass.verificationToken : '');
 
   const item = (label, value) => (
     <div className="pass-detail-item">

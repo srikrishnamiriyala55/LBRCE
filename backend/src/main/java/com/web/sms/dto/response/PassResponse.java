@@ -22,6 +22,7 @@ public class PassResponse {
     private LocalDate validUntil;
     private PassStatus status;
     private String verificationToken;
+    private String verificationUrl;
     private boolean photoAvailable;
 
     public static PassResponse fromBusPass(BusPass pass) {
@@ -90,6 +91,8 @@ public class PassResponse {
     public void setStatus(PassStatus status) { this.status = status; }
     public String getVerificationToken() { return verificationToken; }
     public void setVerificationToken(String verificationToken) { this.verificationToken = verificationToken; }
+    public String getVerificationUrl() { return verificationUrl; }
+    public void setVerificationUrl(String verificationUrl) { this.verificationUrl = verificationUrl; }
     public boolean isPhotoAvailable() { return photoAvailable; }
     public void setPhotoAvailable(boolean photoAvailable) { this.photoAvailable = photoAvailable; }
 }

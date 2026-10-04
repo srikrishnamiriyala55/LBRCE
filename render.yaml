@@ -23,3 +23,5 @@ services:
         value: "false"
       - key: PASS_VERIFICATION_URL
         value: https://lbrce-btms-web.onrender.com/api/public/verify-pass?token=
+      - key: PASS_FRONTEND_VERIFY_URL
+        value: https://lbrce-btms-web.onrender.com/verify-pass?token=

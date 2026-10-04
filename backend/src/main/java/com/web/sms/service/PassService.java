@@ -57,7 +57,7 @@ public class PassService {
     }
 
     public PassResponse getStudentPass(Long studentId) {
-        return PassResponse.fromBusPass(findActivePass(studentId));
+        return toPassResponse(findActivePass(studentId));
     }
 
     private BusPass findActivePass(Long studentId) {
@@ -77,11 +77,19 @@ public class PassService {
     }
 
     public PassResponse getPassForAdmin(Long passId) {
-        return PassResponse.fromBusPass(findPass(passId));
+        return toPassResponse(findPass(passId));
     }
 
     public PassResponse getPassForIncharge(Long passId, Long busId) {
-        return PassResponse.fromBusPass(requireBusAccess(findPass(passId), busId));
+        return toPassResponse(requireBusAccess(findPass(passId), busId));
+    }
+
+    private PassResponse toPassResponse(BusPass pass) {
+        PassResponse r = PassResponse.fromBusPass(pass);
+        if (pass.getVerificationToken() != null) {
+            r.setVerificationUrl(frontendVerifyUrl + pass.getVerificationToken());
+        }
+        return r;
     }
 
     public byte[] generatePdfForAdmin(Long passId) {
