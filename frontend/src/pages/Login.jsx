@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/axios';
@@ -17,6 +17,7 @@ const Login = () => {
   const [photo, setPhoto] = useState(null);
   const [registrationOtp, setRegistrationOtp] = useState('');
   const [registrationOtpSent, setRegistrationOtpSent] = useState(false);
+  const [registrationOtpTimer, setRegistrationOtpTimer] = useState(0);
   const [registrationToken, setRegistrationToken] = useState('');
   const [loginChallenge, setLoginChallenge] = useState(null);
   const [loginOtp, setLoginOtp] = useState('');
@@ -25,6 +26,44 @@ const Login = () => {
     year: '', semester: '', dob: '', gender: '', address: '', bloodGroup: '',
     parentName: '', parentPhoneNumber: '', password: '', confirmPassword: ''
   });
+
+  // 5-minute (300s) countdown timer for registration OTP
+  useEffect(() => {
+    let interval = null;
+    if (registrationOtpTimer > 0) {
+      interval = setInterval(() => {
+        setRegistrationOtpTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [registrationOtpTimer]);
+
+  const formatTimer = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const calculateAge = (dobString) => {
+    if (!dobString) return 0;
+    const birthDate = new Date(dobString);
+    if (Number.isNaN(birthDate.getTime())) return 0;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const getMaxDob = () => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 17);
+    return d.toISOString().split('T')[0];
+  };
   
   const { login, completeOtpLogin } = useAuth();
   const navigate = useNavigate();
@@ -60,21 +99,90 @@ const Login = () => {
   const verifyLoginOtp = async (event) => { event.preventDefault(); setError(''); setIsLoading(true); try { const user=await completeOtpLogin(loginChallenge.otpChallengeToken, loginOtp); navigateForRole(user); } catch(err) { setError(err.response?.data?.message || 'Invalid or expired OTP.'); } finally { setIsLoading(false); } };
   const resendLoginOtp = async () => { setError(''); setIsLoading(true); try { await api.post('/auth/login/resend-otp', { challengeToken: loginChallenge.otpChallengeToken }); setLoginOtp(''); setSuccess('A new OTP was sent. It is valid for 5 minutes.'); } catch(err) { setError(err.response?.data?.message || 'Unable to resend OTP.'); } finally { setIsLoading(false); } };
 
-  const sendRegistrationOtp = async () => { setError(''); if (!registration.email) { setError('Enter your email before requesting OTP.'); return; } setIsLoading(true); try { await api.post('/auth/registration-otp/send', { email: registration.email }); setRegistrationOtp(''); setRegistrationOtpSent(true); setSuccess('OTP sent to your email. It is valid for 5 minutes.'); } catch(err) { setError(err.response?.data?.message || 'Unable to send OTP.'); } finally { setIsLoading(false); } };
-  const verifyRegistrationOtp = async () => { setError(''); setIsLoading(true); try { const result=await api.post('/auth/registration-otp/verify', { email: registration.email, otp: registrationOtp }); setRegistrationToken(result.data.verificationToken); setSuccess('Email verified. You can create your account now.'); } catch(err) { setError(err.response?.data?.message || 'Invalid or expired OTP.'); } finally { setIsLoading(false); } };
+  const sendRegistrationOtp = async () => {
+    setError('');
+    const emailToVerify = registration.email ? registration.email.trim().toLowerCase() : '';
+    if (!emailToVerify) {
+      setError('Enter your email before requesting OTP.');
+      return;
+    }
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(emailToVerify)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const availability = await api.get('/auth/register/student/email-exists', {
+        params: { email: emailToVerify }
+      });
+      if (availability.data?.exists) {
+        setError(`An account with email ${emailToVerify} already exists. Please sign in or use another email.`);
+        return;
+      }
+      await api.post('/auth/registration-otp/send', { email: emailToVerify });
+      setRegistrationOtp('');
+      setRegistrationOtpSent(true);
+      setRegistrationOtpTimer(300); // 5-minute timer
+      setSuccess('A 6-digit OTP was sent to your email. It will expire in 5 minutes.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to send OTP.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyRegistrationOtp = async () => {
+    setError('');
+    if (registrationOtpTimer === 0) {
+      setError('The OTP has expired. Please click "Resend OTP" to request a new code.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const result = await api.post('/auth/registration-otp/verify', {
+        email: registration.email.trim().toLowerCase(),
+        otp: registrationOtp
+      });
+      setRegistrationToken(result.data.verificationToken);
+      setRegistrationOtpTimer(0);
+      setSuccess('Email verified. You can create your account now.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid or expired OTP.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const updateRegistration = (event) => {
     const { name, value } = event.target;
     const nextValue = ['phoneNumber', 'parentPhoneNumber'].includes(name) ? normalizePhone(value) : name === 'rollNumber' ? value.toUpperCase() : value;
-    if (name === 'email') { setRegistrationOtp(''); setRegistrationOtpSent(false); setRegistrationToken(''); }
-    setRegistration((current) => ({ ...current, [name]: nextValue,
+    if (name === 'email') {
+      setRegistrationOtp('');
+      setRegistrationOtpSent(false);
+      setRegistrationToken('');
+      setRegistrationOtpTimer(0);
+    }
+    if (name === 'dob' && value) {
+      const age = calculateAge(value);
+      if (age < 17) {
+        setError(`Student must be at least 17 years old to register. (Calculated age: ${age} ${age === 1 ? 'year' : 'years'})`);
+      } else {
+        if (error && error.includes('17 years')) setError('');
+      }
+    }
+    setRegistration((current) => ({
+      ...current,
+      [name]: nextValue,
       ...(name === 'year' ? { semester: '' } : {}),
-      ...(name === 'branch' ? { year: '', semester: '' } : {}) }));
+      ...(name === 'branch' ? { year: '', semester: '' } : {})
+    }));
   };
 
   const openRegistration = () => {
     setError('');
     setSuccess('');
+    setRegistrationOtpTimer(0);
     setIsRegistering(true);
   };
 
@@ -86,7 +194,19 @@ const Login = () => {
       setError('Passwords do not match.');
       return;
     }
-    if (!registrationToken || !photo) { setError('Verify your email OTP and upload a student photo before creating the account.'); return; }
+    if (!registrationToken || !photo) {
+      setError('Verify your email OTP and upload a student photo before creating the account.');
+      return;
+    }
+    if (!registration.dob) {
+      setError('Date of birth is required.');
+      return;
+    }
+    const age = calculateAge(registration.dob);
+    if (age < 17) {
+      setError(`Student must be at least 17 years old to register. (Calculated age: ${age} ${age === 1 ? 'year' : 'years'}). Please select a valid date of birth.`);
+      return;
+    }
     setIsLoading(true);
     try {
       setRollNumberStatus('checking');
@@ -102,12 +222,19 @@ const Login = () => {
       payload.year = Number(payload.year);
       payload.semester = Number(payload.semester);
       payload.emailVerificationToken = registrationToken;
-      const formData = new FormData(); formData.append('student', new Blob([JSON.stringify(payload)], { type: 'application/json' })); formData.append('photo', photo);
+      const formData = new FormData();
+      formData.append('student', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+      formData.append('photo', photo);
       await api.post('/auth/register/student', formData);
       const studentId = registration.rollNumber.trim().toUpperCase();
       setRollNumber(studentId);
       setPassword('');
-      setRegistration({ rollNumber: '', name: '', email: '', phoneNumber: '', branch: '', year: '', semester: '', dob: '', gender: '', address: '', bloodGroup: '', parentName: '', parentPhoneNumber: '', password: '', confirmPassword: '' }); setPhoto(null); setRegistrationOtp(''); setRegistrationOtpSent(false); setRegistrationToken('');
+      setRegistration({ rollNumber: '', name: '', email: '', phoneNumber: '', branch: '', year: '', semester: '', dob: '', gender: '', address: '', bloodGroup: '', parentName: '', parentPhoneNumber: '', password: '', confirmPassword: '' });
+      setPhoto(null);
+      setRegistrationOtp('');
+      setRegistrationOtpSent(false);
+      setRegistrationOtpTimer(0);
+      setRegistrationToken('');
       setIsRegistering(false);
       setSuccess('Account created successfully. You can sign in now.');
     } catch (err) {
@@ -193,9 +320,90 @@ const Login = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label htmlFor="registerStudentId" className="block text-sm font-medium text-gray-700 mb-1">Student ID *</label><input id="registerStudentId" name="rollNumber" value={registration.rollNumber} onChange={updateRegistration} className={`input-field uppercase ${rollNumberStatus === 'exists' ? 'border-red-500 focus:ring-red-500' : ''}`} placeholder="e.g. 21761A0501" maxLength="30" aria-describedby="rollNumberStatus" required />{rollNumberStatus === 'exists' && <span id="rollNumberStatus" className="mt-1 block text-xs text-red-600">User with roll number {registration.rollNumber.trim().toUpperCase()} already exists.</span>}</div>
             <div><label htmlFor="registerName" className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label><input id="registerName" name="name" value={registration.name} onChange={updateRegistration} className="input-field" placeholder="Student full name" maxLength="100" required /></div>
-            <div><label htmlFor="registerEmail" className="block text-sm font-medium text-gray-700 mb-1">Email *</label><div className="relative"><input id="registerEmail" type="email" name="email" value={registration.email} onChange={updateRegistration} className="input-field pr-20" placeholder="student@lbrce.ac.in" maxLength="120" required disabled={Boolean(registrationToken)} /><button type="button" onClick={sendRegistrationOtp} disabled={isLoading || Boolean(registrationToken)} className="absolute inset-y-1 right-1 rounded-md bg-blue-700 px-3 text-xs font-medium text-white disabled:opacity-50">Verify</button></div>{!registrationToken && registrationOtpSent && <div className="mt-2 space-y-2"><input inputMode="numeric" maxLength="6" value={registrationOtp} onChange={e=>setRegistrationOtp(e.target.value.replace(/\D/g,''))} className="input-field" placeholder="Enter 6-digit OTP" /><div className="flex items-center gap-3 text-xs"><button type="button" onClick={verifyRegistrationOtp} disabled={isLoading || registrationOtp.length!==6} className="text-blue-700 font-medium disabled:opacity-50">Verify OTP</button><button type="button" onClick={sendRegistrationOtp} disabled={isLoading} className="text-blue-700 underline disabled:opacity-50">Resend OTP</button><span className="text-gray-500">Valid for 5 minutes</span></div></div>}{registrationToken&&<p className="mt-1 text-xs text-green-700">Email verified.</p>}</div>
+            <div>
+              <label htmlFor="registerEmail" className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <div className="relative">
+                <input
+                  id="registerEmail"
+                  type="email"
+                  name="email"
+                  value={registration.email}
+                  onChange={updateRegistration}
+                  className="input-field pr-20"
+                  placeholder="student@lbrce.ac.in"
+                  maxLength="120"
+                  required
+                  disabled={Boolean(registrationToken)}
+                />
+                <button
+                  type="button"
+                  onClick={sendRegistrationOtp}
+                  disabled={isLoading || Boolean(registrationToken)}
+                  className="absolute inset-y-1 right-1 rounded-md bg-blue-700 px-3 text-xs font-medium text-white disabled:opacity-50"
+                >
+                  Verify
+                </button>
+              </div>
+              {!registrationToken && registrationOtpSent && (
+                <div className="mt-2 space-y-2">
+                  <input
+                    inputMode="numeric"
+                    maxLength="6"
+                    value={registrationOtp}
+                    onChange={e => setRegistrationOtp(e.target.value.replace(/\D/g, ''))}
+                    className="input-field"
+                    placeholder="Enter 6-digit OTP"
+                  />
+                  <div className="flex flex-wrap items-center gap-3 text-xs">
+                    <button
+                      type="button"
+                      onClick={verifyRegistrationOtp}
+                      disabled={isLoading || registrationOtp.length !== 6 || registrationOtpTimer === 0}
+                      className="text-blue-700 font-medium disabled:opacity-50"
+                    >
+                      Verify OTP
+                    </button>
+                    <button
+                      type="button"
+                      onClick={sendRegistrationOtp}
+                      disabled={isLoading}
+                      className="text-blue-700 underline disabled:opacity-50"
+                    >
+                      Resend OTP
+                    </button>
+                    {registrationOtpTimer > 0 ? (
+                      <span className="font-mono text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        Expires in {formatTimer(registrationOtpTimer)}
+                      </span>
+                    ) : (
+                      <span className="font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200">
+                        OTP expired. Click Resend OTP.
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+              {registrationToken && <p className="mt-1 text-xs text-green-700">Email verified.</p>}
+            </div>
             <div><label htmlFor="registerPhone" className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label><input id="registerPhone" type="tel" inputMode="numeric" name="phoneNumber" value={registration.phoneNumber} onChange={updateRegistration} className="input-field" placeholder="Exactly 10 digits" pattern="[0-9]{10}" minLength="10" maxLength="10" required /></div>
-            <div><label htmlFor="registerDob" className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label><input id="registerDob" type="date" name="dob" value={registration.dob} max={new Date().toISOString().split('T')[0]} onChange={updateRegistration} className="input-field" required /></div>
+            <div>
+              <label htmlFor="registerDob" className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+              <input
+                id="registerDob"
+                type="date"
+                name="dob"
+                value={registration.dob}
+                max={getMaxDob()}
+                onChange={updateRegistration}
+                className="input-field"
+                required
+              />
+              {registration.dob && (
+                <span className={`mt-1 block text-xs ${calculateAge(registration.dob) < 17 ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                  Age: {calculateAge(registration.dob)} years {calculateAge(registration.dob) < 17 ? '(Minimum 17 years required)' : ''}
+                </span>
+              )}
+            </div>
             <div><label htmlFor="registerGender" className="block text-sm font-medium text-gray-700 mb-1">Gender *</label><select id="registerGender" name="gender" value={registration.gender} onChange={updateRegistration} className="input-field" required><option value="">Select</option><option value="MALE">Male</option><option value="FEMALE">Female</option><option value="OTHER">Other</option></select></div>
             <div><label htmlFor="registerBranch" className="block text-sm font-medium text-gray-700 mb-1">Department *</label><select id="registerBranch" name="branch" value={registration.branch} onChange={updateRegistration} className="input-field" required><option value="">Select department</option>{DEPARTMENTS.map(value=><option key={value} value={value}>{value}</option>)}</select></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

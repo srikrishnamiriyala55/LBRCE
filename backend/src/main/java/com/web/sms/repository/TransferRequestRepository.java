@@ -33,6 +33,7 @@ public interface TransferRequestRepository extends JpaRepository<TransferRequest
     void deleteByStudentId(Long studentId);
     Page<TransferRequest> findByCurrentBusIdOrRequestedBusId(Long currentBusId, Long requestedBusId, Pageable pageable);
     List<TransferRequest> findByStudentIdAndAcademicYearIdAndStatusIn(Long studentId, Long academicYearId, List<TransferStatus> statuses);
+    long countByStudentIdAndAcademicYearIdAndStatusNot(Long studentId, Long academicYearId, TransferStatus status);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from TransferRequest t where t.id = :id")
     Optional<TransferRequest> findByIdForUpdate(Long id);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bus, Users, ClipboardList, AlertCircle, ArrowLeftRight, BadgeCheck, CreditCard } from 'lucide-react';
+import { Bus, ClipboardList, AlertCircle, ArrowLeftRight, BadgeCheck, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import DashboardCard from '../../components/common/DashboardCard';
 import api from '../../utils/axios';
@@ -39,17 +39,10 @@ const InchargeDashboardPage = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <DashboardCard
-          title="Total Capacity"
-          value={stats?.totalCapacity || 0}
+          title="Occupancy (Filled / Capacity)"
+          value={`${stats?.totalStudents || 0} / ${stats?.totalCapacity || 0}`}
           icon={Bus}
           color="blue"
-          to="/incharge/students"
-        />
-        <DashboardCard
-          title="Total Students"
-          value={stats?.totalStudents || 0}
-          icon={Users}
-          color="green"
           to="/incharge/students"
         />
         <DashboardCard

@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.multipart.MultipartFile;
 import com.web.sms.repository.StudentRepository;
 import com.web.sms.repository.TransportAllocationRepository;
 import com.web.sms.enums.EntityStatus;

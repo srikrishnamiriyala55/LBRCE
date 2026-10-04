@@ -27,13 +27,18 @@ const TransferManagementPage = () => {
   const fetchTransfers = async () => {
     setLoading(true);
     try {
-      const [release, acceptance] = await Promise.all([
+      const [release, acceptance, all] = await Promise.all([
         api.get('/incharge/transfers/pending-release?unpaged=true'),
-        api.get('/incharge/transfers/pending-acceptance?unpaged=true')
+        api.get('/incharge/transfers/pending-acceptance?unpaged=true'),
+        api.get('/incharge/transfers?unpaged=true')
       ]);
-      const releaseRows = (release.data.content || []).map(t => ({...t, approvalStage: 'RELEASE'}));
-      const acceptanceRows = (acceptance.data.content || []).map(t => ({...t, approvalStage: 'ACCEPTANCE'}));
-      setTransfers([...releaseRows, ...acceptanceRows]);
+      const releaseIds = new Set((release.data.content || []).map(t => t.id));
+      const acceptanceIds = new Set((acceptance.data.content || []).map(t => t.id));
+      const allRows = (all.data.content || []).map(t => ({
+        ...t,
+        approvalStage: releaseIds.has(t.id) ? 'RELEASE' : acceptanceIds.has(t.id) ? 'ACCEPTANCE' : null
+      }));
+      setTransfers(allRows);
     } catch (err) {
       addToast('Failed to load transfers', 'error');
     } finally {
@@ -49,7 +54,8 @@ const TransferManagementPage = () => {
         (t.studentRollNumber || '').toLowerCase().includes(term) ||
         (t.currentBusNumber || '').toLowerCase().includes(term) ||
         (t.requestedBusNumber || '').toLowerCase().includes(term) ||
-        (t.reason || '').toLowerCase().includes(term);
+        (t.reason || '').toLowerCase().includes(term) ||
+        (t.remarks || '').toLowerCase().includes(term);
       const matchesStatus = !statusFilter || (t.status || '') === statusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -63,7 +69,7 @@ const TransferManagementPage = () => {
         await api.post(`/incharge/transfers/${currentTransfer.id}/${action}`, { remarks });
       } else {
         const action = currentTransfer.approvalStage === 'RELEASE' ? 'reject-release' : 'reject';
-        await api.post(`/incharge/transfers/${currentTransfer.id}/${action}`);
+        await api.post(`/incharge/transfers/${currentTransfer.id}/${action}`, { remarks: remarks.trim() });
       }
       addToast(`Transfer ${actionType.toLowerCase()}d`, 'success');
       setDialogOpen(false);
@@ -78,17 +84,49 @@ const TransferManagementPage = () => {
     { key: 'studentRollNumber', label: 'Roll Number', render: row => row.studentRollNumber || '—' },
     { key: 'currentBus', label: 'Current Bus', render: row => row.currentBusNumber },
     { key: 'requestedBus', label: 'Requested Bus', render: row => row.requestedBusNumber },
-    { key: 'approvalStage', label: 'Your Decision', render: row => row.approvalStage === 'RELEASE' ? 'Approve release' : 'Accept into bus' },
     { key: 'reason', label: 'Reason' },
     { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },
-    { key: 'actions', label: 'Actions', render: (row) => (
-      ['TRANSFER_REQUESTED', 'OLD_INCHARGE_APPROVED'].includes(row.status) && (
-        <div className="flex gap-2">
-          <button onClick={() => { setCurrentTransfer(row); setActionType('APPROVE'); setRemarks(''); setDialogOpen(true); }} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Approve</button>
-          <button onClick={() => { setCurrentTransfer(row); setActionType('REJECT'); setRemarks(''); setDialogOpen(true); }} className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">Reject</button>
-        </div>
+    {
+      key: 'remarks',
+      label: 'Decision Remarks',
+      render: (row) => {
+        const isRejected = (row.status || '').includes('REJECTED');
+        if (isRejected || row.remarks) {
+          return row.remarks ? (
+            <span className={`text-xs px-2 py-0.5 rounded border ${isRejected ? 'text-red-700 bg-red-50 border-red-200' : 'text-gray-700 bg-gray-50 border-gray-200'}`}>
+              {row.remarks}
+            </span>
+          ) : (
+            <span className="text-xs text-gray-400 italic">No remarks provided</span>
+          );
+        }
+        return '—';
+      }
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (row) => (
+        row.approvalStage ? (
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setCurrentTransfer(row); setActionType('APPROVE'); setRemarks(''); setDialogOpen(true); }}
+              className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-2 py-1 rounded font-medium transition-colors"
+            >
+              {row.approvalStage === 'RELEASE' ? 'Release' : 'Accept'}
+            </button>
+            <button
+              onClick={() => { setCurrentTransfer(row); setActionType('REJECT'); setRemarks(''); setDialogOpen(true); }}
+              className="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded font-medium transition-colors"
+            >
+              Reject
+            </button>
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">No action</span>
+        )
       )
-    )}
+    }
   ];
 
   return (

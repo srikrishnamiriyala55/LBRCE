@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Eye } from 'lucide-react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import StatusBadge from '../../components/common/StatusBadge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import StudentApplicationDetailModal from '../../components/applications/StudentApplicationDetailModal';
 import { useToast } from '../../components/common/Toast';
 
 const buildInitialFilters = (urlStatus) => ({
@@ -21,6 +23,7 @@ export default function ApplicationManagementPage() {
   const [filters, setFilters] = useState(() => buildInitialFilters(searchParams.get('status')));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentApp, setCurrentApp] = useState(null);
+  const [viewingApp, setViewingApp] = useState(null);
   const [actionType, setActionType] = useState('');
   const [remarks, setRemarks] = useState('');
   const [summary, setSummary] = useState({});
@@ -85,12 +88,35 @@ export default function ApplicationManagementPage() {
     { key: 'academicYear', label: 'Academic Year', render: row => row.academicYear || '—' },
     { key: 'status', label: 'Status', render: row => <StatusBadge status={row.status} /> },
     {
-      key: 'actions', label: 'Actions', render: row => actionable(row)
-        ? <div className="flex min-w-[150px] flex-wrap gap-2">
-          <button type="button" onClick={() => { setCurrentApp(row); setActionType('APPROVE'); setRemarks(''); setDialogOpen(true); }} className="rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-700">Approve</button>
-          <button type="button" onClick={() => { setCurrentApp(row); setActionType('REJECT'); setRemarks(''); setDialogOpen(true); }} className="rounded bg-red-100 px-2 py-1 text-xs font-medium text-red-700">Reject</button>
+      key: 'actions', label: 'Actions', render: row => (
+        <div className="flex min-w-[200px] flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setViewingApp(row)}
+            className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-blue-200 transition-colors"
+          >
+            <Eye size={13} /> View
+          </button>
+          {actionable(row) && (
+            <>
+              <button
+                type="button"
+                onClick={() => { setCurrentApp(row); setActionType('APPROVE'); setRemarks(''); setDialogOpen(true); }}
+                className="rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-200 transition-colors"
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCurrentApp(row); setActionType('REJECT'); setRemarks(''); setDialogOpen(true); }}
+                className="rounded bg-red-100 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-200 transition-colors"
+              >
+                Reject
+              </button>
+            </>
+          )}
         </div>
-        : <span className="text-xs text-gray-500">No action required</span>
+      )
     },
   ];
 
@@ -184,6 +210,25 @@ export default function ApplicationManagementPage() {
             )}
           </div>
         }
+      />
+
+      <StudentApplicationDetailModal
+        isOpen={Boolean(viewingApp)}
+        onClose={() => setViewingApp(null)}
+        application={viewingApp}
+        role="incharge"
+        onApprove={(app) => {
+          setCurrentApp(app);
+          setActionType('APPROVE');
+          setRemarks('');
+          setDialogOpen(true);
+        }}
+        onReject={(app) => {
+          setCurrentApp(app);
+          setActionType('REJECT');
+          setRemarks('');
+          setDialogOpen(true);
+        }}
       />
     </div>
   );

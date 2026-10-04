@@ -6,6 +6,7 @@ import DataTable from '../../components/common/DataTable';
 import StatusBadge from '../../components/common/StatusBadge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import Modal from '../../components/common/Modal';
+import StudentApplicationDetailModal from '../../components/applications/StudentApplicationDetailModal';
 import { useToast } from '../../components/common/Toast';
 
 const detail = (label, value) => (
@@ -251,9 +252,15 @@ export default function AdminApplicationsPage() {
       onCancel={() => setDialog(false)}
     />
 
-    <Modal isOpen={Boolean(viewing)} onClose={() => setViewing(null)} title="Application Details" size="lg">
-      {viewing && <div className="space-y-5"><div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{detail('Student', viewing.studentName)}{detail('Roll Number', viewing.rollNumber)}{detail('Bus', viewing.busNumber)}{detail('Route', `${viewing.startingPoint || '—'} → ${viewing.endingPoint || '—'}`)}{detail('Boarding Point', viewing.boardingPointName)}{detail('Academic Year', viewing.academicYear)}{detail('Applied At', formatDateTime(viewing.appliedAt))}{detail('Reviewed At', formatDateTime(viewing.reviewedAt))}{detail('Remarks', viewing.remarks)}<div><p className="text-xs font-medium uppercase tracking-wide text-gray-500">Status</p><div className="mt-1"><StatusBadge status={viewing.status} /></div></div></div><div className="flex flex-wrap justify-end gap-2">{editable(viewing) && <button type="button" className="btn-secondary" onClick={() => { setViewing(null); openEdit(viewing); }}>Edit</button>}<button type="button" className="btn-primary" onClick={() => setViewing(null)}>Close</button></div></div>}
-    </Modal>
+    <StudentApplicationDetailModal
+      isOpen={Boolean(viewing)}
+      onClose={() => setViewing(null)}
+      application={viewing}
+      role="admin"
+      onApprove={(app) => openDecision(app, 'APPROVE')}
+      onReject={(app) => openDecision(app, 'REJECT')}
+      onEdit={(app) => { setViewing(null); openEdit(app); }}
+    />
 
     <Modal isOpen={Boolean(editing)} onClose={() => setEditing(null)} title="Edit Bus Application">
       <form onSubmit={saveEdit} className="space-y-4"><label className="block text-sm font-medium">Bus *<select required className="input-field mt-1" value={form.busId} onChange={(event) => changeBus(event.target.value)}><option value="">Select bus</option>{buses.filter((bus) => bus.status === 'ACTIVE').map((bus) => <option key={bus.id} value={bus.id}>{bus.busNumber} — {bus.startingPoint} to {bus.endingPoint}</option>)}</select></label><label className="block text-sm font-medium">Boarding Point *<select required className="input-field mt-1" value={form.boardingPointId} onChange={(event) => setForm({ ...form, boardingPointId: event.target.value })}><option value="">Select point</option>{points.map((point) => <option key={point.id} value={point.id}>{point.stationName} — ₹{point.feeAmount}</option>)}</select></label><label className="block text-sm font-medium">Remarks<textarea maxLength="500" className="input-field mt-1" value={form.remarks} onChange={(event) => setForm({ ...form, remarks: event.target.value })} /></label><div className="flex justify-end gap-3"><button type="button" className="btn-secondary" onClick={() => setEditing(null)}>Cancel</button><button className="btn-primary">Save Changes</button></div></form>

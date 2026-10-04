@@ -74,7 +74,13 @@ public class AuthService {
         catch (Exception e) { throw new BadRequestException("Your login verification expired. Please sign in again."); }
     }
 
-    public void sendRegistrationOtp(String email) { otpService.send(email.trim().toLowerCase()); }
+    public void sendRegistrationOtp(String email) {
+        String normalized = email.trim().toLowerCase();
+        if (studentRepository.existsByEmail(normalized)) {
+            throw new BadRequestException("An account already exists for this email address");
+        }
+        otpService.send(normalized);
+    }
     public String verifyRegistrationOtp(String email, String otp) {
         String normalized = email.trim().toLowerCase(); otpService.verify(normalized, otp);
         return tokenProvider.generateVerificationToken(normalized, "REGISTRATION_OTP", java.util.Map.of("email", normalized), 5 * 60 * 1000);
@@ -88,6 +94,12 @@ public class AuthService {
         catch (BadRequestException e) { throw e; } catch (Exception e) { throw new BadRequestException("Email verification expired. Request a new OTP."); }
         validateNewStudent(studentId, email);
         validateAcademicProgress(request.getBranch(), request.getYear(), request.getSemester());
+        if (request.getDob() != null) {
+            int age = java.time.Period.between(request.getDob(), java.time.LocalDate.now()).getYears();
+            if (age < 17) {
+                throw new BadRequestException("Student must be at least 17 years of age to register");
+            }
+        }
 
         Student student = new Student();
         student.setRollNumber(studentId);
@@ -120,6 +132,11 @@ public class AuthService {
         String normalized = rollNumber.trim().toUpperCase();
         if (normalized.isEmpty() || normalized.length() > 30) return false;
         return studentRepository.existsByRollNumber(normalized);
+    }
+
+    public boolean studentEmailExists(String email) {
+        if (email == null || email.isBlank()) return false;
+        return studentRepository.existsByEmail(email.trim().toLowerCase());
     }
 
     private void validateNewStudent(String studentId, String email) {

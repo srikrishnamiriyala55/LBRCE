@@ -29,6 +29,8 @@ public class TransferService {
   TransportAllocation current=allocations.findActiveForUpdate(studentId,year.getId()).orElseThrow(()->new BadRequestException("Transfer requires an active approved bus assignment"));
   if(!"ACTIVE".equalsIgnoreCase(current.getStudent().getStatus()))throw new BadRequestException("Only active students can request a transfer");
   if(!transfers.findByStudentIdAndAcademicYearIdAndStatusIn(studentId,year.getId(),ACTIVE).isEmpty()) throw new BadRequestException("You already have an active transfer request");
+  long usedTransfers=transfers.countByStudentIdAndAcademicYearIdAndStatusNot(studentId,year.getId(),TransferStatus.CANCELLED);
+  if(usedTransfers>=2) throw new BadRequestException("You have reached the maximum of 2 bus transfer requests allowed per academic year");
   Bus requested=buses.findById(req.getRequestedBusId()).orElseThrow(()->new ResourceNotFoundException("Requested bus not found"));
   if(current.getBus().getId().equals(requested.getId())) throw new BadRequestException("Requested bus is your current bus");
   if(current.getBus().getIncharge()==null||requested.getIncharge()==null) throw new BadRequestException("Both buses must have an in-charge");

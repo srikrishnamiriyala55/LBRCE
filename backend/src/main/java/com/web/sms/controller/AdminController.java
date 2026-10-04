@@ -356,6 +356,15 @@ public class AdminController {
         return adminService.updateStudentStatus(id, req.getStatus(), getCurrentUser().getUsername());
     }
 
+    @GetMapping("/students/{id}/photo")
+    public ResponseEntity<byte[]> getStudentPhoto(@PathVariable Long id) {
+        Student st = studentRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        if (st.getPhotoData() == null || st.getPhotoData().length == 0) throw new ResourceNotFoundException("Student photo not found");
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(st.getPhotoContentType() == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : st.getPhotoContentType()))
+                .body(st.getPhotoData());
+    }
+
     @GetMapping({"/applications", "/applications/all"})
     public List<ApplicationResponse> getApplications(@RequestParam(required = false) String search,
                                                      @RequestParam(required = false) ApplicationStatus status) {
@@ -401,6 +410,20 @@ public class AdminController {
     }
     @PutMapping("/applications/{id}") public ApplicationResponse updateApplication(@PathVariable Long id,@Valid @RequestBody UpdateApplicationRequest req){return applicationService.updateApplication(id,req,getCurrentUser().getUsername());}
     @DeleteMapping("/applications/{id}") public void deleteApplication(@PathVariable Long id){applicationService.deleteApplication(id,getCurrentUser().getUsername());}
+
+    @GetMapping("/applications/{id}/student-details")
+    public StudentProfileResponse getApplicationStudentDetails(@PathVariable Long id) {
+        BusApplication app = applicationRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Application not found"));
+        return StudentProfileResponse.fromStudent(app.getStudent());
+    }
+
+    @GetMapping("/applications/{id}/student-photo")
+    public ResponseEntity<byte[]> getApplicationStudentPhoto(@PathVariable Long id) {
+        BusApplication app = applicationRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Application not found"));
+        Student st = app.getStudent();
+        if (st.getPhotoData() == null || st.getPhotoData().length == 0) throw new ResourceNotFoundException("Student photo not found");
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(st.getPhotoContentType() == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : st.getPhotoContentType())).body(st.getPhotoData());
+    }
 
     @GetMapping({"/fees", "/fees/all"})
     public List<FeeResponse> getFees(@RequestParam(required = false) String search) {

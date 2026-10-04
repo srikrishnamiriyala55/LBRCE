@@ -35,6 +35,23 @@ const ApplicationHistoryPage = () => {
     { key: 'busNumber', label: 'Bus Number', render: (row) => row.bus?.busNumber || row.busNumber },
     { key: 'boardingPoint', label: 'Boarding Point', render: (row) => row.boardingPoint?.stationName || row.boardingPointName },
     { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },
+    {
+      key: 'remarks',
+      label: 'Remarks / Rejection Reason',
+      render: (row) => {
+        const isRejected = row.status === 'REJECTED';
+        if (isRejected || row.remarks) {
+          return row.remarks ? (
+            <span className={`text-xs px-2 py-0.5 rounded border ${isRejected ? 'text-red-700 bg-red-50 border-red-200' : 'text-gray-700 bg-gray-50 border-gray-200'}`}>
+              {row.remarks}
+            </span>
+          ) : (
+            <span className="text-xs text-gray-400 italic">No remarks provided</span>
+          );
+        }
+        return '—';
+      }
+    },
   ];
 
   return (

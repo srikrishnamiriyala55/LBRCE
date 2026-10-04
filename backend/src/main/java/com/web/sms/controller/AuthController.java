@@ -56,4 +56,10 @@ public class AuthController {
     public Map<String, Boolean> studentRollNumberExists(@RequestParam String rollNumber) {
         return Map.of("exists", authService.studentRollNumberExists(rollNumber));
     }
+
+    @GetMapping("/register/student/email-exists")
+    public Map<String, Boolean> studentEmailExists(@RequestParam String email) {
+        return Map.of("exists", authService.studentEmailExists(email));
+    }
 }
+

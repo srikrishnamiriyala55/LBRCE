@@ -33,8 +33,11 @@ import com.web.sms.service.TransportReportService;
 import com.web.sms.service.PassService;
 import com.web.sms.service.AdminService;
 import com.web.sms.dto.request.UpdateStudentRequest;
+import com.web.sms.dto.request.TransportReportFilter;
 import com.web.sms.dto.response.StudentProfileResponse;
 import com.web.sms.dto.response.PassResponse;
+import com.web.sms.dto.response.BusResponse;
+import com.web.sms.dto.response.NotificationResponse;
 import com.web.sms.dto.response.InchargeStudentResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -215,6 +218,22 @@ public class InchargeController {
         return applicationService.rejectApplication(id, finalRemarks, getCurrentUser().getUsername(), bus.getId());
     }
 
+    @GetMapping("/applications/{id}/student-details")
+    public StudentProfileResponse getApplicationStudentDetails(@PathVariable Long id) {
+        requireApplicationAccess(id);
+        BusApplication app = applicationRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Application not found"));
+        return StudentProfileResponse.fromStudent(app.getStudent());
+    }
+
+    @GetMapping("/applications/{id}/student-photo")
+    public ResponseEntity<byte[]> getApplicationStudentPhoto(@PathVariable Long id) {
+        requireApplicationAccess(id);
+        BusApplication app = applicationRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Application not found"));
+        Student st = app.getStudent();
+        if (st.getPhotoData() == null || st.getPhotoData().length == 0) throw new ResourceNotFoundException("Student photo not found");
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(st.getPhotoContentType() == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : st.getPhotoContentType())).body(st.getPhotoData());
+    }
+
     @GetMapping("/students")
     public Page<InchargeStudentResponse> getStudents(@RequestParam(required=false) String search,@RequestParam(required=false) String branch,@RequestParam(required=false) Integer year,@RequestParam(required=false) Long boardingPointId,@RequestParam(required=false) String paymentStatus,@RequestParam(required=false) String passStatus,@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable) {
         return operations.students(requireAssignedBus(),search,branch,year,boardingPointId,paymentStatus,passStatus,requestedPage(unpaged,pageable));
@@ -264,6 +283,62 @@ public class InchargeController {
         String remarks = (body != null) ? body.getOrDefault("remarks", "").trim() : "";
         String finalRemarks = remarks.isEmpty() ? "Rejected by new In-Charge" : remarks;
         return transferService.rejectAcceptance(id, getCurrentUser().getId(), getCurrentUser().getUsername(), finalRemarks);
+    }
+
+    @GetMapping("/reports")
+    public DashboardResponse getReportsSummary() {
+        return operations.dashboard(requireAssignedBus());
+    }
+
+    @GetMapping("/buses")
+    public List<BusResponse> getBuses() {
+        Bus b = getAssignedBus();
+        return b == null ? List.of() : List.of(operations.bus(b));
+    }
+
+    @GetMapping("/reports/students")
+    public List<TransportReportRow> studentReport(@ModelAttribute TransportReportFilter filter) {
+        Bus bus = requireAssignedBus();
+        return reportService.report(bus.getId(), filter, Pageable.unpaged()).getContent();
+    }
+
+    @GetMapping("/reports/students/export/{format}")
+    public ResponseEntity<byte[]> exportStudentReport(@PathVariable String format, @ModelAttribute TransportReportFilter filter) {
+        Bus bus = requireAssignedBus();
+        boolean excel = "excel".equalsIgnoreCase(format) || "xlsx".equalsIgnoreCase(format);
+        boolean pdf = "pdf".equalsIgnoreCase(format);
+        if (!excel && !pdf) throw new com.web.sms.exception.BadRequestException("Export format must be excel or pdf");
+        byte[] body = excel ? reportService.excel(bus.getId(), filter, "LBRCE Bus " + bus.getBusNumber() + " Transport Report")
+                            : reportService.pdf(bus.getId(), filter, "LBRCE Bus " + bus.getBusNumber() + " Transport Report");
+        String ext = excel ? "xlsx" : "pdf";
+        MediaType type = excel ? MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") : MediaType.APPLICATION_PDF;
+        return ResponseEntity.ok()
+                .contentType(type)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=bus-" + bus.getBusNumber() + "-transport-report." + ext)
+                .body(body);
+    }
+
+    @GetMapping("/notifications")
+    public Page<NotificationResponse> getNotifications(@RequestParam(defaultValue = "false") boolean unpaged, Pageable pageable) {
+        return notificationService.getNotifications(getCurrentUser().getUsername(), requestedPage(unpaged, pageable));
+    }
+
+    @PutMapping("/notifications/{id}/read")
+    public void markNotificationRead(@PathVariable Long id) {
+        notificationService.markAsRead(id, getCurrentUser().getUsername());
+    }
+
+    @GetMapping("/students/{studentId}/photo")
+    public ResponseEntity<byte[]> getStudentPhoto(@PathVariable Long studentId) {
+        TransportAllocation allocation = allocationRepo.findByStudentId(studentId).stream()
+                .filter(a -> a.getBus().getId().equals(requireAssignedBus().getId()))
+                .findFirst()
+                .orElseThrow(() -> new ForbiddenException("This student is not assigned to your bus"));
+        Student st = allocation.getStudent();
+        if (st.getPhotoData() == null || st.getPhotoData().length == 0) throw new ResourceNotFoundException("Student photo not found");
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(st.getPhotoContentType() == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : st.getPhotoContentType()))
+                .body(st.getPhotoData());
     }
 
 }

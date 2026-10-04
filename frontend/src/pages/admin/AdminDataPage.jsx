@@ -87,7 +87,48 @@ export default function AdminDataPage({ type }) {
   };
 
   const configs = {
-    transfers: [{ key: 'studentName', label: 'Student', render: (r) => r.studentName || '—' }, { key: 'studentRollNumber', label: 'Roll Number', render: (r) => r.studentRollNumber || '—' }, { key: 'currentBusNumber', label: 'From', render: (r) => <div><div className="font-medium">{r.currentBusNumber || '—'}</div><div className="text-xs text-gray-500">{r.currentBoardingPoint || '—'}</div></div> }, { key: 'requestedBusNumber', label: 'To', render: (r) => <div><div className="font-medium">{r.requestedBusNumber || '—'}</div><div className="text-xs text-gray-500">{r.requestedBoardingPoint || '—'}</div><div className={`text-xs ${(r.requestedAvailableSeats||0)>0?'text-green-700':'text-red-600'}`}>{r.requestedAvailableSeats ?? 0} vacant</div></div> }, { key: 'academicYear', label: 'Academic Year', render: (r) => r.academicYear || '—' }, { key: 'reason', label: 'Reason', render: (r) => r.reason || '—' }, { key: 'oldInchargeName', label: 'Old In-Charge', render: (r) => r.oldInchargeName || '—' }, { key: 'newInchargeName', label: 'New In-Charge', render: (r) => r.newInchargeName || '—' }, { key: 'status', label: 'State', render: (r) => <StatusBadge status={r.status} /> }, {key:'actions',label:'Action',render:(r)=>['TRANSFER_REQUESTED','OLD_INCHARGE_APPROVED'].includes(r.status)?<button type="button" disabled={approvingTransfer===r.id||(r.requestedAvailableSeats||0)<1} onClick={()=>approveTransfer(r)} className="rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-800 disabled:cursor-not-allowed disabled:opacity-50">{approvingTransfer===r.id?'Approving...':(r.requestedAvailableSeats||0)<1?'No Vacancy':'Approve Directly'}</button>:'—'}],
+    transfers: [
+      { key: 'studentName', label: 'Student', render: (r) => r.studentName || '—' },
+      { key: 'studentRollNumber', label: 'Roll Number', render: (r) => r.studentRollNumber || '—' },
+      { key: 'currentBusNumber', label: 'From', render: (r) => <div><div className="font-medium">{r.currentBusNumber || '—'}</div><div className="text-xs text-gray-500">{r.currentBoardingPoint || '—'}</div></div> },
+      { key: 'requestedBusNumber', label: 'To', render: (r) => <div><div className="font-medium">{r.requestedBusNumber || '—'}</div><div className="text-xs text-gray-500">{r.requestedBoardingPoint || '—'}</div><div className={`text-xs ${(r.requestedAvailableSeats||0)>0?'text-green-700':'text-red-600'}`}>{r.requestedAvailableSeats ?? 0} vacant</div></div> },
+      { key: 'academicYear', label: 'Academic Year', render: (r) => r.academicYear || '—' },
+      { key: 'reason', label: 'Reason', render: (r) => r.reason || '—' },
+      { key: 'oldInchargeName', label: 'Old In-Charge', render: (r) => r.oldInchargeName || '—' },
+      { key: 'newInchargeName', label: 'New In-Charge', render: (r) => r.newInchargeName || '—' },
+      { key: 'status', label: 'State', render: (r) => <StatusBadge status={r.status} /> },
+      {
+        key: 'remarks',
+        label: 'Decision Remarks',
+        render: (r) => {
+          const isRejected = (r.status || '').includes('REJECTED');
+          if (isRejected || r.remarks) {
+            return r.remarks ? (
+              <span className={`text-xs px-2 py-0.5 rounded border ${isRejected ? 'text-red-700 bg-red-50 border-red-200' : 'text-gray-700 bg-gray-50 border-gray-200'}`}>
+                {r.remarks}
+              </span>
+            ) : (
+              <span className="text-xs text-gray-400 italic">No remarks</span>
+            );
+          }
+          return '—';
+        }
+      },
+      {
+        key: 'actions',
+        label: 'Action',
+        render: (r) => ['TRANSFER_REQUESTED', 'OLD_INCHARGE_APPROVED'].includes(r.status) ? (
+          <button
+            type="button"
+            disabled={approvingTransfer === r.id || (r.requestedAvailableSeats || 0) < 1}
+            onClick={() => approveTransfer(r)}
+            className="rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {approvingTransfer === r.id ? 'Approving...' : (r.requestedAvailableSeats || 0) < 1 ? 'No Vacancy' : 'Approve Directly'}
+          </button>
+        ) : '—'
+      }
+    ],
     payments: [{ key: 'studentName', label: 'Student' }, { key: 'rollNumber', label: 'Roll Number' }, { key: 'orderId', label: 'Order ID' }, { key: 'amount', label: 'Amount', render: (r) => formatINR(r.amount) }, { key: 'status', label: 'Verified Status', render: (r) => <StatusBadge status={r.status} /> }, { key: 'paidAt', label: 'Paid At' }],
     passes: [{ key: 'studentName', label: 'Student' }, { key: 'rollNumber', label: 'Roll Number' }, { key: 'passNumber', label: 'Pass ID' }, { key: 'busNumber', label: 'Bus' }, { key: 'boardingPoint', label: 'Boarding Point' }, { key: 'validUntil', label: 'Valid Until' }, { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> }, { key: 'actions', label: 'Action', render: (r) => <button type="button" className="text-sm font-medium text-blue-700 hover:underline" onClick={() => viewPass(r)}>View</button> }],
     notifications: [{ key: 'title', label: 'Title' }, { key: 'recipientRollNumber', label: 'Recipient' }, { key: 'message', label: 'Message' }, { key: 'createdAt', label: 'Date', render: (r) => r.createdAt ? new Date(r.createdAt).toLocaleString() : '—' }]

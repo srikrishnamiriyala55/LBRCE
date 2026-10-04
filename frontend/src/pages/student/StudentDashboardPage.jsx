@@ -54,7 +54,10 @@ const StudentDashboardPage = () => {
           {data?.hasActiveApplication && data?.transportationStatus !== 'ALLOCATED' && (
             <Link to="/student/applications" className="btn-secondary">Track Pending Application</Link>
           )}
-          {!data?.canApply && !data?.canTransfer && !data?.canComplain && !data?.hasActiveApplication && (
+          {data?.hasActiveTransfer && (
+            <Link to="/student/transfers" className="btn-secondary">Track Transfer Request</Link>
+          )}
+          {!data?.canApply && !data?.canTransfer && !data?.hasActiveApplication && !data?.hasActiveTransfer && (
             <p className="text-sm text-gray-500">No transportation action is currently available.</p>
           )}
         </div>

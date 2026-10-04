@@ -103,8 +103,12 @@ public class StudentServiceImpl implements StudentService {
             } else {
                 response.put("transportationStatus", "NOT_ALLOCATED");
             }
+            long usedTransfers = transferRepository.countByStudentIdAndAcademicYearIdAndStatusNot(studentId, yearId, TransferStatus.CANCELLED);
+            boolean transferLimitReached = usedTransfers >= 2;
+            response.put("usedTransfersCount", usedTransfers);
+            response.put("transferLimitReached", transferLimitReached);
             response.put("canApply", allocation.isEmpty() && !hasActiveApplication);
-            response.put("canTransfer", allocation.isPresent() && !hasActiveTransfer);
+            response.put("canTransfer", allocation.isPresent() && !hasActiveTransfer && !transferLimitReached);
             response.put("hasActiveApplication", hasActiveApplication);
             response.put("hasActiveTransfer", hasActiveTransfer);
 
