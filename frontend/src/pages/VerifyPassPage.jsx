@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CheckCircle, XCircle, AlertTriangle, ShieldCheck, Bus, MapPin, Calendar, Hash, User, Phone } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, ShieldCheck, Bus, MapPin, Calendar, Hash, User, GraduationCap, Clock } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -130,20 +130,19 @@ export default function VerifyPassPage() {
                 </div>
                 <h2 className="vp-student-name">{pass.studentName}</h2>
                 <div className="vp-roll-badge">{pass.rollNumber}</div>
-                <p className="vp-branch-text">
-                  {pass.branch || '—'} &bull; Year {pass.year || '—'} / Sem {pass.semester || '—'}
-                </p>
               </div>
             </div>
 
             {/* Details Grid (Strictly 2 Columns for flawless mobile alignment) */}
             <div className="vp-details-grid">
+              <VpItem icon={<GraduationCap size={13} />} label="Branch" value={pass.branch} />
+              <VpItem icon={<Clock size={13} />} label="Year / Sem" value={`${pass.year || '—'} / ${pass.semester || '—'}`} />
               <VpItem icon={<Bus size={13} />} label="Bus Number" value={pass.busNumber} />
               <VpItem icon={<MapPin size={13} />} label="Boarding Point" value={pass.boardingPoint} />
               <VpItem icon={<MapPin size={13} />} label="Starting Point" value={pass.startingPoint} />
               <VpItem icon={<MapPin size={13} />} label="Ending Point" value={pass.endingPoint} />
               <VpItem icon={<Calendar size={13} />} label="Academic Year" value={pass.academicYear} />
-              <VpItem icon={<Phone size={13} />} label="Phone Number" value={pass.phoneNumber} />
+              <VpItem icon={<CheckCircle size={13} />} label="Pass Status" value={pass.status || 'ACTIVE'} />
               <VpItem icon={<Calendar size={13} />} label="Valid From" value={pass.validFrom} />
               <VpItem icon={<Calendar size={13} />} label="Valid Until" value={pass.validUntil} />
             </div>
