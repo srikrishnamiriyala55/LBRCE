@@ -4,6 +4,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PassCard from '../../components/passes/PassCard';
 import { useToast } from '../../components/common/Toast';
 import { Download, Printer } from 'lucide-react';
+import { downloadElementAsPdf } from '../../utils/pdfDownload';
 
 const BusPassPage = () => {
   const [pass, setPass] = useState(null);
@@ -48,7 +49,14 @@ const BusPassPage = () => {
       URL.revokeObjectURL(url);
       addToast('Bus pass downloaded successfully', 'success');
     } catch (error) {
-      addToast(error.response?.data?.message || 'Unable to download bus pass', 'error');
+      console.warn('API download failed, falling back to client-side capture:', error);
+      try {
+        await downloadElementAsPdf('bus-pass', `bus-pass-${pass.rollNumber}`);
+        addToast('Bus pass downloaded successfully', 'success');
+      } catch (fallbackError) {
+        console.error('PDF generation failed:', fallbackError);
+        addToast('Unable to generate PDF, please try again', 'error');
+      }
     } finally {
       setDownloading(false);
     }
@@ -69,16 +77,25 @@ const BusPassPage = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="grid grid-cols-2 sm:flex sm:justify-end gap-3 mb-4">
-        <button disabled={downloading} onClick={downloadPass} className="btn-primary flex items-center justify-center gap-2 disabled:opacity-60">
-          <Download size={16} /> {downloading ? 'Downloading...' : 'Download PDF'}
+      <div className="no-print grid grid-cols-2 sm:flex sm:justify-end gap-3 mb-4">
+        <button
+          id="btn-download-pass"
+          disabled={downloading}
+          onClick={downloadPass}
+          className="btn-primary flex items-center justify-center gap-2 disabled:opacity-60"
+        >
+          <Download size={16} /> {downloading ? 'Generating PDF...' : 'Download PDF'}
         </button>
-        <button onClick={() => window.print()} className="btn-secondary flex items-center gap-2">
+        <button
+          id="btn-print-pass"
+          onClick={() => window.print()}
+          className="btn-secondary flex items-center gap-2"
+        >
           <Printer size={16} /> Print
         </button>
       </div>
 
-      <PassCard pass={pass} photoUrl={photoUrl}/>
+      <PassCard pass={pass} photoUrl={photoUrl} />
     </div>
   );
 };

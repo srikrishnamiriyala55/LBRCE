@@ -13,6 +13,7 @@ import com.web.sms.exception.ForbiddenException;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.qrcode.QRCodeWriter;
+import com.lowagie.text.Chunk;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.FontFactory;
@@ -20,6 +21,7 @@ import com.lowagie.text.Image;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
+import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
@@ -138,73 +140,209 @@ public class PassService {
         }
     }
 
+    private Image loadLogoImage() {
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream("logo.jpg")) {
+            if (in == null) return null;
+            byte[] bytes = in.readAllBytes();
+            return Image.getInstance(bytes);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private byte[] generatePdf(BusPass entity) {
         PassResponse pass = PassResponse.fromBusPass(entity);
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A5, 28, 28, 24, 24);
+        // A5 portrait: 420 x 595 pt. Margins 18pt all around => 384 pt usable width, 559 pt usable height.
+        Document document = new Document(PageSize.A5, 18, 18, 18, 18);
         try {
             PdfWriter.getInstance(document, output);
             document.open();
 
-            // College header image
-            Image header = loadHeaderImage();
-            if (header != null) {
-                // Scale to fit the page width (A5 width minus margins = 420 - 56 = 364pt)
-                header.scaleToFit(364, 80);
-                document.add(header);
-            } else {
-                // Fallback to text if image not found
-                Paragraph college = new Paragraph("LAKIREDDY BALI REDDY COLLEGE OF ENGINEERING",
-                        FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, new Color(30, 64, 175)));
-                college.setAlignment(Element.ALIGN_CENTER);
-                document.add(college);
-            }
+            // Outer card table with 1 column, wrapped with a border matching the on-screen preview
+            PdfPTable card = new PdfPTable(1);
+            card.setWidthPercentage(100);
 
-            Paragraph heading = new Paragraph("DIGITAL BUS PASS",
-                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11));
-            heading.setAlignment(Element.ALIGN_CENTER);
-            heading.setSpacingAfter(14);
-            document.add(heading);
+            // ── 1. HEADER (Deep Blue, logo + college name + subtitle) ────────────────
+            PdfPTable headerTable = new PdfPTable(new float[]{46f, 338f});
+            headerTable.setWidthPercentage(100);
+
+            // Logo
+            PdfPCell logoCell = new PdfPCell();
+            logoCell.setBackgroundColor(new Color(30, 58, 138)); // #1e3a8a
+            logoCell.setBorder(Rectangle.NO_BORDER);
+            logoCell.setPadding(8f);
+            logoCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            Image logo = loadLogoImage();
+            if (logo != null) {
+                logo.scaleToFit(38, 38);
+                logoCell.addElement(logo);
+            }
+            headerTable.addCell(logoCell);
+
+            // Title text
+            PdfPCell titleCell = new PdfPCell();
+            titleCell.setBackgroundColor(new Color(30, 58, 138));
+            titleCell.setBorder(Rectangle.NO_BORDER);
+            titleCell.setPadding(8f);
+            titleCell.setPaddingLeft(2f);
+            titleCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+
+            Paragraph titlePara = new Paragraph();
+            titlePara.setLeading(13f);
+            Chunk collegeChunk = new Chunk("LAKIREDDY BALI REDDY COLLEGE OF ENGINEERING\n",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10.5f, Color.WHITE));
+            Chunk subChunk = new Chunk("DIGITAL BUS PASS",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8f, new Color(147, 197, 253)));
+            titlePara.add(collegeChunk);
+            titlePara.add(subChunk);
+            titleCell.addElement(titlePara);
+            headerTable.addCell(titleCell);
+
+            PdfPCell headerContainerCell = new PdfPCell(headerTable);
+            headerContainerCell.setBorder(Rectangle.TOP | Rectangle.LEFT | Rectangle.RIGHT);
+            headerContainerCell.setBorderColor(new Color(191, 219, 254));
+            headerContainerCell.setBorderWidth(1.5f);
+            headerContainerCell.setPadding(0);
+            card.addCell(headerContainerCell);
+
+            // ── 2. TOP SECTION (Photo on left, Pass No + Status + QR on right) ────────
+            PdfPTable topTable = new PdfPTable(new float[]{110f, 274f});
+            topTable.setWidthPercentage(100);
+
+            // Student Photo
+            PdfPCell photoCell = new PdfPCell();
+            photoCell.setBorder(Rectangle.NO_BORDER);
+            photoCell.setPadding(10f);
+            photoCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            photoCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
 
             if (entity.getStudent() != null && entity.getStudent().getPhotoData() != null
                     && entity.getStudent().getPhotoData().length > 0) {
-                Image studentPhoto = Image.getInstance(entity.getStudent().getPhotoData());
-                studentPhoto.scaleToFit(90, 105);
-                studentPhoto.setAlignment(Element.ALIGN_CENTER);
-                studentPhoto.setSpacingAfter(10);
-                document.add(studentPhoto);
+                try {
+                    Image photo = Image.getInstance(entity.getStudent().getPhotoData());
+                    photo.scaleToFit(92, 108);
+                    photo.setAlignment(Element.ALIGN_CENTER);
+                    photoCell.addElement(photo);
+                } catch (Exception ex) {
+                    Paragraph noPhoto = new Paragraph("Photo\nunavailable",
+                            FontFactory.getFont(FontFactory.HELVETICA, 8, Color.GRAY));
+                    noPhoto.setAlignment(Element.ALIGN_CENTER);
+                    photoCell.addElement(noPhoto);
+                }
+            } else {
+                Paragraph noPhoto = new Paragraph("Photo\nunavailable",
+                        FontFactory.getFont(FontFactory.HELVETICA, 8, Color.GRAY));
+                noPhoto.setAlignment(Element.ALIGN_CENTER);
+                photoCell.addElement(noPhoto);
             }
+            topTable.addCell(photoCell);
 
-            PdfPTable table = new PdfPTable(2);
-            table.setWidthPercentage(100);
-            table.setWidths(new float[]{1.1f, 2.2f});
-            addRow(table, "Pass Number", pass.getPassNumber());
-            addRow(table, "Student Name", pass.getStudentName());
-            addRow(table, "Roll Number", pass.getRollNumber());
-            addRow(table, "Phone Number", pass.getPhoneNumber());
-            addRow(table, "Branch", pass.getBranch());
-            addRow(table, "Year / Semester", value(pass.getYear()) + " / " + value(pass.getSemester()));
-            addRow(table, "Bus Number", pass.getBusNumber());
-            addRow(table, "Starting Point", pass.getStartingPoint());
-            addRow(table, "Ending Point", pass.getEndingPoint());
-            addRow(table, "Boarding Point", pass.getBoardingPoint());
-            addRow(table, "Academic Year", pass.getAcademicYear());
-            addRow(table, "Validity", value(pass.getValidFrom()) + " to " + value(pass.getValidUntil()));
-            addRow(table, "Status", value(pass.getStatus()));
-            document.add(table);
+            // Right side: Pass No, Status, QR Code
+            PdfPCell infoCell = new PdfPCell();
+            infoCell.setBorder(Rectangle.NO_BORDER);
+            infoCell.setPadding(8f);
+            infoCell.setPaddingRight(12f);
 
-            ByteArrayOutputStream qrOutput = new ByteArrayOutputStream();
-            MatrixToImageWriter.writeToStream(new QRCodeWriter().encode(
-                    frontendVerifyUrl + entity.getVerificationToken(), BarcodeFormat.QR_CODE, 220, 220), "PNG", qrOutput);
-            Image qr = Image.getInstance(qrOutput.toByteArray());
-            qr.scaleToFit(105, 105);
-            qr.setAlignment(Element.ALIGN_CENTER);
-            qr.setSpacingBefore(12);
-            document.add(qr);
-            Paragraph verification = new Paragraph("Scan to verify this bus pass",
-                    FontFactory.getFont(FontFactory.HELVETICA, 8, Color.DARK_GRAY));
-            verification.setAlignment(Element.ALIGN_CENTER);
-            document.add(verification);
+            PdfPTable rightStack = new PdfPTable(new float[]{160f, 100f});
+            rightStack.setWidthPercentage(100);
+
+            // Text on left of QR
+            PdfPCell passNumCell = new PdfPCell();
+            passNumCell.setBorder(Rectangle.NO_BORDER);
+            passNumCell.setPadding(2f);
+
+            Paragraph pNumPara = new Paragraph();
+            pNumPara.setLeading(12f);
+            pNumPara.add(new Chunk("PASS NUMBER\n",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7.5f, new Color(100, 116, 139))));
+            pNumPara.add(new Chunk(pass.getPassNumber() + "\n\n",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12f, new Color(30, 58, 138))));
+            pNumPara.add(new Chunk("STATUS: ",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8f, new Color(100, 116, 139))));
+            String status = value(pass.getStatus());
+            Color statusColor = "ACTIVE".equalsIgnoreCase(status) ? new Color(22, 163, 74) : new Color(220, 38, 38);
+            pNumPara.add(new Chunk(status,
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9f, statusColor)));
+            passNumCell.addElement(pNumPara);
+            rightStack.addCell(passNumCell);
+
+            // QR Code
+            PdfPCell qrCell = new PdfPCell();
+            qrCell.setBorder(Rectangle.NO_BORDER);
+            qrCell.setPadding(0);
+            qrCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+
+            try {
+                ByteArrayOutputStream qrOutput = new ByteArrayOutputStream();
+                MatrixToImageWriter.writeToStream(new QRCodeWriter().encode(
+                        frontendVerifyUrl + entity.getVerificationToken(), BarcodeFormat.QR_CODE, 180, 180), "PNG", qrOutput);
+                Image qr = Image.getInstance(qrOutput.toByteArray());
+                qr.scaleToFit(76, 76);
+                qr.setAlignment(Element.ALIGN_CENTER);
+                qrCell.addElement(qr);
+
+                Paragraph scanPara = new Paragraph("Scan to verify",
+                        FontFactory.getFont(FontFactory.HELVETICA_BOLD, 6.5f, new Color(100, 116, 139)));
+                scanPara.setAlignment(Element.ALIGN_CENTER);
+                qrCell.addElement(scanPara);
+            } catch (Exception qrEx) {
+                // If QR fails, leave cell blank
+            }
+            rightStack.addCell(qrCell);
+
+            infoCell.addElement(rightStack);
+            topTable.addCell(infoCell);
+
+            PdfPCell topContainerCell = new PdfPCell(topTable);
+            topContainerCell.setBorder(Rectangle.LEFT | Rectangle.RIGHT);
+            topContainerCell.setBorderColor(new Color(191, 219, 254));
+            topContainerCell.setBorderWidth(1.5f);
+            topContainerCell.setPadding(0);
+            topContainerCell.setPaddingBottom(6f);
+            card.addCell(topContainerCell);
+
+            // ── 3. DETAILS GRID (2 columns of items matching preview) ───────────────
+            PdfPTable detailsTable = new PdfPTable(2);
+            detailsTable.setWidthPercentage(100);
+            detailsTable.setWidths(new float[]{192f, 192f});
+
+            addDetailItem(detailsTable, "Student Name", pass.getStudentName());
+            addDetailItem(detailsTable, "Roll Number", pass.getRollNumber());
+            addDetailItem(detailsTable, "Branch", pass.getBranch());
+            addDetailItem(detailsTable, "Year / Semester", value(pass.getYear()) + " / " + value(pass.getSemester()));
+            addDetailItem(detailsTable, "Phone Number", pass.getPhoneNumber());
+            addDetailItem(detailsTable, "Bus Number", pass.getBusNumber());
+            addDetailItem(detailsTable, "Starting Point", pass.getStartingPoint());
+            addDetailItem(detailsTable, "Ending Point", pass.getEndingPoint());
+            addDetailItem(detailsTable, "Boarding Point", pass.getBoardingPoint());
+            addDetailItem(detailsTable, "Academic Year", pass.getAcademicYear());
+            addDetailItem(detailsTable, "Valid From", value(pass.getValidFrom()));
+            addDetailItem(detailsTable, "Valid Until", value(pass.getValidUntil()));
+
+            PdfPCell detailsContainerCell = new PdfPCell(detailsTable);
+            detailsContainerCell.setBorder(Rectangle.LEFT | Rectangle.RIGHT);
+            detailsContainerCell.setBorderColor(new Color(191, 219, 254));
+            detailsContainerCell.setBorderWidth(1.5f);
+            detailsContainerCell.setPadding(6f);
+            detailsContainerCell.setPaddingTop(0);
+            card.addCell(detailsContainerCell);
+
+            // ── 4. FOOTER ────────────────────────────────────────────────────────────
+            PdfPCell footerCell = new PdfPCell();
+            footerCell.setBackgroundColor(new Color(248, 250, 252));
+            footerCell.setBorder(Rectangle.TOP | Rectangle.BOTTOM | Rectangle.LEFT | Rectangle.RIGHT);
+            footerCell.setBorderColor(new Color(191, 219, 254));
+            footerCell.setBorderWidth(1.5f);
+            footerCell.setPadding(6f);
+            Paragraph footerPara = new Paragraph(
+                    "System-generated digital bus pass. Verify authenticity by scanning the QR code.",
+                    FontFactory.getFont(FontFactory.HELVETICA, 7f, new Color(148, 163, 184)));
+            footerPara.setAlignment(Element.ALIGN_CENTER);
+            footerCell.addElement(footerPara);
+            card.addCell(footerCell);
+
+            document.add(card);
             document.close();
             return output.toByteArray();
         } catch (Exception exception) {
@@ -213,16 +351,25 @@ public class PassService {
         }
     }
 
-    private void addRow(PdfPTable table, String label, Object rawValue) {
-        PdfPCell labelCell = new PdfPCell(new Phrase(label,
-                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9)));
-        labelCell.setBackgroundColor(new Color(239, 246, 255));
-        labelCell.setPadding(6);
-        table.addCell(labelCell);
-        PdfPCell valueCell = new PdfPCell(new Phrase(value(rawValue),
-                FontFactory.getFont(FontFactory.HELVETICA, 9)));
-        valueCell.setPadding(6);
-        table.addCell(valueCell);
+    private void addDetailItem(PdfPTable table, String label, Object rawValue) {
+        PdfPCell cell = new PdfPCell();
+        cell.setBackgroundColor(new Color(248, 250, 252));
+        cell.setBorderColor(new Color(226, 232, 240));
+        cell.setBorderWidth(1f);
+        cell.setPadding(4f);
+        cell.setPaddingLeft(6f);
+        cell.setPaddingBottom(5f);
+
+        Paragraph p = new Paragraph();
+        p.setLeading(10f);
+        Chunk labelChunk = new Chunk(label.toUpperCase() + "\n",
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 6.5f, new Color(100, 116, 139)));
+        Chunk valChunk = new Chunk(value(rawValue),
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8.5f, new Color(15, 23, 42)));
+        p.add(labelChunk);
+        p.add(valChunk);
+        cell.addElement(p);
+        table.addCell(cell);
     }
 
     private String value(Object value) {

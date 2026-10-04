@@ -158,6 +158,20 @@ img, svg { max-width: 100%; }
   color: #94a3b8;
 }
 
+@media (max-width: 480px) {
+  .pass-header { padding: 12px 14px; gap: 10px; }
+  .pass-logo { width: 44px; height: 44px; }
+  .pass-college-name { font-size: 12px; }
+  .pass-body { padding: 12px 14px; }
+  .pass-photo { width: 90px; height: 112px; }
+  .pass-photo-placeholder { width: 90px; height: 112px; }
+  .pass-top-section { gap: 12px; margin-bottom: 12px; }
+  .pass-qr-inline svg { width: 80px !important; height: 80px !important; }
+  .pass-details-grid { gap: 6px 10px; }
+  .pass-detail-item { padding: 5px 7px; }
+  .pass-detail-value { font-size: 11px; }
+}
+
 /* ── Print: show only the bus pass card ──────────────────────────── */
 @media print {
   /* Hide everything */
@@ -200,3 +214,307 @@ img, svg { max-width: 100%; }
   .pass-top-section { flex-direction: row !important; }
 }
 
+/* ── VerifyPassPage (QR scan verification page) ─────────────────────── */
+.vp-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px 12px 40px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-sizing: border-box;
+}
+.vp-container {
+  width: 100%;
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+/* Unified Card */
+.vp-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1.5px solid #cbd5e1;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.10);
+  overflow: hidden;
+}
+
+/* Header */
+.vp-header {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffffff;
+}
+.vp-logo {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #ffffff;
+  padding: 2px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.vp-header-text {
+  min-width: 0;
+  flex: 1;
+}
+.vp-college-name {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.3;
+  letter-spacing: 0.2px;
+  overflow-wrap: break-word;
+}
+.vp-college-sub {
+  font-size: 10px;
+  font-weight: 600;
+  color: #93c5fd;
+  margin: 2px 0 0;
+  letter-spacing: 0.5px;
+}
+.vp-header-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: #dbeafe;
+  margin: 3px 0 0;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Seamless Status Banner */
+.vp-verified-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-bottom: 1.5px solid;
+}
+.vp-banner-icon { flex-shrink: 0; }
+.vp-status-active {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+.vp-status-expired {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #fcd34d;
+}
+.vp-status-revoked {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+/* Identity: Photo + Primary Info */
+.vp-identity-section {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 16px 18px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+}
+.vp-photo-frame {
+  width: 95px;
+  height: 118px;
+  border-radius: 10px;
+  border: 2.5px solid #bfdbfe;
+  overflow: hidden;
+  background: #f8fafc;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+.vp-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.vp-photo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #94a3b8;
+}
+.vp-primary-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.vp-pass-num-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #1e40af;
+  background: #eff6ff;
+  padding: 2px 8px;
+  border-radius: 6px;
+  width: fit-content;
+  border: 1px solid #dbeafe;
+}
+.vp-student-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 3px 0 0;
+  line-height: 1.25;
+  overflow-wrap: break-word;
+}
+.vp-roll-badge {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #2563eb;
+  margin: 1px 0 0;
+}
+.vp-branch-text {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+  margin: 2px 0 0;
+  line-height: 1.3;
+  overflow-wrap: break-word;
+}
+
+/* Details Grid: 2 Equal Columns on all screen sizes */
+.vp-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px 18px;
+  background: #ffffff;
+}
+.vp-grid-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 7px 10px;
+  min-width: 0;
+}
+.vp-item-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 2px;
+}
+.vp-item-icon {
+  color: #64748b;
+  flex-shrink: 0;
+}
+.vp-item-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vp-item-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.3;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Footer */
+.vp-footer {
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  padding: 12px 18px;
+  text-align: center;
+}
+.vp-footer-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #334155;
+}
+.vp-footer-note {
+  font-size: 9.5px;
+  color: #94a3b8;
+  margin: 3px 0 0;
+}
+
+/* State boxes (Loading, Error) */
+.vp-state-box {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1.5px solid #e2e8f0;
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.06);
+}
+.vp-error-box { border-color: #fca5a5; }
+.vp-error-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #dc2626;
+  margin: 12px 0 4px;
+}
+.vp-error-msg {
+  font-size: 13px;
+  color: #7f1d1d;
+  margin: 0;
+}
+.vp-spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid #e0e7ff;
+  border-top-color: #1e40af;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.vp-state-msg {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 14px;
+  font-weight: 500;
+}
+
+/* Mobile fine-tuning (<= 480px) */
+@media (max-width: 480px) {
+  .vp-page { padding: 10px 8px 28px; }
+  .vp-header { padding: 12px 14px; gap: 10px; }
+  .vp-logo { width: 42px; height: 42px; }
+  .vp-college-name { font-size: 12px; }
+  .vp-identity-section { padding: 12px 14px; gap: 12px; }
+  .vp-photo-frame { width: 85px; height: 108px; }
+  .vp-student-name { font-size: 15px; }
+  .vp-details-grid { padding: 10px 14px 14px; gap: 6px; }
+  .vp-grid-item { padding: 6px 8px; }
+  .vp-item-value { font-size: 11.5px; }
+}
+
+/* ── Print: hide everything except the .no-print elements ─────────── */
+.no-print { }
