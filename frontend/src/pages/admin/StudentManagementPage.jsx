@@ -14,6 +14,8 @@ export default function StudentManagementPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [branch, setBranch] = useState('');
+  const [academicYears, setAcademicYears] = useState([]);
+  const [academicYearId, setAcademicYearId] = useState('');
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [viewingStudent, setViewingStudent] = useState(null);
@@ -22,6 +24,14 @@ export default function StudentManagementPage() {
   // Debounced search: 300ms after last keystroke before hitting the server
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const debounceTimer = useRef(null);
+
+  useEffect(() => {
+    api.get('/admin/academic-years').then((r) => {
+      const years = r.data || [];
+      setAcademicYears(years);
+      setAcademicYearId(String(years.find((year) => year.active)?.id || ''));
+    }).catch(() => addToast('Failed to load academic years', 'error'));
+  }, [addToast]);
 
   const handleSearchChange = (e) => {
     const v = e.target.value;
@@ -37,7 +47,8 @@ export default function StudentManagementPage() {
         signal,
         params: {
           search: debouncedSearch.trim() || undefined,
-          branch: branch || undefined
+          branch: branch || undefined,
+          academicYearId: academicYearId || undefined
         }
       });
       const dataList = Array.isArray(r.data) ? r.data : (r.data?.content || []);
@@ -50,7 +61,7 @@ export default function StudentManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, branch, addToast]);
+  }, [debouncedSearch, branch, academicYearId, addToast]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -165,7 +176,7 @@ export default function StudentManagementPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Student Directory</h2>
-          <p className="text-sm text-gray-500">{total} matching student record(s) displayed</p>
+          <p className="text-sm text-gray-500">{total} student academic record(s) displayed for the selected year</p>
         </div>
         <button onClick={() => open(null)} className="btn-primary flex items-center gap-2">
           <Plus size={18} /> Register Student
@@ -186,6 +197,10 @@ export default function StudentManagementPage() {
           <select className="input-field sm:w-48" value={branch} onChange={(e) => setBranch(e.target.value)}>
             <option value="">All departments</option>
             {DEPARTMENTS.map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+          <select className="input-field sm:w-48" value={academicYearId} onChange={(e) => setAcademicYearId(e.target.value)}>
+            <option value="">All academic years</option>
+            {academicYears.map((year) => <option key={year.id} value={year.id}>{year.yearName}{year.active ? ' (Active)' : ''}</option>)}
           </select>
         </div>
 

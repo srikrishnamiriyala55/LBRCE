@@ -43,6 +43,8 @@ export default function AdminApplicationsPage() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ busId: '', boardingPointId: '', remarks: '' });
   const [summary, setSummary] = useState({});
+  const [academicYears, setAcademicYears] = useState([]);
+  const [academicYearId, setAcademicYearId] = useState('');
   const { addToast } = useToast();
 
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -53,6 +55,14 @@ export default function AdminApplicationsPage() {
     clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => setDebouncedSearch(v), 300);
   };
+
+  useEffect(() => {
+    api.get('/admin/academic-years').then((response) => {
+      const years = response.data || [];
+      setAcademicYears(years);
+      setAcademicYearId(String(years.find((year) => year.active)?.id || ''));
+    }).catch(() => addToast('Failed to load academic years', 'error'));
+  }, [addToast]);
 
   // Keep URL in sync with status filter
   const handleStatusChange = (newStatus) => {
@@ -69,12 +79,12 @@ export default function AdminApplicationsPage() {
     try {
       const applications = await api.get('/admin/applications', {
         signal,
-        params: { search: debouncedSearch.trim() || undefined, status: status || undefined },
+        params: { search: debouncedSearch.trim() || undefined, status: status || undefined, academicYearId: academicYearId || undefined },
       });
       setRows(Array.isArray(applications.data) ? applications.data : (applications.data?.content || []));
       const [busResult, summaryResult] = await Promise.allSettled([
         api.get('/admin/buses', { signal }),
-        api.get('/admin/applications/summary', { signal }),
+        api.get('/admin/applications/summary', { signal, params: { academicYearId: academicYearId || undefined } }),
       ]);
       if (busResult.status === 'fulfilled') setBuses(busResult.value.data || []);
       if (summaryResult.status === 'fulfilled') setSummary(summaryResult.value.data || {});
@@ -84,7 +94,7 @@ export default function AdminApplicationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [status, debouncedSearch]);
+  }, [status, debouncedSearch, academicYearId, addToast]);
 
   useEffect(() => { const c = new AbortController(); load(c.signal); return () => c.abort(); }, [load]);
 
@@ -207,6 +217,10 @@ export default function AdminApplicationsPage() {
           {STATUS_OPTIONS.map(opt => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
+        </select>
+        <select className="input-field w-auto" value={academicYearId} onChange={(event) => setAcademicYearId(event.target.value)}>
+          <option value="">All academic years</option>
+          {academicYears.map((year) => <option key={year.id} value={year.id}>{year.yearName}{year.active ? ' (Active)' : ''}</option>)}
         </select>
       </div>
 

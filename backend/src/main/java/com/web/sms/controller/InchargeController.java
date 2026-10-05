@@ -285,47 +285,10 @@ public class InchargeController {
         return transferService.rejectAcceptance(id, getCurrentUser().getId(), getCurrentUser().getUsername(), finalRemarks);
     }
 
-    @GetMapping("/reports")
-    public DashboardResponse getReportsSummary() {
-        return operations.dashboard(requireAssignedBus());
-    }
-
     @GetMapping("/buses")
     public List<BusResponse> getBuses() {
         Bus b = getAssignedBus();
         return b == null ? List.of() : List.of(operations.bus(b));
-    }
-
-    @GetMapping("/reports/students")
-    public List<TransportReportRow> studentReport(@ModelAttribute TransportReportFilter filter) {
-        Bus bus = requireAssignedBus();
-        return reportService.report(bus.getId(), filter, Pageable.unpaged()).getContent();
-    }
-
-    @GetMapping("/reports/students/export/{format}")
-    public ResponseEntity<byte[]> exportStudentReport(@PathVariable String format, @ModelAttribute TransportReportFilter filter) {
-        Bus bus = requireAssignedBus();
-        boolean excel = "excel".equalsIgnoreCase(format) || "xlsx".equalsIgnoreCase(format);
-        boolean pdf = "pdf".equalsIgnoreCase(format);
-        if (!excel && !pdf) throw new com.web.sms.exception.BadRequestException("Export format must be excel or pdf");
-        byte[] body = excel ? reportService.excel(bus.getId(), filter, "LBRCE Bus " + bus.getBusNumber() + " Transport Report")
-                            : reportService.pdf(bus.getId(), filter, "LBRCE Bus " + bus.getBusNumber() + " Transport Report");
-        String ext = excel ? "xlsx" : "pdf";
-        MediaType type = excel ? MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") : MediaType.APPLICATION_PDF;
-        return ResponseEntity.ok()
-                .contentType(type)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=bus-" + bus.getBusNumber() + "-transport-report." + ext)
-                .body(body);
-    }
-
-    @GetMapping("/notifications")
-    public Page<NotificationResponse> getNotifications(@RequestParam(defaultValue = "false") boolean unpaged, Pageable pageable) {
-        return notificationService.getNotifications(getCurrentUser().getUsername(), requestedPage(unpaged, pageable));
-    }
-
-    @PutMapping("/notifications/{id}/read")
-    public void markNotificationRead(@PathVariable Long id) {
-        notificationService.markAsRead(id, getCurrentUser().getUsername());
     }
 
     @GetMapping("/students/{studentId}/photo")

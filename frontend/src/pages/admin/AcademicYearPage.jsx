@@ -37,8 +37,9 @@ const AcademicYearPage = () => {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
+      if (!window.confirm('Activate this new academic year? Current allocations and passes will be archived. Every student must submit a new or renewal bus application.')) return;
       await api.post('/admin/academic-years', form);
-      addToast('Academic year created and set active', 'success');
+      addToast('Academic year activated. Students must submit new or renewal applications.', 'success');
       setModalOpen(false);
       fetchYears();
     } catch (err) {
@@ -118,8 +119,8 @@ const AcademicYearPage = () => {
             </div>
           </div>
 
-          <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-            Creating a new academic year sets it as the active session for transport allocations and pass validations.
+          <p className="text-xs text-amber-800 bg-amber-50 p-3 rounded border border-amber-200">
+            Activating a new year archives the previous year&apos;s active allocations and passes. Student accounts remain, but every student must be registered for the new academic year and submit a new or renewal bus application.
           </p>
 
           <div className="flex justify-end gap-3 mt-6">

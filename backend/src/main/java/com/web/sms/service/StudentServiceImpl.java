@@ -7,6 +7,7 @@ import com.web.sms.entity.BusPass;
 import com.web.sms.entity.Fee;
 import com.web.sms.entity.Student;
 import com.web.sms.entity.TransportAllocation;
+import com.web.sms.entity.StudentAcademicDetails;
 import com.web.sms.enums.EntityStatus;
 import com.web.sms.enums.PassStatus;
 import com.web.sms.exception.ResourceNotFoundException;
@@ -17,6 +18,7 @@ import com.web.sms.repository.StudentRepository;
 import com.web.sms.repository.TransportAllocationRepository;
 import com.web.sms.repository.BusApplicationRepository;
 import com.web.sms.repository.TransferRequestRepository;
+import com.web.sms.repository.StudentAcademicDetailsRepository;
 import com.web.sms.enums.ApplicationStatus;
 import com.web.sms.enums.TransferStatus;
 import java.util.List;
@@ -34,6 +36,7 @@ public class StudentServiceImpl implements StudentService {
     private final AcademicYearRepository academicYearRepository;
     private final BusApplicationRepository applicationRepository;
     private final TransferRequestRepository transferRepository;
+    private final StudentAcademicDetailsRepository academicDetailsRepository;
 
     public StudentServiceImpl(StudentRepository studentRepository,
                               TransportAllocationRepository transportAllocationRepository,
@@ -41,7 +44,7 @@ public class StudentServiceImpl implements StudentService {
                               BusPassRepository busPassRepository,
                               AcademicYearRepository academicYearRepository,
                               BusApplicationRepository applicationRepository,
-                              TransferRequestRepository transferRepository) {
+                              TransferRequestRepository transferRepository, StudentAcademicDetailsRepository academicDetailsRepository) {
         this.studentRepository = studentRepository;
         this.transportAllocationRepository = transportAllocationRepository;
         this.feeRepository = feeRepository;
@@ -49,13 +52,16 @@ public class StudentServiceImpl implements StudentService {
         this.academicYearRepository = academicYearRepository;
         this.applicationRepository = applicationRepository;
         this.transferRepository = transferRepository;
+        this.academicDetailsRepository = academicDetailsRepository;
     }
 
     @Override
     public StudentProfileResponse getProfile(Long studentId) {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + studentId));
-        return StudentProfileResponse.fromStudent(student);
+        Optional<AcademicYear> activeYear = academicYearRepository.findByActiveTrue();
+        Optional<StudentAcademicDetails> details = activeYear.flatMap(y -> academicDetailsRepository.findByStudentIdAndAcademicYearId(studentId, y.getId()));
+        return StudentProfileResponse.fromStudent(student, details.orElse(null));
     }
 
     @Override
@@ -66,14 +72,17 @@ public class StudentServiceImpl implements StudentService {
         DashboardResponse response = new DashboardResponse();
         response.put("studentName", student.getName());
         response.put("rollNumber", student.getRollNumber());
-        response.put("branch", student.getBranch());
-        response.put("year", student.getYear());
         response.put("status", student.getStatus());
 
         Optional<AcademicYear> activeYear = academicYearRepository.findByActiveTrue();
         if (activeYear.isPresent()) {
             Long yearId = activeYear.get().getId();
             response.put("academicYear", activeYear.get().getYearName());
+            academicDetailsRepository.findByStudentIdAndAcademicYearId(studentId, yearId).ifPresentOrElse(details -> {
+                response.put("branch", details.getBranch());
+                response.put("year", details.getYear());
+                response.put("semester", details.getSemester());
+            }, () -> response.put("academicProfileMissing", true));
 
             Optional<TransportAllocation> allocation = transportAllocationRepository
                     .findByStudentIdAndAcademicYearIdAndStatus(studentId, yearId, EntityStatus.ACTIVE);

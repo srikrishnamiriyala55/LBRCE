@@ -15,6 +15,7 @@ public interface BusPassRepository extends JpaRepository<BusPass, Long> {
     Optional<BusPass> findByPassNumber(String passNumber);
     Optional<BusPass> findByVerificationToken(String verificationToken);
     List<BusPass> findByStudentId(Long studentId);
+    List<BusPass> findByAcademicYearIdAndStatus(Long academicYearId, PassStatus status);
     Page<BusPass> findByAllocationBusIdAndAllocationStatus(Long busId, EntityStatus status, Pageable pageable);
     long countByAllocationBusIdAndAllocationStatusAndStatus(Long busId, EntityStatus allocationStatus, PassStatus status);
     long countByStatus(PassStatus status);

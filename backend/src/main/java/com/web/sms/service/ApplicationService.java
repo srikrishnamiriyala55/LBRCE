@@ -28,6 +28,7 @@ public class ApplicationService {
     private final FeeRepository feeRepo;
     private final NotificationService notificationService;
     private final AuditService auditService;
+    private final StudentAcademicDetailsRepository academicDetailsRepo;
 
     public ApplicationService(BusApplicationRepository appRepo,
                               StudentRepository studentRepo,
@@ -36,7 +37,8 @@ public class ApplicationService {
                               AcademicYearRepository academicYearRepo,
                               TransportAllocationRepository allocationRepo,
                               FeeRepository feeRepo,
-                              NotificationService notificationService, AuditService auditService) {
+                              NotificationService notificationService, AuditService auditService,
+                              StudentAcademicDetailsRepository academicDetailsRepo) {
         this.appRepo = appRepo;
         this.studentRepo = studentRepo;
         this.busRepo = busRepo;
@@ -46,6 +48,7 @@ public class ApplicationService {
         this.feeRepo = feeRepo;
         this.notificationService = notificationService;
         this.auditService = auditService;
+        this.academicDetailsRepo = academicDetailsRepo;
     }
 
     @Transactional
@@ -63,6 +66,9 @@ public class ApplicationService {
 
         AcademicYear year = academicYearRepo.findByActiveTrue()
                 .orElseThrow(() -> new BadRequestException("No active academic year found in the system"));
+        if (academicDetailsRepo.findByStudentIdAndAcademicYearId(studentId, year.getId()).isEmpty()) {
+            throw new BadRequestException("Your academic details are not registered for " + year.getYearName() + ". Contact the transport office before applying.");
+        }
 
         if (allocationRepo.findByStudentIdAndAcademicYearIdAndStatus(studentId, year.getId(), EntityStatus.ACTIVE).isPresent()) {
             throw new BadRequestException("A bus is already allocated to you. Use the transfer workflow to request a different bus");

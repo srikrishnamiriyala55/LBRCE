@@ -26,11 +26,14 @@ public class AuthService {
     private final AdminRepository adminRepository;
     private final PasswordEncoder passwordEncoder;
     private final OtpService otpService;
+    private final AcademicYearRepository academicYearRepository;
+    private final StudentAcademicDetailsService studentAcademicDetailsService;
 
     public AuthService(AuthenticationManager authenticationManager, JwtTokenProvider tokenProvider,
                        StudentRepository studentRepository,
                        InchargeRepository inchargeRepository, AdminRepository adminRepository,
-                       PasswordEncoder passwordEncoder, OtpService otpService) {
+                       PasswordEncoder passwordEncoder, OtpService otpService, AcademicYearRepository academicYearRepository,
+                       StudentAcademicDetailsService studentAcademicDetailsService) {
         this.authenticationManager = authenticationManager;
         this.tokenProvider = tokenProvider;
         this.studentRepository = studentRepository;
@@ -38,6 +41,8 @@ public class AuthService {
         this.adminRepository = adminRepository;
         this.passwordEncoder = passwordEncoder;
         this.otpService = otpService;
+        this.academicYearRepository = academicYearRepository;
+        this.studentAcademicDetailsService = studentAcademicDetailsService;
     }
 
     public LoginResponse login(LoginRequest request) {
@@ -119,7 +124,10 @@ public class AuthService {
         storePhoto(student, photo);
         student.setStatus("ACTIVE");
         Student saved = studentRepository.save(student);
-        return StudentProfileResponse.fromStudent(saved);
+        AcademicYear activeYear = academicYearRepository.findByActiveTrue()
+                .orElseThrow(() -> new BadRequestException("Registration is temporarily unavailable because no active academic year is configured"));
+        StudentAcademicDetails details = studentAcademicDetailsService.upsert(saved, activeYear, request.getBranch(), request.getYear(), request.getSemester());
+        return StudentProfileResponse.fromStudent(saved, details);
     }
 
     private void storePhoto(Student student, org.springframework.web.multipart.MultipartFile photo) {

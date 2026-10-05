@@ -1,6 +1,7 @@
 package com.web.sms.dto.response;
 
 import com.web.sms.entity.Student;
+import com.web.sms.entity.StudentAcademicDetails;
 
 public class StudentProfileResponse {
     private Long id;
@@ -21,6 +22,9 @@ public class StudentProfileResponse {
     private boolean photoAvailable;
 
     public static StudentProfileResponse fromStudent(Student s) {
+        return fromStudent(s, null);
+    }
+    public static StudentProfileResponse fromStudent(Student s, StudentAcademicDetails academicDetails) {
         StudentProfileResponse r = new StudentProfileResponse();
         r.setId(s.getId());
         r.setRollNumber(s.getRollNumber());
@@ -30,9 +34,9 @@ public class StudentProfileResponse {
         if(s.getDob() != null) r.setDob(s.getDob().toString());
         r.setGender(s.getGender());
         r.setAddress(s.getAddress());
-        r.setBranch(s.getBranch());
-        r.setYear(s.getYear());
-        r.setSemester(s.getSemester());
+        r.setBranch(academicDetails == null ? s.getBranch() : academicDetails.getBranch());
+        r.setYear(academicDetails == null ? s.getYear() : academicDetails.getYear());
+        r.setSemester(academicDetails == null ? s.getSemester() : academicDetails.getSemester());
         r.setBloodGroup(s.getBloodGroup());
         r.setStatus(s.getStatus());
         r.setParentName(s.getParentName());
