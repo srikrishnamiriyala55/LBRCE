@@ -16,6 +16,7 @@ public interface BusPassRepository extends JpaRepository<BusPass, Long> {
     Optional<BusPass> findByVerificationToken(String verificationToken);
     List<BusPass> findByStudentId(Long studentId);
     List<BusPass> findByAcademicYearIdAndStatus(Long academicYearId, PassStatus status);
+    Optional<BusPass> findFirstByStudentIdAndAcademicYearIdOrderByIdDesc(Long studentId, Long academicYearId);
     Page<BusPass> findByAllocationBusIdAndAllocationStatus(Long busId, EntityStatus status, Pageable pageable);
     long countByAllocationBusIdAndAllocationStatusAndStatus(Long busId, EntityStatus allocationStatus, PassStatus status);
     long countByStatus(PassStatus status);
@@ -27,6 +28,10 @@ public interface BusPassRepository extends JpaRepository<BusPass, Long> {
     @Query("select p from BusPass p where :search is null or :search='' or lower(p.passNumber) like lower(concat('%',:search,'%')) or lower(p.student.name) like lower(concat('%',:search,'%')) or lower(p.student.rollNumber) like lower(concat('%',:search,'%')) or lower(p.allocation.bus.busNumber) like lower(concat('%',:search,'%')) order by p.student.rollNumber asc")
     List<BusPass> searchList(@Param("search") String search);
 
-    /** All passes for a bus’s active students — returns a list for incharge view. */
-    List<BusPass> findByAllocationBusIdAndAllocationStatus(Long busId, EntityStatus status);
+    /** Historical and current passes for students allocated to the incharge's bus. */
+    @Query("select p from BusPass p where p.allocation.bus.id=:busId " +
+           "and (:academicYearId is null or p.academicYear.id=:academicYearId) " +
+           "order by p.academicYear.startDate desc, p.student.rollNumber asc")
+    List<BusPass> findForIncharge(@Param("busId") Long busId,
+                                  @Param("academicYearId") Long academicYearId);
 }

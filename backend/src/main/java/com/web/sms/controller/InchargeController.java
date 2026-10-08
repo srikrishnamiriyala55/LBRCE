@@ -167,14 +167,14 @@ public class InchargeController {
     @GetMapping("/profile/photo") public ResponseEntity<byte[]> profilePhoto(){com.web.sms.entity.Incharge i=inchargeService.getInchargeById(getCurrentUser().getId());if(i.getPhotoData()==null||i.getPhotoData().length==0)throw new ResourceNotFoundException("Profile photo not found");return ResponseEntity.ok().contentType(MediaType.parseMediaType(i.getPhotoContentType()==null?MediaType.APPLICATION_OCTET_STREAM_VALUE:i.getPhotoContentType())).body(i.getPhotoData());}
 
     @GetMapping("/fees")
-    public List<com.web.sms.dto.response.FeeResponse> fees() {
-        return feeRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(), EntityStatus.ACTIVE)
+    public List<com.web.sms.dto.response.FeeResponse> fees(@RequestParam(required = false) Long academicYearId) {
+        return feeRepo.findForIncharge(requireAssignedBus().getId(), academicYearId)
                 .stream().map(com.web.sms.dto.response.FeeResponse::fromFee).toList();
     }
 
     @GetMapping("/passes")
-    public List<PassResponse> passes() {
-        return passRepo.findByAllocationBusIdAndAllocationStatus(requireAssignedBus().getId(), EntityStatus.ACTIVE)
+    public List<PassResponse> passes(@RequestParam(required = false) Long academicYearId) {
+        return passRepo.findForIncharge(requireAssignedBus().getId(), academicYearId)
                 .stream().map(PassResponse::fromBusPass).toList();
     }
     @GetMapping("/passes/{id}") public PassResponse pass(@PathVariable Long id){return passService.getPassForIncharge(id,requireAssignedBus().getId());}

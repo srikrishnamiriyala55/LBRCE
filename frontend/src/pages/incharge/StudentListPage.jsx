@@ -77,6 +77,7 @@ export default function StudentListPage() {
   const columns = [
     { key: 'name', label: 'Student' },
     { key: 'rollNumber', label: 'Roll Number' },
+    { key: 'academicYear', label: 'Academic Year', render: (r) => r.academicYear || '—' },
     { key: 'branch', label: 'Department / Year', render: (r) => `${r.branch || '—'} / ${r.year || '—'}` },
     { key: 'boardingPoint', label: 'Boarding Point' },
     { key: 'fee', label: 'Fee', render: (r) => `₹${r.paidAmount} / ₹${r.requiredFee}` },

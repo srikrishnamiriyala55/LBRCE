@@ -51,7 +51,11 @@ public interface FeeRepository extends JpaRepository<Fee, Long> {
            " order by f.student.rollNumber asc")
     List<Fee> searchForAdminList(@Param("search") String search);
 
-    /** All fees for a bus's active students — returns a list for incharge view. */
-    List<Fee> findByAllocationBusIdAndAllocationStatus(Long busId, EntityStatus status);
+    /** Historical and current fees for students allocated to the incharge's bus. */
+    @Query("select f from Fee f where f.allocation.bus.id=:busId " +
+           "and (:academicYearId is null or f.academicYear.id=:academicYearId) " +
+           "order by f.academicYear.startDate desc, f.student.rollNumber asc")
+    List<Fee> findForIncharge(@Param("busId") Long busId,
+                              @Param("academicYearId") Long academicYearId);
 }
 
