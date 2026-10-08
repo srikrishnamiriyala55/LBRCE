@@ -113,6 +113,7 @@ public class AdminService {
     @Transactional
     public void deactivateBus(Long busId,String actor){Bus b=busRepo.findById(busId).orElseThrow(()->new com.web.sms.exception.ResourceNotFoundException("Bus not found"));long active=allocationRepo.countByBusIdAndStatus(busId,EntityStatus.ACTIVE);if(active>0)throw new BadRequestException("Cannot deactivate a bus with "+active+" active student assignments");b.setStatus(EntityStatus.INACTIVE);b.setUpdatedAt(LocalDateTime.now());busRepo.save(b);auditService.log(actor,"ADMIN","BUS_DEACTIVATED","BUS",String.valueOf(busId),"ACTIVE","INACTIVE",null);}
 
+    @Transactional(readOnly = true)
     public DashboardResponse getDashboard() {
         DashboardResponse res = new DashboardResponse();
 
