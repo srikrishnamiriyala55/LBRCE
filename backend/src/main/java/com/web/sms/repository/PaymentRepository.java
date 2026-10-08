@@ -12,6 +12,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findByOrderId(String orderId);
     List<Payment> findByFeeId(Long feeId);
     List<Payment> findByStudentId(Long studentId);
+    List<Payment> findByStudentIdOrderByCreatedAtDesc(Long studentId);
+    @Query("select p from Payment p join fetch p.student join fetch p.fee f join fetch f.academicYear join fetch f.allocation a where a.bus.id=:busId and (:academicYearId is null or f.academicYear.id=:academicYearId) order by p.createdAt desc")
+    List<Payment> findForIncharge(Long busId, Long academicYearId);
     void deleteByStudentId(Long studentId);
     Optional<Payment> findByOrderIdAndStatus(String orderId, PaymentStatus status);
     boolean existsByFeeIdAndStatus(Long feeId, PaymentStatus status);

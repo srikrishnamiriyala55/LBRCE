@@ -95,13 +95,13 @@ public class DataInitializer {
             // 4. Seed Default Active Academic Year
             if (academicYearRepo.findByActiveTrue().isEmpty()) {
                 AcademicYear year = new AcademicYear();
-                year.setYearName("2025-26");
-                year.setStartDate(LocalDate.of(2025, 6, 1));
-                year.setEndDate(LocalDate.of(2026, 5, 31));
+                year.setYearName("2026-27");
+                year.setStartDate(LocalDate.of(2026, 6, 1));
+                year.setEndDate(LocalDate.of(2027, 5, 31));
                 year.setActive(true);
                 year.setCreatedAt(LocalDateTime.now());
                 academicYearRepo.save(year);
-                System.out.println(">>> Initialized default Active Academic Year: 2025-26");
+                System.out.println(">>> Initialized default Active Academic Year: 2026-27");
             }
         };
     }

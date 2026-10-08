@@ -15,6 +15,7 @@ import com.web.sms.dto.request.TransportReportFilter;
 import com.web.sms.dto.response.TransportReportRow;
 import com.web.sms.exception.BadRequestException;
 import com.web.sms.repository.StudentRepository;
+import com.web.sms.repository.AcademicYearRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.data.domain.*;
@@ -32,7 +33,8 @@ public class TransportReportService {
     private static final int EXPORT_LIMIT=10_000;
     private static final String[] HEADERS={"Roll Number","Student Name","Department","Year","Semester","Account","Bus Number","Boarding Point","Total Fee","Paid","Remaining","Payment","Application","Transfer"};
     private final StudentRepository students;
-    public TransportReportService(StudentRepository students){this.students=students;}
+    private final AcademicYearRepository academicYears;
+    public TransportReportService(StudentRepository students, AcademicYearRepository academicYears){this.students=students;this.academicYears=academicYears;}
 
     public Page<TransportReportRow> report(Long scopeBusId,TransportReportFilter f,Pageable pageable){
         validate(f);return query(scopeBusId,f,pageable);
@@ -93,8 +95,8 @@ public class TransportReportService {
     }
 
     private List<TransportReportRow> exportRows(Long scopeBusId,TransportReportFilter f){validate(f);Page<TransportReportRow> page=query(scopeBusId,f,PageRequest.of(0,EXPORT_LIMIT));if(page.getTotalElements()>EXPORT_LIMIT)throw new BadRequestException("Export exceeds 10,000 records. Apply more filters and try again");return page.getContent();}
-    private Page<TransportReportRow> query(Long scopeBusId,TransportReportFilter f,Pageable p){return students.transportReport(scopeBusId,clean(f.getBusNumber()),clean(f.getName()),clean(f.getRollNumber()),f.getYear(),f.getSemester(),upper(f.getPaymentStatus()),upper(f.getAccountStatus()),upper(f.getApplicationStatus()),upper(f.getTransferStatus()),clean(f.getDepartment()),f.getMinimumRemaining(),p);}
-    private void validate(TransportReportFilter f){if(f.getYear()!=null&&(f.getYear()<1||f.getYear()>4))throw new BadRequestException("Year must be between 1 and 4");if(f.getSemester()!=null&&(f.getSemester()<1||f.getSemester()>8))throw new BadRequestException("Semester must be between 1 and 8");if(f.getMinimumRemaining()!=null&&f.getMinimumRemaining()<0)throw new BadRequestException("Minimum remaining amount cannot be negative");}
+    private Page<TransportReportRow> query(Long scopeBusId,TransportReportFilter f,Pageable p){if(f.getAcademicYearId()==null)throw new BadRequestException("Academic year is compulsory for generating reports. Please select an academic year.");return students.transportReport(f.getAcademicYearId(),scopeBusId,clean(f.getBusNumber()),clean(f.getName()),clean(f.getRollNumber()),f.getYear(),f.getSemester(),upper(f.getPaymentStatus()),upper(f.getAccountStatus()),upper(f.getApplicationStatus()),upper(f.getTransferStatus()),clean(f.getDepartment()),f.getMinimumRemaining(),p);}
+    private void validate(TransportReportFilter f){if(f.getAcademicYearId()==null)throw new BadRequestException("Academic year is compulsory for generating reports. Please select an academic year.");if(f.getYear()!=null&&(f.getYear()<1||f.getYear()>4))throw new BadRequestException("Year must be between 1 and 4");if(f.getSemester()!=null&&(f.getSemester()<1||f.getSemester()>8))throw new BadRequestException("Semester must be between 1 and 8");if(f.getMinimumRemaining()!=null&&f.getMinimumRemaining()<0)throw new BadRequestException("Minimum remaining amount cannot be negative");}
     private String clean(String s){return s==null||s.isBlank()?null:s.trim();}private String upper(String s){String v=clean(s);return v==null?null:v.toUpperCase();}private String text(Object o){return o==null?"-":String.valueOf(o);}
     private Object[] values(TransportReportRow r){return new Object[]{r.getRollNumber(),r.getStudentName(),r.getDepartment(),r.getStudyYear(),r.getSemester(),r.getAccountStatus(),r.getBusNumber(),r.getBoardingPoint(),r.getTotalAmount(),r.getPaidAmount(),r.getRemainingAmount(),r.getPaymentStatus(),r.getApplicationStatus(),r.getTransferStatus()};}
 }

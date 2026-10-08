@@ -88,7 +88,12 @@ public class TransferService {
   t.setStatus(TransferStatus.TRANSFER_COMPLETED);t.setCompletedAt(now);t.setProcessedAt(now);t.setUpdatedAt(now);transfers.save(t);audit(t,adminApproval?"ADMIN":"SYSTEM",actor,adminApproval?startingStatus:TransferStatus.NEW_INCHARGE_APPROVED,t.getStatus());notify(t,"Bus Transfer Completed",adminApproval?"Your bus transfer has been approved directly by the Transport Administrator after verifying vacancy.":"Your bus transfer has been approved. Your transportation assignment has been changed successfully.");return TransferResponse.fromTransfer(t);
  }
  @Transactional public void cancel(Long sid,Long id){TransferRequest t=locked(id);if(!t.getStudent().getId().equals(sid))throw new ForbiddenException("This transfer request is not yours");stage(t,TransferStatus.TRANSFER_REQUESTED);TransferStatus old=t.getStatus();t.setStatus(TransferStatus.CANCELLED);finishDecision(t,"Cancelled by student");audit(t,"STUDENT",t.getStudent().getRollNumber(),old,t.getStatus());}
- private TransferRequest locked(Long id){return transfers.findByIdForUpdate(id).orElseThrow(()->new ResourceNotFoundException("Transfer request not found"));}
+ private TransferRequest locked(Long id){
+  TransferRequest request=transfers.findByIdForUpdate(id).orElseThrow(()->new ResourceNotFoundException("Transfer request not found"));
+  AcademicYear active=years.findByActiveTrue().orElseThrow(()->new BadRequestException("No active academic year is configured"));
+  if(request.getAcademicYear()==null||!request.getAcademicYear().getId().equals(active.getId()))throw new BadRequestException("Historical transfer requests are read-only. Create a request for the active academic year.");
+  return request;
+ }
  private void stage(TransferRequest t,TransferStatus s){if(t.getStatus()!=s)throw new BadRequestException("Invalid transfer transition from "+t.getStatus());}
  private void owner(Incharge expected,Long actual,String label){if(expected==null||!expected.getId().equals(actual))throw new ForbiddenException("Only the "+label+" in-charge can perform this action");}
  private void ensureCapacity(Bus b){if(b.getStatus()!=EntityStatus.ACTIVE||allocations.countByBusIdAndStatus(b.getId(),EntityStatus.ACTIVE)>=b.getTotalSeats())throw new BadRequestException("Requested bus has no available seats");}

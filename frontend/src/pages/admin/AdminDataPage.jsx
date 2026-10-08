@@ -17,6 +17,8 @@ export default function AdminDataPage({ type }) {
   const [approvingTransfer, setApprovingTransfer] = useState(null);
   const [transferSummary, setTransferSummary] = useState({ total: 0, accepted: 0, rejected: 0 });
   const [inlineSearch, setInlineSearch] = useState('');
+  const [academicYears, setAcademicYears] = useState([]), [academicYearId, setAcademicYearId] = useState('');
+  const [yearsLoaded, setYearsLoaded] = useState(false);
   // Initialize transfer status filter from URL search param (e.g. navigating from dashboard)
   const [transferStatusFilter, setTransferStatusFilter] = useState(() =>
     type === 'transfers' ? (searchParams.get('status') || '') : ''
@@ -24,13 +26,46 @@ export default function AdminDataPage({ type }) {
   const { addToast } = useToast();
 
   useEffect(() => {
+    let active = true;
+    api.get('/admin/academic-years').then((response) => {
+      if (!active) return;
+      const years = response.data || [];
+      setAcademicYears(years);
+      const activeYear = years.find((year) => year.active);
+      setAcademicYearId(String(activeYear?.id || (years[0]?.id ?? '')));
+      setYearsLoaded(true);
+    }).catch(() => {
+      if (!active) return;
+      addToast('Failed to load academic years', 'error');
+      setYearsLoaded(true);
+    });
+    return () => { active = false; };
+  }, [addToast]);
+
+  useEffect(() => {
+    const requiresYears = ['passes', 'transfers', 'payments'].includes(type);
+    if (requiresYears && !yearsLoaded) return;
+
+    let active = true;
     setLoading(true);
     const params = new URLSearchParams({ unpaged: 'true' });
     if (type === 'passes' && appliedSearch) params.set('search', appliedSearch);
+    if (requiresYears && academicYearId) params.set('academicYearId', academicYearId);
     params.set('_ts', String(Date.now()));
-    api.get(`/admin/${type}?${params}`, { headers: { 'Cache-Control': 'no-cache' } }).then((r) => { const list = Array.isArray(r.data) ? r.data : (r.data?.content || []); setRows(list); setTotal(Array.isArray(r.data) ? r.data.length : (r.data?.totalElements ?? list.length)); setLastUpdated(new Date()); })
-      .catch((e) => addToast(e.response?.data?.message || `Failed to load ${type}`, 'error')).finally(() => setLoading(false));
-  }, [type, appliedSearch, refreshKey]);
+    api.get(`/admin/${type}?${params}`, { headers: { 'Cache-Control': 'no-cache' } }).then((r) => {
+      if (!active) return;
+      const list = Array.isArray(r.data) ? r.data : (r.data?.content || []);
+      setRows(list);
+      setTotal(Array.isArray(r.data) ? r.data.length : (r.data?.totalElements ?? list.length));
+      setLastUpdated(new Date());
+      setLoading(false);
+    }).catch((e) => {
+      if (!active) return;
+      addToast(e.response?.data?.message || `Failed to load ${type}`, 'error');
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, [type, appliedSearch, refreshKey, academicYearId, yearsLoaded]);
 
   useEffect(() => {
     setSearch('');
@@ -129,7 +164,7 @@ export default function AdminDataPage({ type }) {
         ) : '—'
       }
     ],
-    payments: [{ key: 'studentName', label: 'Student' }, { key: 'rollNumber', label: 'Roll Number' }, { key: 'orderId', label: 'Order ID' }, { key: 'amount', label: 'Amount', render: (r) => formatINR(r.amount) }, { key: 'status', label: 'Verified Status', render: (r) => <StatusBadge status={r.status} /> }, { key: 'paidAt', label: 'Paid At' }],
+    payments: [{ key: 'studentName', label: 'Student' }, { key: 'rollNumber', label: 'Roll Number' }, { key: 'academicYear', label: 'Academic Year', render: (r) => r.academicYear || '—' }, { key: 'orderId', label: 'Order ID' }, { key: 'amount', label: 'Amount', render: (r) => formatINR(r.amount) }, { key: 'status', label: 'Verified Status', render: (r) => <StatusBadge status={r.status} /> }, { key: 'paidAt', label: 'Paid At' }],
     passes: [{ key: 'studentName', label: 'Student' }, { key: 'rollNumber', label: 'Roll Number' }, { key: 'passNumber', label: 'Pass ID' }, { key: 'busNumber', label: 'Bus' }, { key: 'boardingPoint', label: 'Boarding Point' }, { key: 'validUntil', label: 'Valid Until' }, { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> }, { key: 'actions', label: 'Action', render: (r) => <button type="button" className="text-sm font-medium text-blue-700 hover:underline" onClick={() => viewPass(r)}>View</button> }],
     notifications: [{ key: 'title', label: 'Title' }, { key: 'recipientRollNumber', label: 'Recipient' }, { key: 'message', label: 'Message' }, { key: 'createdAt', label: 'Date', render: (r) => r.createdAt ? new Date(r.createdAt).toLocaleString() : '—' }]
   };
@@ -166,6 +201,16 @@ export default function AdminDataPage({ type }) {
               <option value="NEW_INCHARGE_REJECTED">New Incharge Rejected</option>
               <option value="TRANSFER_COMPLETED">Completed</option>
               <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+        )}
+
+        {(type === 'passes' || type === 'transfers' || type === 'payments') && (
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Academic year</label>
+            <select className="input-field max-w-sm" value={academicYearId} onChange={(e) => setAcademicYearId(e.target.value)}>
+              <option value="">All academic years</option>
+              {academicYears.map((year) => <option key={year.id} value={year.id}>{year.yearName}{year.active ? ' (Active)' : ''}</option>)}
             </select>
           </div>
         )}

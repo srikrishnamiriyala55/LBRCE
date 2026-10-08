@@ -34,7 +34,7 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
 
     @Query(value="""
         SELECT s.id AS studentDbId, s.student_id AS rollNumber, s.name AS studentName,
-          s.branch AS department, s.year AS studyYear, s.semester AS semester, s.status AS accountStatus,
+          sad.branch AS department, sad.study_year AS studyYear, sad.semester AS semester, s.status AS accountStatus,
           b.bus_number AS busNumber, bp.station_name AS boardingPoint,
           COALESCE(f.total_amount,0) AS totalAmount, COALESCE(f.paid_amount,0) AS paidAmount,
           GREATEST(COALESCE(f.total_amount,0)-COALESCE(f.paid_amount,0),0) AS remainingAmount,
@@ -42,19 +42,19 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
                WHEN COALESCE(f.paid_amount,0)>=f.total_amount THEN 'PAID' ELSE 'PARTIALLY_PAID' END AS paymentStatus,
           ba.status AS applicationStatus, tr.status AS transferStatus
         FROM student s
-        LEFT JOIN academic_year ay ON ay.active=1
-        LEFT JOIN transport_allocation ta ON ta.student_id=s.id AND ta.academic_year_id=ay.id AND ta.status='ACTIVE'
+        JOIN student_academic_details sad ON sad.student_id=s.id AND sad.academic_year_id=:academicYearId
+        LEFT JOIN transport_allocation ta ON ta.student_id=s.id AND ta.academic_year_id=:academicYearId AND ta.status='ACTIVE'
         LEFT JOIN bus b ON b.id=ta.bus_id
         LEFT JOIN boarding_points bp ON bp.id=ta.boarding_point_id
-        LEFT JOIN fee f ON f.student_id=s.id AND f.academic_year_id=ay.id
-        LEFT JOIN bus_application ba ON ba.id=(SELECT MAX(ba2.id) FROM bus_application ba2 WHERE ba2.student_id=s.id AND ba2.academic_year_id=ay.id)
-        LEFT JOIN transfer_request tr ON tr.id=(SELECT MAX(tr2.id) FROM transfer_request tr2 WHERE tr2.student_id=s.id AND tr2.academic_year_id=ay.id)
+        LEFT JOIN fee f ON f.student_id=s.id AND f.academic_year_id=:academicYearId
+        LEFT JOIN bus_application ba ON ba.id=(SELECT MAX(ba2.id) FROM bus_application ba2 WHERE ba2.student_id=s.id AND ba2.academic_year_id=:academicYearId)
+        LEFT JOIN transfer_request tr ON tr.id=(SELECT MAX(tr2.id) FROM transfer_request tr2 WHERE tr2.student_id=s.id AND tr2.academic_year_id=:academicYearId)
         WHERE (:scopeBusId IS NULL OR b.id=:scopeBusId)
           AND (:busNumber IS NULL OR LOWER(b.bus_number) LIKE LOWER(CONCAT('%',:busNumber,'%')))
           AND (:name IS NULL OR LOWER(s.name) LIKE LOWER(CONCAT('%',:name,'%')))
           AND (:rollNumber IS NULL OR LOWER(s.student_id) LIKE LOWER(CONCAT('%',:rollNumber,'%')))
-          AND (:studyYear IS NULL OR s.year=:studyYear) AND (:semester IS NULL OR s.semester=:semester)
-          AND (:department IS NULL OR LOWER(s.branch)=LOWER(:department))
+          AND (:studyYear IS NULL OR sad.study_year=:studyYear) AND (:semester IS NULL OR sad.semester=:semester)
+          AND (:department IS NULL OR LOWER(sad.branch)=LOWER(:department))
           AND (:accountStatus IS NULL OR UPPER(s.status)=UPPER(:accountStatus))
           AND (:applicationStatus IS NULL OR ba.status=:applicationStatus)
           AND (:transferStatus IS NULL OR tr.status=:transferStatus)
@@ -66,22 +66,22 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
           AND (:minimumRemaining IS NULL OR GREATEST(COALESCE(f.total_amount,0)-COALESCE(f.paid_amount,0),0)>=:minimumRemaining)
         """, countQuery="""
         SELECT COUNT(*) FROM student s
-        LEFT JOIN academic_year ay ON ay.active=1
-        LEFT JOIN transport_allocation ta ON ta.student_id=s.id AND ta.academic_year_id=ay.id AND ta.status='ACTIVE'
-        LEFT JOIN bus b ON b.id=ta.bus_id LEFT JOIN fee f ON f.student_id=s.id AND f.academic_year_id=ay.id
-        LEFT JOIN bus_application ba ON ba.id=(SELECT MAX(ba2.id) FROM bus_application ba2 WHERE ba2.student_id=s.id AND ba2.academic_year_id=ay.id)
-        LEFT JOIN transfer_request tr ON tr.id=(SELECT MAX(tr2.id) FROM transfer_request tr2 WHERE tr2.student_id=s.id AND tr2.academic_year_id=ay.id)
+        JOIN student_academic_details sad ON sad.student_id=s.id AND sad.academic_year_id=:academicYearId
+        LEFT JOIN transport_allocation ta ON ta.student_id=s.id AND ta.academic_year_id=:academicYearId AND ta.status='ACTIVE'
+        LEFT JOIN bus b ON b.id=ta.bus_id LEFT JOIN fee f ON f.student_id=s.id AND f.academic_year_id=:academicYearId
+        LEFT JOIN bus_application ba ON ba.id=(SELECT MAX(ba2.id) FROM bus_application ba2 WHERE ba2.student_id=s.id AND ba2.academic_year_id=:academicYearId)
+        LEFT JOIN transfer_request tr ON tr.id=(SELECT MAX(tr2.id) FROM transfer_request tr2 WHERE tr2.student_id=s.id AND tr2.academic_year_id=:academicYearId)
         WHERE (:scopeBusId IS NULL OR b.id=:scopeBusId)
           AND (:busNumber IS NULL OR LOWER(b.bus_number) LIKE LOWER(CONCAT('%',:busNumber,'%')))
           AND (:name IS NULL OR LOWER(s.name) LIKE LOWER(CONCAT('%',:name,'%')))
           AND (:rollNumber IS NULL OR LOWER(s.student_id) LIKE LOWER(CONCAT('%',:rollNumber,'%')))
-          AND (:studyYear IS NULL OR s.year=:studyYear) AND (:semester IS NULL OR s.semester=:semester)
-          AND (:department IS NULL OR LOWER(s.branch)=LOWER(:department)) AND (:accountStatus IS NULL OR UPPER(s.status)=UPPER(:accountStatus))
+          AND (:studyYear IS NULL OR sad.study_year=:studyYear) AND (:semester IS NULL OR sad.semester=:semester)
+          AND (:department IS NULL OR LOWER(sad.branch)=LOWER(:department)) AND (:accountStatus IS NULL OR UPPER(s.status)=UPPER(:accountStatus))
           AND (:applicationStatus IS NULL OR ba.status=:applicationStatus) AND (:transferStatus IS NULL OR tr.status=:transferStatus)
           AND (:paymentStatus IS NULL OR (:paymentStatus='PAID' AND f.id IS NOT NULL AND COALESCE(f.paid_amount,0)>=f.total_amount) OR (:paymentStatus='UNPAID' AND (f.id IS NULL OR COALESCE(f.paid_amount,0)=0)) OR (:paymentStatus='PARTIALLY_PAID' AND COALESCE(f.paid_amount,0)>0 AND COALESCE(f.paid_amount,0)<f.total_amount) OR (:paymentStatus='PENDING' AND f.id IS NOT NULL AND COALESCE(f.paid_amount,0)<f.total_amount))
           AND (:minimumRemaining IS NULL OR GREATEST(COALESCE(f.total_amount,0)-COALESCE(f.paid_amount,0),0)>=:minimumRemaining)
         """, nativeQuery=true)
-    Page<TransportReportRow> transportReport(@Param("scopeBusId") Long scopeBusId,@Param("busNumber") String busNumber,
+    Page<TransportReportRow> transportReport(@Param("academicYearId") Long academicYearId,@Param("scopeBusId") Long scopeBusId,@Param("busNumber") String busNumber,
       @Param("name") String name,@Param("rollNumber") String rollNumber,@Param("studyYear") Integer studyYear,
       @Param("semester") Integer semester,@Param("paymentStatus") String paymentStatus,@Param("accountStatus") String accountStatus,
       @Param("applicationStatus") String applicationStatus,@Param("transferStatus") String transferStatus,

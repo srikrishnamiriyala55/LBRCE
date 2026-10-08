@@ -71,6 +71,7 @@ function App() {
           <Route path="students" element={<StudentListPage />} />
           <Route path="transfers" element={<TransferManagementPage />} />
           <Route path="fees" element={<InchargeDataPage type="fees" />} />
+          <Route path="payments" element={<InchargeDataPage type="payments" />} />
           <Route path="passes" element={<InchargeDataPage type="passes" />} />
           <Route path="notifications" element={<InchargeDataPage type="notifications" />} />
           <Route path="reports" element={<InchargeReportsPage />} />

@@ -451,12 +451,12 @@ public class AdminController {
     }
 
     @GetMapping({"/fees", "/fees/all"})
-    public List<FeeResponse> getFees(@RequestParam(required = false) String search) {
+    public List<FeeResponse> getFees(@RequestParam(required = false) String search, @RequestParam(required = false) Long academicYearId) {
         String trimmed = (search == null || search.isBlank()) ? null : search.trim();
         if (trimmed == null) {
-            return feeRepo.findAll().stream().map(FeeResponse::fromFee).toList();
+            return feeRepo.findAll().stream().filter(f -> academicYearId == null || f.getAcademicYear().getId().equals(academicYearId)).map(FeeResponse::fromFee).toList();
         }
-        return feeRepo.searchForAdminList(trimmed).stream().map(FeeResponse::fromFee).toList();
+        return feeRepo.searchForAdminList(trimmed).stream().filter(f -> academicYearId == null || f.getAcademicYear().getId().equals(academicYearId)).map(FeeResponse::fromFee).toList();
     }
 
     @PostMapping("/fees/{id}/manual-payment")
@@ -468,29 +468,29 @@ public class AdminController {
     }
 
     @GetMapping({"/transfers", "/transfers/all"})
-    public List<TransferResponse> getTransfers(@RequestParam(required = false) String status) {
+    public List<TransferResponse> getTransfers(@RequestParam(required = false) String status, @RequestParam(required = false) Long academicYearId) {
         // Simple status filter; full text search can be added to TransferRequestRepository if needed
         if (status != null && !status.isBlank()) {
             try {
                 com.web.sms.enums.TransferStatus ts = com.web.sms.enums.TransferStatus.valueOf(status.trim().toUpperCase());
-                return transferRepo.findByStatusList(ts).stream().map(TransferResponse::fromTransfer).toList();
+                return transferRepo.findByStatusList(ts).stream().filter(t -> academicYearId == null || t.getAcademicYear().getId().equals(academicYearId)).map(TransferResponse::fromTransfer).toList();
             } catch (IllegalArgumentException e) {
                 throw new com.web.sms.exception.BadRequestException("Invalid transfer status: " + status);
             }
         }
-        return transferRepo.findAllWithDetailsList().stream().map(TransferResponse::fromTransfer).toList();
+        return transferRepo.findAllWithDetailsList().stream().filter(t -> academicYearId == null || t.getAcademicYear().getId().equals(academicYearId)).map(TransferResponse::fromTransfer).toList();
     }
     @GetMapping("/transfers/summary") public Map<String, Long> transferSummary(){Map<String,Long> summary=new LinkedHashMap<>();summary.put("total",transferRepo.count());summary.put("accepted",transferRepo.countByStatus(TransferStatus.TRANSFER_COMPLETED));summary.put("rejected",transferRepo.countByStatus(TransferStatus.OLD_INCHARGE_REJECTED)+transferRepo.countByStatus(TransferStatus.NEW_INCHARGE_REJECTED));return summary;}
     @PostMapping("/transfers/{id}/approve") public TransferResponse approveTransfer(@PathVariable Long id){return transferService.approveByAdmin(id,getCurrentUser().getUsername());}
 
-    @GetMapping("/payments") public List<PaymentResponse> payments(){return paymentRepo.findAll().stream().map(PaymentResponse::fromPayment).toList();}
-    @GetMapping("/passes") public List<PassResponse> passes(@RequestParam(required=false) String search){return passRepo.searchList(search==null?null:search.trim()).stream().map(PassResponse::fromBusPass).toList();}
+    @GetMapping("/payments") public List<PaymentResponse> payments(@RequestParam(required = false) Long academicYearId){return paymentRepo.findAll().stream().filter(p -> academicYearId == null || (p.getFee() != null && p.getFee().getAcademicYear() != null && p.getFee().getAcademicYear().getId().equals(academicYearId))).map(PaymentResponse::fromPayment).toList();}
+    @GetMapping("/passes") public List<PassResponse> passes(@RequestParam(required=false) String search,@RequestParam(required=false) Long academicYearId){return passRepo.searchList(search==null?null:search.trim()).stream().filter(p -> academicYearId == null || p.getAcademicYear().getId().equals(academicYearId)).map(PassResponse::fromBusPass).toList();}
     @GetMapping("/passes/{id}") public PassResponse pass(@PathVariable Long id){return passService.getPassForAdmin(id);}
     @GetMapping("/passes/{id}/photo") public ResponseEntity<byte[]> passPhoto(@PathVariable Long id){return passService.passPhotoForAdmin(id);}
     @GetMapping("/passes/{id}/download") public ResponseEntity<byte[]> downloadPass(@PathVariable Long id){PassResponse pass=passService.getPassForAdmin(id);return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=bus-pass-"+pass.getRollNumber()+".pdf").body(passService.generatePdfForAdmin(id));}
     @GetMapping("/notifications") public List<NotificationResponse> notifications(){return notificationRepo.findAll().stream().map(NotificationResponse::fromNotification).toList();}
     @GetMapping("/profile") public Map<String,Object> profile(){Admin a=adminRepo.findById(getCurrentUser().getId()).orElseThrow(()->new ResourceNotFoundException("Admin not found"));Map<String,Object> r=new LinkedHashMap<>();r.put("adminId",a.getAdminId());r.put("name",a.getName());r.put("email",a.getEmail());r.put("phoneNumber",a.getPhoneNumber());r.put("status",a.getStatus());return r;}
-    @GetMapping("/students/{id}/transport") public Map<String,Object> studentTransport(@PathVariable Long id){Student s=studentRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("Student not found"));Map<String,Object> r=new LinkedHashMap<>();r.put("student",StudentProfileResponse.fromStudent(s));java.util.List<TransportAllocation> history=allocationRepo.findByStudentId(id);r.put("assignments",history.stream().map(a->{Map<String,Object>x=new LinkedHashMap<>();x.put("id",a.getId());x.put("bus",a.getBus().getBusNumber());x.put("boardingPoint",a.getBoardingPoint().getStationName());x.put("status",a.getStatus());return x;}).toList());r.put("fees",feeRepo.findByStudentId(id).stream().map(FeeResponse::fromFee).toList());r.put("passes",passRepo.findByStudentId(id).stream().map(PassResponse::fromBusPass).toList());r.put("transfers",transferRepo.findByStudentId(id).stream().map(TransferResponse::fromTransfer).toList());return r;}
+    @GetMapping("/students/{id}/transport") public Map<String,Object> studentTransport(@PathVariable Long id){Student s=studentRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("Student not found"));Map<String,Object> r=new LinkedHashMap<>();r.put("student",StudentProfileResponse.fromStudent(s));java.util.List<TransportAllocation> history=allocationRepo.findByStudentId(id);r.put("assignments",history.stream().map(a->{Map<String,Object>x=new LinkedHashMap<>();x.put("id",a.getId());x.put("academicYear",a.getAcademicYear()!=null?a.getAcademicYear().getYearName():"—");x.put("bus",a.getBus().getBusNumber());x.put("boardingPoint",a.getBoardingPoint().getStationName());x.put("status",a.getStatus());return x;}).toList());r.put("fees",feeRepo.findByStudentId(id).stream().map(FeeResponse::fromFee).toList());r.put("passes",passRepo.findByStudentId(id).stream().map(PassResponse::fromBusPass).toList());r.put("transfers",transferRepo.findByStudentId(id).stream().map(TransferResponse::fromTransfer).toList());return r;}
 
 
     @PostMapping("/academic-years")

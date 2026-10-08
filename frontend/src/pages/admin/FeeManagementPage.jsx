@@ -14,9 +14,30 @@ const FeeManagementPage = () => {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [academicYears, setAcademicYears] = useState([]);
+  const [academicYearId, setAcademicYearId] = useState('');
+  const [yearsLoaded, setYearsLoaded] = useState(false);
   const debounceTimer = useRef(null);
+  const requestVersion = useRef(0);
 
   const { addToast } = useToast();
+
+  useEffect(() => {
+    let active = true;
+    api.get('/admin/academic-years').then((r) => {
+      if (!active) return;
+      const years = r.data || [];
+      setAcademicYears(years);
+      const activeYear = years.find((year) => year.active);
+      setAcademicYearId(String(activeYear?.id || (years[0]?.id ?? '')));
+      setYearsLoaded(true);
+    }).catch(() => {
+      if (!active) return;
+      addToast('Failed to load academic years', 'error');
+      setYearsLoaded(true);
+    });
+    return () => { active = false; };
+  }, [addToast]);
 
   const handleSearchChange = (e) => {
     const v = e.target.value;
@@ -26,25 +47,31 @@ const FeeManagementPage = () => {
   };
 
   const fetchFees = useCallback(async (signal) => {
+    const version = ++requestVersion.current;
     setLoading(true);
     try {
       const params = { unpaged: true };
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      if (academicYearId) params.academicYearId = academicYearId;
       const res = await api.get('/admin/fees', { signal, params });
+      if (signal?.aborted || version !== requestVersion.current) return;
       setFees(Array.isArray(res.data) ? res.data : (res.data?.content || []));
-    } catch (err) {
-      if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED')
-        addToast('Failed to load fees records', 'error');
-    } finally {
       setLoading(false);
+    } catch (err) {
+      if (signal?.aborted || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+        return;
+      }
+      addToast('Failed to load fees records', 'error');
+      if (version === requestVersion.current) setLoading(false);
     }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, academicYearId, addToast]);
 
   useEffect(() => {
+    if (!yearsLoaded) return;
     const controller = new AbortController();
     fetchFees(controller.signal);
     return () => controller.abort();
-  }, [fetchFees]);
+  }, [yearsLoaded, fetchFees]);
 
   const openPayment = (fee) => {
     setSelectedFee(fee);
@@ -117,12 +144,12 @@ const FeeManagementPage = () => {
 
       <div className="card">
         <div className="mb-4">
-          <input
+          <div className="grid gap-3 sm:grid-cols-2"><input
             className="input-field"
             value={search}
             onChange={handleSearchChange}
             placeholder="Search student name, roll number, academic year or status..."
-          />
+          /><select className="input-field" value={academicYearId} onChange={(e)=>setAcademicYearId(e.target.value)}><option value="">All academic years</option>{academicYears.map((year)=><option key={year.id} value={year.id}>{year.yearName}{year.active?' (Active)':''}</option>)}</select></div>
         </div>
         <DataTable columns={columns} data={fees} loading={loading} searchable={false} />
       </div>

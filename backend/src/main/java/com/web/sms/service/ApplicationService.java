@@ -10,6 +10,7 @@ import com.web.sms.exception.BadRequestException;
 import com.web.sms.exception.ResourceNotFoundException;
 import com.web.sms.repository.*;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -177,6 +178,7 @@ public class ApplicationService {
     @Transactional
     public ApplicationResponse updateApplication(Long applicationId,UpdateApplicationRequest req,String actor){
         BusApplication app=appRepo.findByIdForUpdate(applicationId).orElseThrow(()->new ResourceNotFoundException("Application not found"));
+        requireActiveAcademicYear(app);
         if(app.getStatus()!=ApplicationStatus.PENDING&&app.getStatus()!=ApplicationStatus.UNDER_REVIEW)throw new BadRequestException("Only pending applications can be edited");
         Bus bus=busRepo.findById(req.getBusId()).orElseThrow(()->new ResourceNotFoundException("Selected bus not found"));
         BoardingPoints point=boardingPointRepo.findById(req.getBoardingPointId()).orElseThrow(()->new ResourceNotFoundException("Boarding point not found"));
@@ -190,6 +192,7 @@ public class ApplicationService {
     @Transactional
     public void deleteApplication(Long applicationId,String actor){
         BusApplication app=appRepo.findByIdForUpdate(applicationId).orElseThrow(()->new ResourceNotFoundException("Application not found"));
+        requireActiveAcademicYear(app);
         if(app.getStatus()==ApplicationStatus.APPROVED||allocationRepo.existsByApplicationId(applicationId))throw new BadRequestException("Approved or allocated applications cannot be deleted");
         appRepo.delete(app);auditService.log(actor,"ADMIN","APPLICATION_DELETED","BUS_APPLICATION",String.valueOf(applicationId),app.getStudent().getRollNumber()+" / "+app.getBus().getBusNumber(),null,null);
     }
@@ -206,6 +209,7 @@ public class ApplicationService {
         if (authorizedBusId != null && !app.getBus().getId().equals(authorizedBusId)) {
             throw new com.web.sms.exception.ForbiddenException("This application does not belong to your assigned bus");
         }
+        requireActiveAcademicYear(app);
 
         if (app.getStatus() == ApplicationStatus.APPROVED) {
             return ApplicationResponse.fromApplication(app);
@@ -299,6 +303,7 @@ public class ApplicationService {
         if (authorizedBusId != null && !app.getBus().getId().equals(authorizedBusId)) {
             throw new com.web.sms.exception.ForbiddenException("This application does not belong to your assigned bus");
         }
+        requireActiveAcademicYear(app);
 
         if (app.getStatus() != ApplicationStatus.PENDING && app.getStatus() != ApplicationStatus.UNDER_REVIEW) {
             throw new BadRequestException("Only pending applications can be rejected");
@@ -322,11 +327,28 @@ public class ApplicationService {
     }
 
     public Page<ApplicationResponse> getApplicationsByBus(Long busId, ApplicationStatus status, Pageable pageable) {
-        if (status != null) {
-            return appRepo.findByBusIdAndStatus(busId, status, pageable)
-                    .map(ApplicationResponse::fromApplication);
+        return getApplicationsByBus(busId, status, null, pageable);
+    }
+
+    public Page<ApplicationResponse> getApplicationsByBus(Long busId, ApplicationStatus status, Long academicYearId, Pageable pageable) {
+        List<BusApplication> base = (status != null ? appRepo.findByBusIdAndStatus(busId, status, Pageable.unpaged()) : appRepo.findByBusId(busId, Pageable.unpaged())).getContent();
+        List<ApplicationResponse> list = base.stream()
+                .filter(a -> academicYearId == null || (a.getAcademicYear() != null && a.getAcademicYear().getId().equals(academicYearId)))
+                .map(ApplicationResponse::fromApplication)
+                .toList();
+        if (pageable.isUnpaged()) {
+            return new PageImpl<>(list);
         }
-        return appRepo.findByBusId(busId, pageable)
-                .map(ApplicationResponse::fromApplication);
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), list.size());
+        return new PageImpl<>(start < list.size() ? list.subList(start, end) : List.of(), pageable, list.size());
+    }
+
+    private void requireActiveAcademicYear(BusApplication application) {
+        AcademicYear active = academicYearRepo.findByActiveTrue()
+                .orElseThrow(() -> new BadRequestException("No active academic year is configured"));
+        if (application.getAcademicYear() == null || !active.getId().equals(application.getAcademicYear().getId())) {
+            throw new BadRequestException("Historical applications are read-only. Actions are allowed only for " + active.getYearName());
+        }
     }
 }

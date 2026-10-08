@@ -13,6 +13,7 @@ public class PaymentResponse {
     private LocalDateTime createdAt;
     private String studentName;
     private String rollNumber;
+    private String academicYear;
 
     public static PaymentResponse fromPayment(Payment p) {
         PaymentResponse r = new PaymentResponse();
@@ -23,6 +24,7 @@ public class PaymentResponse {
         r.setPaidAt(p.getPaidAt());
         r.setCreatedAt(p.getCreatedAt());
         if(p.getStudent()!=null){r.setStudentName(p.getStudent().getName());r.setRollNumber(p.getStudent().getRollNumber());}
+        if(p.getFee()!=null && p.getFee().getAcademicYear()!=null){r.setAcademicYear(p.getFee().getAcademicYear().getYearName());}
         return r;
     }
 
@@ -40,4 +42,5 @@ public class PaymentResponse {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public String getStudentName(){return studentName;} public void setStudentName(String v){studentName=v;}
     public String getRollNumber(){return rollNumber;} public void setRollNumber(String v){rollNumber=v;}
+    public String getAcademicYear(){return academicYear;} public void setAcademicYear(String v){academicYear=v;}
 }

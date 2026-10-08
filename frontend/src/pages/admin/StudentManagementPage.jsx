@@ -16,6 +16,7 @@ export default function StudentManagementPage() {
   const [branch, setBranch] = useState('');
   const [academicYears, setAcademicYears] = useState([]);
   const [academicYearId, setAcademicYearId] = useState('');
+  const [yearsLoaded, setYearsLoaded] = useState(false);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [viewingStudent, setViewingStudent] = useState(null);
@@ -24,13 +25,23 @@ export default function StudentManagementPage() {
   // Debounced search: 300ms after last keystroke before hitting the server
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const debounceTimer = useRef(null);
+  const requestVersion = useRef(0);
 
   useEffect(() => {
+    let active = true;
     api.get('/admin/academic-years').then((r) => {
+      if (!active) return;
       const years = r.data || [];
       setAcademicYears(years);
-      setAcademicYearId(String(years.find((year) => year.active)?.id || ''));
-    }).catch(() => addToast('Failed to load academic years', 'error'));
+      const activeYear = years.find((year) => year.active);
+      setAcademicYearId(String(activeYear?.id || (years[0]?.id ?? '')));
+      setYearsLoaded(true);
+    }).catch(() => {
+      if (!active) return;
+      addToast('Failed to load academic years', 'error');
+      setYearsLoaded(true);
+    });
+    return () => { active = false; };
   }, [addToast]);
 
   const handleSearchChange = (e) => {
@@ -41,6 +52,7 @@ export default function StudentManagementPage() {
   };
 
   const load = useCallback(async (signal) => {
+    const version = ++requestVersion.current;
     setLoading(true);
     try {
       const r = await api.get('/admin/students', {
@@ -51,23 +63,26 @@ export default function StudentManagementPage() {
           academicYearId: academicYearId || undefined
         }
       });
+      if (signal?.aborted || version !== requestVersion.current) return;
       const dataList = Array.isArray(r.data) ? r.data : (r.data?.content || []);
       setStudents(dataList);
       setTotal(Array.isArray(r.data) ? r.data.length : (r.data?.totalElements ?? dataList.length));
-    } catch (e) {
-      if (e.name !== 'CanceledError' && e.code !== 'ERR_CANCELED') {
-        addToast(e.response?.data?.message || 'Failed to load students', 'error');
-      }
-    } finally {
       setLoading(false);
+    } catch (e) {
+      if (signal?.aborted || e.name === 'CanceledError' || e.code === 'ERR_CANCELED') {
+        return;
+      }
+      addToast(e.response?.data?.message || 'Failed to load students', 'error');
+      if (version === requestVersion.current) setLoading(false);
     }
   }, [debouncedSearch, branch, academicYearId, addToast]);
 
   useEffect(() => {
+    if (!yearsLoaded) return;
     const controller = new AbortController();
     load(controller.signal);
     return () => controller.abort();
-  }, [load]);
+  }, [yearsLoaded, load]);
 
   const open = (s) => {
     setEditing(s || null);

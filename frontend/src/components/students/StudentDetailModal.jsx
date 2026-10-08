@@ -236,6 +236,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
                     <table className="min-w-full divide-y divide-gray-200 text-sm">
                       <thead className="bg-gray-50 text-xs font-semibold text-gray-600 uppercase">
                         <tr>
+                          <th className="px-4 py-2 text-left">Academic Year</th>
                           <th className="px-4 py-2 text-left">Bus Number</th>
                           <th className="px-4 py-2 text-left">Boarding Point</th>
                           <th className="px-4 py-2 text-left">Status</th>
@@ -244,6 +245,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
                       <tbody className="divide-y divide-gray-100 bg-white">
                         {assignments.map((a, i) => (
                           <tr key={a.id || i}>
+                            <td className="px-4 py-2.5 font-medium text-gray-700">{a.academicYear || '—'}</td>
                             <td className="px-4 py-2.5 font-bold text-blue-900">{a.bus || '—'}</td>
                             <td className="px-4 py-2.5 text-gray-800">{a.boardingPoint || '—'}</td>
                             <td className="px-4 py-2.5">

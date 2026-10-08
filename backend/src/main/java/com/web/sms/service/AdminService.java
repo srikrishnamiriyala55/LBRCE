@@ -45,6 +45,7 @@ public class AdminService {
     private final AuditService auditService;
     private final StudentAcademicDetailsRepository studentAcademicDetailsRepo;
     private final StudentAcademicDetailsService studentAcademicDetailsService;
+    private final NotificationService notificationService;
 
     public AdminService(StudentRepository studentRepo,
                         BusRepository busRepo,
@@ -57,7 +58,8 @@ public class AdminService {
                         PasswordEncoder passwordEncoder, TransferRequestRepository transferRepo,
                         PaymentRepository paymentRepo, NotificationRepository notificationRepo,
                         AuditService auditService, StudentAcademicDetailsRepository studentAcademicDetailsRepo,
-                        StudentAcademicDetailsService studentAcademicDetailsService) {
+                        StudentAcademicDetailsService studentAcademicDetailsService,
+                        NotificationService notificationService) {
         this.studentRepo = studentRepo;
         this.busRepo = busRepo;
         this.inchargeRepo = inchargeRepo;
@@ -73,7 +75,9 @@ public class AdminService {
         this.auditService = auditService;
         this.studentAcademicDetailsRepo = studentAcademicDetailsRepo;
         this.studentAcademicDetailsService = studentAcademicDetailsService;
+        this.notificationService = notificationService;
     }
+
 
     @Transactional
     public com.web.sms.dto.response.BusResponse assignIncharge(Long busId,Long inchargeId,String actor){
@@ -111,21 +115,59 @@ public class AdminService {
 
     public DashboardResponse getDashboard() {
         DashboardResponse res = new DashboardResponse();
-        
+
         long totalStudents = studentRepo.count();
         long totalBuses = busRepo.count();
         long activeBuses = busRepo.countByStatus(EntityStatus.ACTIVE);
         long totalIncharges = inchargeRepo.count();
-        
-        long pendingApplications = applicationRepo.countByStatus(ApplicationStatus.PENDING);
         long totalCapacity = busRepo.sumActiveCapacity();
-        long occupiedSeats = allocationRepo.countByStatus(EntityStatus.ACTIVE);
+
+        // Scope operational metrics to the active academic year when one exists
+        java.util.Optional<com.web.sms.entity.AcademicYear> activeYearOpt = academicYearRepo.findByActiveTrue();
+        final Long activeYearId = activeYearOpt.map(com.web.sms.entity.AcademicYear::getId).orElse(null);
+        res.put("activeAcademicYear", activeYearOpt.map(com.web.sms.entity.AcademicYear::getYearName).orElse("—"));
+
+        long pendingApplications = activeYearId != null
+                ? applicationRepo.findAllForAdminList().stream()
+                        .filter(a -> a.getAcademicYear() != null && a.getAcademicYear().getId().equals(activeYearId)
+                                && a.getStatus() == ApplicationStatus.PENDING).count()
+                : applicationRepo.countByStatus(ApplicationStatus.PENDING);
+
+        long occupiedSeats = activeYearId != null
+                ? allocationRepo.findByAcademicYearIdAndStatus(activeYearId, EntityStatus.ACTIVE).size()
+                : allocationRepo.countByStatus(EntityStatus.ACTIVE);
+
+        long passesGenerated = activeYearId != null
+                ? passRepo.findByAcademicYearIdAndStatus(activeYearId, PassStatus.ACTIVE).size()
+                : passRepo.countByStatus(PassStatus.ACTIVE);
+
+        Long totalFeeCollection = activeYearId != null
+                ? feeRepo.findAll().stream()
+                        .filter(f -> f.getAcademicYear() != null && f.getAcademicYear().getId().equals(activeYearId))
+                        .mapToLong(f -> f.getPaidAmount() != null ? f.getPaidAmount() : 0L).sum()
+                : feeRepo.sumTotalPaidAmount();
 
         long vacancy = Math.max(0, totalCapacity - occupiedSeats);
 
-        long passesGenerated = passRepo.countByStatus(PassStatus.ACTIVE);
-
-        Long totalFeeCollection = feeRepo.sumTotalPaidAmount();
+        // Renewal pending: students who had an allocation in any previous year but have no allocation or
+        // active application in the current year
+        long renewalPending = 0;
+        if (activeYearId != null) {
+            java.util.Set<Long> allocatedThisYear = allocationRepo.findByAcademicYearIdAndStatus(activeYearId, EntityStatus.ACTIVE)
+                    .stream().map(a -> a.getStudent().getId()).collect(java.util.stream.Collectors.toSet());
+            java.util.Set<Long> appliedThisYear = applicationRepo.findAllForAdminList().stream()
+                    .filter(a -> a.getAcademicYear() != null && a.getAcademicYear().getId().equals(activeYearId)
+                            && (a.getStatus() == ApplicationStatus.PENDING || a.getStatus() == ApplicationStatus.UNDER_REVIEW
+                                    || a.getStatus() == ApplicationStatus.APPROVED))
+                    .map(a -> a.getStudent().getId()).collect(java.util.stream.Collectors.toSet());
+            // Students with any allocation in the system that is NOT in the current year
+            java.util.Set<Long> hadPreviousAllocation = allocationRepo.findAll().stream()
+                    .filter(a -> !a.getAcademicYear().getId().equals(activeYearId))
+                    .map(a -> a.getStudent().getId()).collect(java.util.stream.Collectors.toSet());
+            renewalPending = hadPreviousAllocation.stream()
+                    .filter(sId -> !allocatedThisYear.contains(sId) && !appliedThisYear.contains(sId)).count();
+        }
+        res.put("renewalPending", renewalPending);
 
         res.put("totalStudents", totalStudents);
         res.put("totalBuses", totalBuses);
@@ -138,19 +180,40 @@ public class AdminService {
         res.put("passesGenerated", passesGenerated);
         res.put("totalFeeCollection", totalFeeCollection != null ? totalFeeCollection : 0L);
         res.put("studentsWithTransportation", occupiedSeats);
-        res.put("studentsWithoutTransportation", Math.max(0,totalStudents-occupiedSeats));
-        res.put("approvedApplications", applicationRepo.countByStatus(ApplicationStatus.APPROVED));
-        res.put("rejectedApplications", applicationRepo.countByStatus(ApplicationStatus.REJECTED));
-        res.put("inactiveBuses", totalBuses-activeBuses);
+        res.put("studentsWithoutTransportation", Math.max(0, totalStudents - occupiedSeats));
+        res.put("approvedApplications", activeYearId != null
+                ? applicationRepo.findAllForAdminList().stream()
+                        .filter(a -> a.getAcademicYear() != null && a.getAcademicYear().getId().equals(activeYearId)
+                                && a.getStatus() == ApplicationStatus.APPROVED).count()
+                : applicationRepo.countByStatus(ApplicationStatus.APPROVED));
+        res.put("rejectedApplications", activeYearId != null
+                ? applicationRepo.findAllForAdminList().stream()
+                        .filter(a -> a.getAcademicYear() != null && a.getAcademicYear().getId().equals(activeYearId)
+                                && a.getStatus() == ApplicationStatus.REJECTED).count()
+                : applicationRepo.countByStatus(ApplicationStatus.REJECTED));
+        res.put("inactiveBuses", totalBuses - activeBuses);
         res.put("fullBuses", busRepo.countFullBuses());
         res.put("activeIncharges", inchargeRepo.countByStatusIgnoreCase("ACTIVE"));
         res.put("inactiveIncharges", inchargeRepo.countByStatusIgnoreCase("INACTIVE"));
         res.put("transferRequested", transferRepo.countByStatus(TransferStatus.TRANSFER_REQUESTED));
         res.put("waitingNewIncharge", transferRepo.countByStatus(TransferStatus.OLD_INCHARGE_APPROVED));
         res.put("completedTransfers", transferRepo.countByStatus(TransferStatus.TRANSFER_COMPLETED));
-        res.put("rejectedTransfers", transferRepo.countByStatus(TransferStatus.OLD_INCHARGE_REJECTED)+transferRepo.countByStatus(TransferStatus.NEW_INCHARGE_REJECTED));
-        long expected=feeRepo.sumTotalExpected(); res.put("totalExpectedFees",expected);res.put("pendingFeeAmount",Math.max(0,expected-(totalFeeCollection==null?0:totalFeeCollection)));res.put("passEligibleStudents",feeRepo.countByPassEligibleTrue());
-        res.put("expiredOrRevokedPasses",passRepo.countByStatus(PassStatus.EXPIRED)+passRepo.countByStatus(PassStatus.REVOKED)+passRepo.countByStatus(PassStatus.INACTIVE));
+        res.put("rejectedTransfers", transferRepo.countByStatus(TransferStatus.OLD_INCHARGE_REJECTED)
+                + transferRepo.countByStatus(TransferStatus.NEW_INCHARGE_REJECTED));
+        long expected = activeYearId != null
+                ? feeRepo.findAll().stream()
+                        .filter(f -> f.getAcademicYear() != null && f.getAcademicYear().getId().equals(activeYearId))
+                        .mapToLong(f -> f.getTotalAmount() != null ? f.getTotalAmount() : 0L).sum()
+                : feeRepo.sumTotalExpected();
+        res.put("totalExpectedFees", expected);
+        res.put("pendingFeeAmount", Math.max(0, expected - (totalFeeCollection == null ? 0 : totalFeeCollection)));
+        res.put("passEligibleStudents", activeYearId != null
+                ? feeRepo.findAll().stream()
+                        .filter(f -> f.getAcademicYear() != null && f.getAcademicYear().getId().equals(activeYearId)
+                                && f.isPassEligible()).count()
+                : feeRepo.countByPassEligibleTrue());
+        res.put("expiredOrRevokedPasses", passRepo.countByStatus(PassStatus.EXPIRED)
+                + passRepo.countByStatus(PassStatus.REVOKED) + passRepo.countByStatus(PassStatus.INACTIVE));
         return res;
     }
 
@@ -306,13 +369,18 @@ public class AdminService {
         // A rollover closes operational access for the old year. Students keep
         // their accounts but must submit a new application in the new year.
         AcademicYear current = academicYearRepo.findByActiveTrue().orElse(null);
+        java.util.List<String> renewalRollNumbers = new java.util.ArrayList<>();
         if (current != null) {
             long pending = applicationRepo.findAllForAdminList().stream()
                     .filter(a -> a.getAcademicYear().getId().equals(current.getId()))
                     .filter(a -> a.getStatus() == ApplicationStatus.PENDING || a.getStatus() == ApplicationStatus.UNDER_REVIEW).count();
             if (pending > 0) throw new BadRequestException("Resolve " + pending + " pending application(s) before closing " + current.getYearName());
             LocalDateTime now = LocalDateTime.now();
-            allocationRepo.findByAcademicYearIdAndStatus(current.getId(), EntityStatus.ACTIVE).forEach(a -> { a.setStatus(EntityStatus.INACTIVE); a.setDeactivatedAt(now); });
+            allocationRepo.findByAcademicYearIdAndStatus(current.getId(), EntityStatus.ACTIVE).forEach(a -> {
+                renewalRollNumbers.add(a.getStudent().getRollNumber());
+                a.setStatus(EntityStatus.INACTIVE);
+                a.setDeactivatedAt(now);
+            });
             passRepo.findByAcademicYearIdAndStatus(current.getId(), PassStatus.ACTIVE).forEach(p -> { p.setStatus(PassStatus.EXPIRED); p.setRevokedAt(now); });
             busRepo.findAll().forEach(bus -> { if (bus.getTotalSeats() != null) bus.setAvailableSeats(bus.getTotalSeats()); });
         }
@@ -331,8 +399,23 @@ public class AdminService {
         y.setActive(true);
         y.setCreatedAt(LocalDateTime.now());
 
-        return academicYearRepo.save(y);
+        AcademicYear saved = academicYearRepo.save(y);
+
+        // Notify all students who had a bus allocation in the previous year to renew
+        String newYearName = saved.getYearName();
+        renewalRollNumbers.forEach(rollNumber ->
+                notificationService.createNotification(
+                        rollNumber,
+                        "Bus Renewal Required for " + newYearName,
+                        "A new academic year (" + newYearName + ") has been activated. Your previous bus pass has expired. " +
+                        "Please renew your bus application for the new academic year. Contact the transport office if your academic details are not yet registered.",
+                        "RENEWAL"
+                )
+        );
+
+        return saved;
     }
+
 
     @Transactional
     public StudentProfileResponse setStudentAcademicDetails(Long studentId, Long academicYearId, StudentAcademicDetailsRequest request, String actor) {

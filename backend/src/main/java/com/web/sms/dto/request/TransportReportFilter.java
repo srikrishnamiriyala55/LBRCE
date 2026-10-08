@@ -1,6 +1,7 @@
 package com.web.sms.dto.request;
 
 public class TransportReportFilter {
+    private Long academicYearId;
     private String busNumber;
     private String name;
     private String rollNumber;
@@ -12,6 +13,8 @@ public class TransportReportFilter {
     private String transferStatus;
     private String department;
     private Long minimumRemaining;
+
+    public Long getAcademicYearId(){return academicYearId;} public void setAcademicYearId(Long v){academicYearId=v;}
 
     public String getBusNumber(){return busNumber;} public void setBusNumber(String v){busNumber=v;}
     public String getName(){return name;} public void setName(String v){name=v;}

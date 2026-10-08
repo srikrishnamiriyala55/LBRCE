@@ -45,10 +45,12 @@ export default function AdminApplicationsPage() {
   const [summary, setSummary] = useState({});
   const [academicYears, setAcademicYears] = useState([]);
   const [academicYearId, setAcademicYearId] = useState('');
+  const [yearsLoaded, setYearsLoaded] = useState(false);
   const { addToast } = useToast();
 
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const debounceTimer = useRef(null);
+  const requestVersion = useRef(0);
   const handleSearchChange = (e) => {
     const v = e.target.value;
     setSearch(v);
@@ -57,11 +59,20 @@ export default function AdminApplicationsPage() {
   };
 
   useEffect(() => {
+    let active = true;
     api.get('/admin/academic-years').then((response) => {
+      if (!active) return;
       const years = response.data || [];
       setAcademicYears(years);
-      setAcademicYearId(String(years.find((year) => year.active)?.id || ''));
-    }).catch(() => addToast('Failed to load academic years', 'error'));
+      const activeYear = years.find((year) => year.active);
+      setAcademicYearId(String(activeYear?.id || (years[0]?.id ?? '')));
+      setYearsLoaded(true);
+    }).catch(() => {
+      if (!active) return;
+      addToast('Failed to load academic years', 'error');
+      setYearsLoaded(true);
+    });
+    return () => { active = false; };
   }, [addToast]);
 
   // Keep URL in sync with status filter
@@ -75,28 +86,44 @@ export default function AdminApplicationsPage() {
   };
 
   const load = useCallback(async (signal) => {
+    const version = ++requestVersion.current;
     setLoading(true);
     try {
-      const applications = await api.get('/admin/applications', {
-        signal,
-        params: { search: debouncedSearch.trim() || undefined, status: status || undefined, academicYearId: academicYearId || undefined },
-      });
-      setRows(Array.isArray(applications.data) ? applications.data : (applications.data?.content || []));
-      const [busResult, summaryResult] = await Promise.allSettled([
+      const [applications, busResult, summaryResult] = await Promise.allSettled([
+        api.get('/admin/applications', {
+          signal,
+          params: { search: debouncedSearch.trim() || undefined, status: status || undefined, academicYearId: academicYearId || undefined },
+        }),
         api.get('/admin/buses', { signal }),
         api.get('/admin/applications/summary', { signal, params: { academicYearId: academicYearId || undefined } }),
       ]);
+      if (signal?.aborted || version !== requestVersion.current) return;
+      if (applications.status === 'rejected') {
+        const error = applications.reason;
+        if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') return;
+        addToast(error?.response?.data?.message || 'Failed to load applications', 'error');
+      } else {
+        const data = applications.value.data;
+        setRows(Array.isArray(data) ? data : (data?.content || []));
+      }
       if (busResult.status === 'fulfilled') setBuses(busResult.value.data || []);
       if (summaryResult.status === 'fulfilled') setSummary(summaryResult.value.data || {});
-    } catch (error) {
-      if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED')
-        addToast(error.response?.data?.message || 'Failed to load applications', 'error');
-    } finally {
       setLoading(false);
+    } catch (error) {
+      if (signal?.aborted || error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
+        return;
+      }
+      addToast(error?.response?.data?.message || 'Failed to load applications', 'error');
+      if (version === requestVersion.current) setLoading(false);
     }
   }, [status, debouncedSearch, academicYearId, addToast]);
 
-  useEffect(() => { const c = new AbortController(); load(c.signal); return () => c.abort(); }, [load]);
+  useEffect(() => {
+    if (!yearsLoaded) return;
+    const c = new AbortController();
+    load(c.signal);
+    return () => c.abort();
+  }, [yearsLoaded, load]);
 
   const openDecision = (row, nextAction) => {
     setCurrent(row);

@@ -12,7 +12,7 @@ const buildInitialFilters = (urlStatus) => ({
   search: '',
   status: urlStatus || 'PENDING',
   boardingPoint: '',
-  academicYear: '',
+  academicYearId: '',
 });
 
 export default function ApplicationManagementPage() {
@@ -27,14 +27,37 @@ export default function ApplicationManagementPage() {
   const [actionType, setActionType] = useState('');
   const [remarks, setRemarks] = useState('');
   const [summary, setSummary] = useState({});
+  const [academicYears, setAcademicYears] = useState([]);
+  const [yearsLoaded, setYearsLoaded] = useState(false);
   const { addToast } = useToast();
 
-  const fetchApplications = async () => {
+  useEffect(() => {
+    let active = true;
+    api.get('/incharge/academic-years').then((r) => {
+      if (!active) return;
+      const years = r.data || [];
+      setAcademicYears(years);
+      const activeYear = years.find((y) => y.active);
+      if (activeYear) {
+        setFilters((prev) => ({ ...prev, academicYearId: String(activeYear.id) }));
+      }
+      setYearsLoaded(true);
+    }).catch(() => {
+      if (!active) return;
+      addToast('Failed to load academic years', 'error');
+      setYearsLoaded(true);
+    });
+    return () => { active = false; };
+  }, [addToast]);
+
+  const fetchApplications = useCallback(async () => {
     setLoading(true);
     try {
+      const params = { unpaged: true };
+      if (filters.academicYearId) params.academicYearId = filters.academicYearId;
       const [response, summaryResponse] = await Promise.all([
-        api.get('/incharge/applications', { params: { unpaged: true } }),
-        api.get('/incharge/applications/summary'),
+        api.get('/incharge/applications', { params }),
+        api.get('/incharge/applications/summary', { params: { academicYearId: filters.academicYearId || undefined } }),
       ]);
       setApplications(response.data.content || response.data || []);
       setSummary(summaryResponse.data || {});
@@ -43,9 +66,12 @@ export default function ApplicationManagementPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters.academicYearId, addToast]);
 
-  useEffect(() => { fetchApplications(); }, []);
+  useEffect(() => {
+    if (!yearsLoaded) return;
+    fetchApplications();
+  }, [yearsLoaded, fetchApplications]);
 
   // Keep URL in sync when status filter changes
   const handleStatusChange = (newStatus) => {
@@ -62,8 +88,7 @@ export default function ApplicationManagementPage() {
     const haystack = [row.studentName, row.rollNumber, row.busNumber, point, row.academicYear, row.status].join(' ').toLowerCase();
     return (!filters.search || haystack.includes(filters.search.toLowerCase()))
       && (!filters.status || row.status === filters.status)
-      && (!filters.boardingPoint || point.toLowerCase().includes(filters.boardingPoint.toLowerCase()))
-      && (!filters.academicYear || String(row.academicYear || '').toLowerCase().includes(filters.academicYear.toLowerCase()));
+      && (!filters.boardingPoint || point.toLowerCase().includes(filters.boardingPoint.toLowerCase()));
   }), [applications, filters]);
 
   const decide = async () => {
@@ -181,12 +206,16 @@ export default function ApplicationManagementPage() {
           value={filters.boardingPoint}
           onChange={e => setFilters({ ...filters, boardingPoint: e.target.value })}
         />
-        <input
+        <select
           className="input-field"
-          placeholder="Academic year"
-          value={filters.academicYear}
-          onChange={e => setFilters({ ...filters, academicYear: e.target.value })}
-        />
+          value={filters.academicYearId}
+          onChange={e => setFilters({ ...filters, academicYearId: e.target.value })}
+        >
+          <option value="">All academic years</option>
+          {academicYears.map(year => (
+            <option key={year.id} value={year.id}>{year.yearName}{year.active ? ' (Active)' : ''}</option>
+          ))}
+        </select>
       </div>
 
       <DataTable columns={columns} data={filtered} loading={loading} searchable={false} />

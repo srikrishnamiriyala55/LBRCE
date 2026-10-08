@@ -17,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import com.web.sms.repository.StudentRepository;
 import com.web.sms.repository.TransportAllocationRepository;
+import com.web.sms.repository.PaymentRepository;
 import com.web.sms.enums.EntityStatus;
 import com.web.sms.exception.ResourceNotFoundException;
 
@@ -35,11 +36,16 @@ public class StudentController {
     private final NotificationService notificationService;
     private final StudentRepository studentRepository;
     private final TransportAllocationRepository allocationRepository;
+    private final com.web.sms.repository.AcademicYearRepository academicYearRepository;
+    private final PaymentRepository paymentRepository;
 
     public StudentController(StudentService studentService, BusService busService,
                              ApplicationService applicationService, FeeService feeService,
                              PassService passService, TransferService transferService,
-                             NotificationService notificationService, StudentRepository studentRepository, TransportAllocationRepository allocationRepository) {
+                             NotificationService notificationService, StudentRepository studentRepository,
+                             TransportAllocationRepository allocationRepository,
+                             com.web.sms.repository.AcademicYearRepository academicYearRepository,
+                             PaymentRepository paymentRepository) {
         this.studentService = studentService;
         this.busService = busService;
         this.applicationService = applicationService;
@@ -49,6 +55,8 @@ public class StudentController {
         this.notificationService = notificationService;
         this.studentRepository = studentRepository;
         this.allocationRepository = allocationRepository;
+        this.academicYearRepository = academicYearRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     private UserPrincipal getCurrentUser() {
@@ -79,7 +87,11 @@ public class StudentController {
     }
 
     @GetMapping("/incharge/photo") public ResponseEntity<byte[]> inchargePhoto() {
-        var allocation = allocationRepository.findByStudentId(getCurrentUser().getId()).stream().filter(a -> a.getStatus() == EntityStatus.ACTIVE).findFirst().orElseThrow(() -> new ResourceNotFoundException("Assigned bus not found"));
+        var activeYear = academicYearRepository.findByActiveTrue()
+                .orElseThrow(() -> new ResourceNotFoundException("No active academic year configured"));
+        var allocation = allocationRepository.findByStudentIdAndAcademicYearIdAndStatus(
+                getCurrentUser().getId(), activeYear.getId(), EntityStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Assigned bus not found for the active academic year"));
         var incharge = allocation.getBus().getIncharge();
         if (incharge == null || incharge.getPhotoData() == null || incharge.getPhotoData().length == 0) throw new ResourceNotFoundException("In-Charge photo not found");
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(incharge.getPhotoContentType())).body(incharge.getPhotoData());
@@ -114,6 +126,16 @@ public class StudentController {
     @PostMapping("/payments")
     public PaymentResponse initiatePayment(@Valid @RequestBody PaymentRequest req) {
         return feeService.processPayment(getCurrentUser().getId(), req);
+    }
+
+    @GetMapping("/payments")
+    public List<PaymentResponse> getPaymentHistory(@RequestParam(required = false) Long academicYearId) {
+        return paymentRepository.findByStudentIdOrderByCreatedAtDesc(getCurrentUser().getId()).stream()
+                .filter(payment -> academicYearId == null
+                        || (payment.getFee() != null && payment.getFee().getAcademicYear() != null
+                        && payment.getFee().getAcademicYear().getId().equals(academicYearId)))
+                .map(PaymentResponse::fromPayment)
+                .toList();
     }
 
     @GetMapping("/pass")
@@ -164,5 +186,10 @@ public class StudentController {
     @PutMapping("/notifications/{id}/read")
     public void markNotificationRead(@PathVariable Long id) {
         notificationService.markAsRead(id, getCurrentUser().getUsername());
+    }
+
+    @GetMapping("/academic-years")
+    public List<com.web.sms.entity.AcademicYear> academicYears() {
+        return academicYearRepository.findAll();
     }
 }

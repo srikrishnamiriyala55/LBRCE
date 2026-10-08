@@ -5,7 +5,7 @@ Web application for managing LBRCE student bus applications, allocations, fees, 
 ## Technology
 
 - Backend: Java 21, Spring Boot 4.1.1, Spring MVC, Spring Security, Spring Data JPA and MySQL 8
-- Authentication: stateless JWT authentication, BCrypt password hashes and role-based authorization
+- Authentication: stateless JWT authentication, BCrypt password hashes, login throttling and role-based authorization
 - Frontend: React 18, Vite 5, React Router, Axios and Tailwind CSS
 - Responsive UI: mobile navigation, adaptive forms/cards/modals and horizontally scrollable data tables
 - Reports: Apache POI (`.xlsx`) and OpenPDF (`.pdf`)
@@ -15,11 +15,12 @@ Web application for managing LBRCE student bus applications, allocations, fees, 
 
 ### Student
 
-- Create an active student account with complete personal, academic and parent details
-- View and update permitted profile fields
+- Register with complete personal, academic, parent/contact and photo details
+- Verify email by OTP during registration when `OTP_ENABLED=true`; OTPs expire after five minutes
+- View a read-only profile, including the registered photo
 - View active buses and boarding points
-- Review/update the complete student profile and submit one bus application with a recent photo for the active academic year
-- Track application history and status
+- Submit a new or renewal bus application for each academic year; the application contains only bus and boarding-point choices
+- Track application and transfer history by academic year
 - View fee balance and initiate an eligible payment
 - View the active digital bus pass after reaching the configured payment threshold
 - Request a bus transfer only after receiving an active allocation
@@ -27,7 +28,7 @@ Web application for managing LBRCE student bus applications, allocations, fees, 
 
 ### In-charge
 
-- Sign in with the assigned ID and password
+- Sign in with the assigned ID and password; email OTP is supported when enabled
 - Access only the bus assigned to the authenticated In-charge
 - View assigned-bus capacity and dashboard statistics
 - Approve or reject applications belonging to the assigned bus
@@ -41,7 +42,7 @@ In-charge authorization is enforced by the backend. Changing frontend URLs or re
 
 ### Admin
 
-- Sign in with the assigned ID and password
+- Sign in with the assigned ID and password; email OTP is supported when enabled
 - View organization-wide dashboard statistics
 - Manage buses with starting/ending points and bus-specific boarding points
 - Activate or deactivate buses and boarding points with relationship safety checks
@@ -52,6 +53,19 @@ In-charge authorization is enforced by the backend. Changing frontend URLs or re
 - Manage academic years
 - Inspect audit logs and individual student transport history
 - Filter organization-wide student transport reports and export them to Excel or PDF
+
+## Academic-year records
+
+The system stores a student's branch, study year and semester separately for every academic year in `student_academic_details`. The student account remains permanent, while a new year never overwrites historical academic data.
+
+- Admin creates academic years and marks exactly one as active.
+- Students submit a new or renewal application for the active academic year.
+- Allocations, fees, payments, passes, transfers and reports are associated with an academic year.
+- Admin and In-charge operational pages provide academic-year filters. Reports require an academic-year selection.
+- Student application and transfer history can be filtered by academic year.
+- Student fee history includes the individual payment transactions recorded for each academic year.
+- Historical applications and transfers are read-only; workflow decisions are permitted only for the active academic year.
+- The included rollover migration preserves 2025-26 as history, creates student academic snapshots for 2026-27 and activates 2026-27.
 
 ## Transport report filters
 
@@ -95,6 +109,7 @@ LBRCE/
 |       |   |-- java/com/web/sms/
 |       |   |   |-- BtmsApplication.java       # Spring Boot entry point
 |       |   |   |-- config/
+|       |   |   |   |-- CacheControlFilter.java # API cache-control response headers
 |       |   |   |   |-- DataInitializer.java  # Optional local demo-data initializer
 |       |   |   |   `-- SecurityConfig.java   # Stateless JWT, CORS and role security
 |       |   |   |-- controller/
@@ -107,17 +122,21 @@ LBRCE/
 |       |   |   |-- dto/
 |       |   |   |   |-- request/
 |       |   |   |   |   |-- AssignInchargeRequest.java      # In-charge assignment payload
+|       |   |   |   |   |-- AdminManualPaymentRequest.java   # Admin-recorded fee payment payload
 |       |   |   |   |   |-- BusApplicationRequest.java      # Bus application payload
 |       |   |   |   |   |-- CreateAcademicYearRequest.java  # Academic-year payload
 |       |   |   |   |   |-- CreateBoardingPointRequest.java # Boarding-point payload
 |       |   |   |   |   |-- CreateBusRequest.java           # Bus creation/update payload
 |       |   |   |   |   |-- CreateInchargeRequest.java      # In-charge creation/update payload
 |       |   |   |   |   |-- CreateStudentRequest.java       # Admin student-creation payload
+|       |   |   |   |   |-- LoginOtpVerificationRequest.java # Login OTP verification payload
 |       |   |   |   |   |-- LoginRequest.java               # Login credentials payload
+|       |   |   |   |   |-- OtpRequest.java                 # OTP send/resend payload
 |       |   |   |   |   |-- PaymentRequest.java             # Student payment payload
 |       |   |   |   |   |-- ReorderBoardingPointsRequest.java # Complete bus-stop sequence payload
 |       |   |   |   |   |-- StatusUpdateRequest.java        # Status/remarks update payload
 |       |   |   |   |   |-- StudentRegistrationRequest.java # Public student signup payload
+|       |   |   |   |   |-- StudentAcademicDetailsRequest.java # Per-year student data payload
 |       |   |   |   |   |-- TransferRequestDto.java         # Bus-transfer request payload
 |       |   |   |   |   |-- TransportReportFilter.java      # Report filter parameters
 |       |   |   |   |   |-- UpdateApplicationRequest.java   # Admin application-correction payload
@@ -151,6 +170,7 @@ LBRCE/
 |       |   |   |   |-- Notification.java        # User notification entity
 |       |   |   |   |-- Payment.java             # Payment transaction entity
 |       |   |   |   |-- Student.java             # Student account/profile entity
+|       |   |   |   |-- StudentAcademicDetails.java # Per-year academic record entity
 |       |   |   |   |-- TransferRequest.java     # Two-stage transfer entity
 |       |   |   |   `-- TransportAllocation.java # Active student/bus allocation
 |       |   |   |-- enums/
@@ -165,7 +185,8 @@ LBRCE/
 |       |   |   |   |-- BadRequestException.java     # Invalid business request error
 |       |   |   |   |-- ForbiddenException.java      # Resource authorization error
 |       |   |   |   |-- GlobalExceptionHandler.java # Central exception-to-response mapping
-|       |   |   |   `-- ResourceNotFoundException.java # Missing record error
+|       |   |   |   |-- ResourceNotFoundException.java # Missing record error
+|       |   |   |   `-- TooManyRequestsException.java # Login-rate-limit response
 |       |   |   |-- repository/
 |       |   |   |   |-- AcademicYearRepository.java       # Academic-year queries
 |       |   |   |   |-- AdminRepository.java              # Admin account queries
@@ -179,6 +200,7 @@ LBRCE/
 |       |   |   |   |-- NotificationRepository.java       # Notification queries
 |       |   |   |   |-- PaymentRepository.java            # Payment queries and locks
 |       |   |   |   |-- StudentRepository.java            # Student and report queries
+|       |   |   |   |-- StudentAcademicDetailsRepository.java # Per-year academic queries
 |       |   |   |   |-- TransferRequestRepository.java    # Transfer queries and locks
 |       |   |   |   `-- TransportAllocationRepository.java # Allocation queries and locks
 |       |   |   |-- security/
@@ -197,14 +219,20 @@ LBRCE/
 |       |   |       |-- InchargeOperationsService.java # Assigned-bus student operations
 |       |   |       |-- InchargeService.java           # In-charge service contract
 |       |   |       |-- InchargeServiceImpl.java       # In-charge account implementation
+|       |   |       |-- LoginAttemptService.java        # Brute-force login protection
 |       |   |       |-- NotificationService.java       # Notification creation/read state
+|       |   |       |-- OtpService.java                # Server-side OTP provider integration
 |       |   |       |-- PassService.java               # Pass retrieval and verification
 |       |   |       |-- StudentService.java            # Student service contract
+|       |   |       |-- StudentAcademicDetailsService.java # Per-year academic record service
 |       |   |       |-- StudentServiceImpl.java        # Student profile and dashboard logic
 |       |   |       |-- TransferService.java           # Two-stage transfer workflow
 |       |   |       `-- TransportReportService.java    # Filtered Excel/PDF report generation
 |       |   `-- resources/
-|       |       `-- application.properties             # Ports, DB, JWT, CORS and feature settings
+|       |       |-- application.properties             # Ports, DB, JWT, OTP, CORS and feature settings
+|       |       `-- db/migration/
+|       |           |-- V1__add_student_academic_details.sql # Introduces per-year student academic records
+|       |           `-- V2__activate_2026_27_academic_year.sql # Safe 2026-27 rollover and active-year migration
 |       `-- test/java/com/web/sms/
 |           `-- BusManagementApplicationTests.java     # Spring context integration test
 |-- frontend/                                          # React single-page application
@@ -222,6 +250,8 @@ LBRCE/
 |       |-- index.css                                 # Global and Tailwind styles
 |       |-- components/
 |       |   |-- ProtectedRoute.jsx                    # Login and role route guard
+|       |   |-- applications/
+|       |   |   `-- StudentApplicationDetailModal.jsx # Application review detail modal
 |       |   |-- common/
 |       |   |   |-- ConfirmDialog.jsx                # Reusable confirmation modal
 |       |   |   |-- DashboardCard.jsx                # Dashboard statistic card
@@ -242,11 +272,14 @@ LBRCE/
 |       |   |-- reports/
 |       |   |   `-- TransportReportTable.jsx         # Filters, table and Excel/PDF downloads
 |       |   `-- students/
-|       |       `-- StudentFormModal.jsx             # Shared complete student create/edit form
+|       |       |-- InchargeStudentDetailModal.jsx    # Assigned-student detail modal
+|       |       |-- StudentDetailModal.jsx            # Admin student detail/history modal
+|       |       `-- StudentFormModal.jsx              # Shared complete student create/edit form
 |       |-- contexts/
 |       |   `-- AuthContext.jsx                      # Login state and JWT persistence
 |       |-- pages/
-|       |   |-- Login.jsx                            # Login and student signup screen
+|       |   |-- Login.jsx                            # Login, OTP and student signup screen
+|       |   |-- VerifyPassPage.jsx                   # Public QR bus-pass verification screen
 |       |   |-- admin/
 |       |   |   |-- AcademicYearPage.jsx            # Academic-year management
 |       |   |   |-- AdminApplicationsPage.jsx        # All bus applications
@@ -278,10 +311,13 @@ LBRCE/
 |       |       |-- NotificationsPage.jsx            # Personal notifications
 |       |       |-- StudentDashboardPage.jsx         # Student status dashboard
 |       |       |-- StudentLayout.jsx                # Student navigation configuration
-|       |       |-- StudentProfilePage.jsx           # Student profile view/edit
+|       |       |-- StudentProfilePage.jsx           # Read-only student profile view
 |       |       `-- TransferPage.jsx                 # Submit and track transfers
 |       `-- utils/
-|           `-- axios.js                             # API base URL, JWT and 401 handling
+|           |-- academicOptions.js                   # Standard academic dropdown values
+|           |-- axios.js                             # API base URL, JWT and 401 handling
+|           |-- currency.js                          # Indian-rupee formatting
+|           `-- pdfDownload.js                       # Browser PDF-download helper
 `-- README.md                                        # Setup, architecture and workflow guide
 ```
 
@@ -304,13 +340,15 @@ Create the database before starting the backend:
 CREATE DATABASE lbrcebtms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-The repository does not contain database backups or ad-hoc SQL files. The backend connects to the configured schema through JPA. Production uses these 14 application tables:
+The repository does not contain database backups or ad-hoc SQL files. The backend connects to the configured schema through JPA and Flyway. Production uses these 15 application tables:
 
-`academic_year`, `admin`, `audit_log`, `boarding_points`, `bus`, `bus_application`, `bus_pass`, `fee`, `incharge`, `notification`, `payment`, `student`, `transfer_request`, and `transport_allocation`.
+`academic_year`, `admin`, `audit_log`, `boarding_points`, `bus`, `bus_application`, `bus_pass`, `fee`, `incharge`, `notification`, `payment`, `student`, `student_academic_details`, `transfer_request`, and `transport_allocation`.
+
+Flyway also owns the technical `flyway_schema_history` table. Do not delete it or the versioned migration files: they record which schema changes were safely applied and are needed when deploying to a new database.
 
 Legacy authentication, faculty, registration, complaint and transfer tables have been migrated or retired and removed. Student account deletion is an explicit admin-only permanent operation that first removes the student's dependent transport records in foreign-key-safe order; ordinary account suspension remains available through status changes.
 
-For local development, `JPA_DDL_AUTO=update` can create or update mapped tables. For staging and production, use `JPA_DDL_AUTO=validate` and apply reviewed, version-controlled migrations through the deployment process.
+For local development, staging and production, use `JPA_DDL_AUTO=validate`. Schema changes must be reviewed, version-controlled Flyway migrations; do not rely on automatic Hibernate schema updates.
 
 ## Backend configuration
 
@@ -326,20 +364,26 @@ JWT_EXPIRATION=86400000
 CORS_ALLOWED_ORIGINS=http://localhost:3000
 CORS_MAX_AGE_SECONDS=3600
 BCRYPT_STRENGTH=10
-LOGIN_MAX_FAILURES=10
+LOGIN_MAX_FAILURES=5
 LOGIN_BLOCK_MINUTES=15
 JPA_DDL_AUTO=validate
+FLYWAY_ENABLED=true
 PAYMENTS_AUTO_CONFIRM=false
 BTMS_SEED_ENABLED=false
 BTMS_SEED_ADMIN_PASSWORD=replace-only-when-local-seeding-is-enabled
 BTMS_SEED_INCHARGE_PASSWORD=replace-only-when-local-seeding-is-enabled
 BTMS_SEED_STUDENT_PASSWORD=replace-only-when-local-seeding-is-enabled
 PASS_VERIFICATION_URL=http://localhost:8089/api/public/verify-pass?token=
+OTP_ENABLED=false
+OTP_BASE_URL=https://your-otp-service.example
+OTP_API_KEY=set-only-in-deployment-secrets
 ```
 
 `PAYMENTS_AUTO_CONFIRM` must remain `false` outside explicit local demonstrations. `BTMS_SEED_ENABLED` must remain `false` for a real college database.
 
-`DB_USERNAME`, `DB_PASSWORD`, and `JWT_SECRET` are required at startup and intentionally have no committed fallback values. Keep them in operating-system or deployment secrets, never in source control. The login limiter temporarily blocks repeated failures from the same login-ID/address pair.
+Set `DB_USERNAME`, `DB_PASSWORD`, and `JWT_SECRET` as deployment secrets. Local database defaults exist only for developer convenience and must not be used in deployed environments. The login limiter temporarily blocks repeated failures from the same login-ID/address pair.
+
+To enable OTP, set `OTP_ENABLED=true` and configure `OTP_BASE_URL` and `OTP_API_KEY` only in deployment secrets. The browser never receives the OTP provider key.
 
 Start the backend:
 
@@ -356,6 +400,8 @@ cd backend
 ```
 
 The API runs at `http://localhost:8089`.
+
+If Maven reports a locked dependency JAR on Windows, stop the previous backend process and any Java build still running in VS Code, then rerun the command. Do not delete migrations or source files to work around a file lock.
 
 ## Frontend setup
 

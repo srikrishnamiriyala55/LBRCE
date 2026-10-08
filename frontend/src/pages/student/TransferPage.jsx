@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../utils/axios';
 import { useToast } from '../../components/common/Toast';
 import DataTable from '../../components/common/DataTable';
@@ -7,6 +7,7 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 const TransferPage = () => {
   const [transfers, setTransfers] = useState([]);
+  const [academicYear, setAcademicYear] = useState('');
   const [buses, setBuses] = useState([]);
   const [boardingPoints, setBoardingPoints] = useState([]);
   const [formData, setFormData] = useState({ requestedBusId: '', requestedBoardingPointId: '', reason: '' });
@@ -93,6 +94,7 @@ const TransferPage = () => {
 
   const columns = [
     { key: 'date', label: 'Date', render: (row) => row.requestedAt ? new Date(row.requestedAt).toLocaleDateString() : '—' },
+    { key: 'academicYear', label: 'Academic Year', render: (row) => row.academicYear || '—' },
     { key: 'currentBus', label: 'Current Bus', render: (row) => row.currentBusNumber },
     { key: 'newBus', label: 'Requested Bus', render: (row) => row.requestedBusNumber },
     { key: 'reason', label: 'Student Reason', render: (row) => row.reason || '—' },
@@ -137,6 +139,9 @@ const TransferPage = () => {
       }
     }
   ];
+
+  const academicYears = useMemo(() => [...new Set(transfers.map((row) => row.academicYear).filter(Boolean))], [transfers]);
+  const filteredTransfers = useMemo(() => academicYear ? transfers.filter((row) => row.academicYear === academicYear) : transfers, [transfers, academicYear]);
 
   return (
     <div className="space-y-6">
@@ -189,8 +194,17 @@ const TransferPage = () => {
       </div>
 
       <div className="card">
-        <h3 className="text-lg font-bold mb-4">Transfer History</h3>
-        <DataTable columns={columns} data={transfers} loading={loading} searchable={false} />
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <h3 className="text-lg font-bold">Transfer History</h3>
+          <div className="w-full sm:w-56">
+            <label className="mb-1 block text-sm font-medium text-gray-700">Academic Year</label>
+            <select className="input-field" value={academicYear} onChange={(event) => setAcademicYear(event.target.value)}>
+              <option value="">All academic years</option>
+              {academicYears.map((year) => <option key={year} value={year}>{year}</option>)}
+            </select>
+          </div>
+        </div>
+        <DataTable columns={columns} data={filteredTransfers} loading={loading} searchable={false} />
       </div>
 
       <ConfirmDialog

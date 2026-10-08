@@ -11,6 +11,9 @@ const TransferManagementPage = () => {
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
+  const [academicYears, setAcademicYears] = useState([]);
+  const [academicYearId, setAcademicYearId] = useState('');
+  const [yearsLoaded, setYearsLoaded] = useState(false);
   // Initialize from URL (e.g. ?status=TRANSFER_REQUESTED from dashboard card click)
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '');
 
@@ -21,8 +24,23 @@ const TransferManagementPage = () => {
   const { addToast } = useToast();
 
   useEffect(() => {
-    fetchTransfers();
-  }, []);
+    let active = true;
+    api.get('/incharge/academic-years').then((r) => {
+      if (!active) return;
+      const years = r.data || [];
+      setAcademicYears(years);
+      const activeYear = years.find((y) => y.active);
+      if (activeYear) {
+        setAcademicYearId(String(activeYear.id));
+      }
+      setYearsLoaded(true);
+    }).catch(() => {
+      if (!active) return;
+      addToast('Failed to load academic years', 'error');
+      setYearsLoaded(true);
+    });
+    return () => { active = false; };
+  }, [addToast]);
 
   const fetchTransfers = async () => {
     setLoading(true);
@@ -46,8 +64,14 @@ const TransferManagementPage = () => {
     }
   };
 
+  useEffect(() => {
+    if (!yearsLoaded) return;
+    fetchTransfers();
+  }, [yearsLoaded]);
+
   const filteredTransfers = useMemo(() => {
     const term = searchText.trim().toLowerCase();
+    const selectedYearName = academicYears.find(y => String(y.id) === academicYearId)?.yearName;
     return transfers.filter((t) => {
       const matchesSearch = !term ||
         (t.studentName || '').toLowerCase().includes(term) ||
@@ -57,9 +81,10 @@ const TransferManagementPage = () => {
         (t.reason || '').toLowerCase().includes(term) ||
         (t.remarks || '').toLowerCase().includes(term);
       const matchesStatus = !statusFilter || (t.status || '') === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesYear = !academicYearId || (selectedYearName && t.academicYear === selectedYearName) || String(t.academicYearId) === academicYearId;
+      return matchesSearch && matchesStatus && matchesYear;
     });
-  }, [transfers, searchText, statusFilter]);
+  }, [transfers, searchText, statusFilter, academicYearId, academicYears]);
 
   const handleAction = async () => {
     if(actionType==='REJECT'&&!remarks.trim()){addToast('A rejection reason is required','error');return;}
@@ -82,6 +107,7 @@ const TransferManagementPage = () => {
   const columns = [
     { key: 'studentName', label: 'Student Name', render: row => row.studentName || '—' },
     { key: 'studentRollNumber', label: 'Roll Number', render: row => row.studentRollNumber || '—' },
+    { key: 'academicYear', label: 'Academic Year', render: row => row.academicYear || '—' },
     { key: 'currentBus', label: 'Current Bus', render: row => row.currentBusNumber },
     { key: 'requestedBus', label: 'Requested Bus', render: row => row.requestedBusNumber },
     { key: 'reason', label: 'Reason' },
@@ -132,7 +158,7 @@ const TransferManagementPage = () => {
   return (
     <div className="card">
       <h2 className="text-xl font-bold mb-4">Transfer Requests</h2>
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
         <input
           type="text"
           className="input-field sm:col-span-2"
@@ -141,6 +167,17 @@ const TransferManagementPage = () => {
           onChange={(e) => setSearchText(e.target.value)}
           aria-label="Search transfers"
         />
+        <select
+          className="input-field"
+          value={academicYearId}
+          onChange={(e) => setAcademicYearId(e.target.value)}
+          aria-label="Filter by academic year"
+        >
+          <option value="">All academic years</option>
+          {academicYears.map((y) => (
+            <option key={y.id} value={y.id}>{y.yearName}{y.active ? ' (Active)' : ''}</option>
+          ))}
+        </select>
         <select
           className="input-field"
           value={statusFilter}

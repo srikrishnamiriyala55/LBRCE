@@ -10,6 +10,7 @@ const InchargeLayout = () => {
     { path: '/students', label: 'Students', icon: Users },
     { path: '/transfers', label: 'Transfers', icon: ArrowLeftRight },
     { path: '/fees', label: 'Fees', icon: CreditCard },
+    { path: '/payments', label: 'Payments', icon: CreditCard },
     { path: '/passes', label: 'Passes', icon: BadgeCheck },
     { path: '/reports', label: 'Reports', icon: BarChart3 },
     { path: '/notifications', label: 'Notifications', icon: Bell },

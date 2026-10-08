@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -6,6 +6,7 @@ import { useToast } from '../../components/common/Toast';
 
 const ApplicationHistoryPage = () => {
   const [data, setData] = useState([]);
+  const [academicYear, setAcademicYear] = useState('');
   const [loading, setLoading] = useState(true);
   const { addToast } = useToast();
 
@@ -32,6 +33,7 @@ const ApplicationHistoryPage = () => {
       const date = new Date(value);
       return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
     } },
+    { key: 'academicYear', label: 'Academic Year', render: (row) => row.academicYear || '—' },
     { key: 'busNumber', label: 'Bus Number', render: (row) => row.bus?.busNumber || row.busNumber },
     { key: 'boardingPoint', label: 'Boarding Point', render: (row) => row.boardingPoint?.stationName || row.boardingPointName },
     { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },
@@ -54,10 +56,20 @@ const ApplicationHistoryPage = () => {
     },
   ];
 
+  const academicYears = useMemo(() => [...new Set(data.map((row) => row.academicYear).filter(Boolean))], [data]);
+  const filteredData = useMemo(() => academicYear ? data.filter((row) => row.academicYear === academicYear) : data, [data, academicYear]);
+
   return (
     <div className="card">
       <h2 className="text-xl font-bold text-gray-800 mb-6">Application History</h2>
-      <DataTable columns={columns} data={data} loading={loading} searchable={false} />
+      <div className="mb-4 max-w-xs">
+        <label className="mb-1 block text-sm font-medium text-gray-700">Academic Year</label>
+        <select className="input-field" value={academicYear} onChange={(event) => setAcademicYear(event.target.value)}>
+          <option value="">All academic years</option>
+          {academicYears.map((year) => <option key={year} value={year}>{year}</option>)}
+        </select>
+      </div>
+      <DataTable columns={columns} data={filteredData} loading={loading} searchable={false} />
     </div>
   );
 };

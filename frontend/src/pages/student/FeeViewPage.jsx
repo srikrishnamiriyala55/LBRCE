@@ -5,6 +5,8 @@ import StatusBadge from '../../components/common/StatusBadge';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import Modal from '../../components/common/Modal';
 import { CreditCard, ShieldCheck } from 'lucide-react';
+import DataTable from '../../components/common/DataTable';
+import { formatINR } from '../../utils/currency';
 
 const FeeViewPage = () => {
   const [fees, setFees] = useState([]);
@@ -13,6 +15,8 @@ const FeeViewPage = () => {
   const [selectedFee, setSelectedFee] = useState(null);
   const [amountToPay, setAmountToPay] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [payments, setPayments] = useState([]);
+  const [academicYear, setAcademicYear] = useState('');
 
   const { addToast } = useToast();
 
@@ -22,8 +26,12 @@ const FeeViewPage = () => {
 
   const fetchFees = async () => {
     try {
-      const res = await api.get('/student/fees');
-      setFees(res.data);
+      const [feeResult, paymentResult] = await Promise.all([
+        api.get('/student/fees'),
+        api.get('/student/payments')
+      ]);
+      setFees(feeResult.data || []);
+      setPayments(paymentResult.data || []);
     } catch (err) {
       addToast('Failed to load fee details', 'error');
     } finally {
@@ -45,6 +53,17 @@ const FeeViewPage = () => {
 
   if (loading) return <LoadingSpinner />;
 
+  const years = [...new Set([...fees.map(f => f.academicYear), ...payments.map(p => p.academicYear)].filter(Boolean))];
+  const visibleFees = academicYear ? fees.filter(f => f.academicYear === academicYear) : fees;
+  const visiblePayments = academicYear ? payments.filter(p => p.academicYear === academicYear) : payments;
+  const paymentColumns = [
+    { key: 'createdAt', label: 'Date', render: row => new Date(row.paidAt || row.createdAt).toLocaleString() },
+    { key: 'academicYear', label: 'Academic Year' },
+    { key: 'orderId', label: 'Receipt / Order ID', render: row => row.orderId || '—' },
+    { key: 'amount', label: 'Amount', render: row => formatINR(row.amount) },
+    { key: 'status', label: 'Status', render: row => <StatusBadge status={row.status} /> }
+  ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -52,13 +71,21 @@ const FeeViewPage = () => {
         <p className="text-gray-500 text-sm">Review your allocated transit fee, payment history, and bus pass eligibility status</p>
       </div>
 
-      {fees.length === 0 ? (
+      <div className="card max-w-sm">
+        <label className="mb-1 block text-sm font-medium text-gray-700">Academic Year</label>
+        <select className="input-field" value={academicYear} onChange={event => setAcademicYear(event.target.value)}>
+          <option value="">All academic years</option>
+          {years.map(year => <option key={year} value={year}>{year}</option>)}
+        </select>
+      </div>
+
+      {visibleFees.length === 0 ? (
         <div className="card text-center text-gray-500 py-12">
           <p className="text-lg font-medium text-gray-700">No active transportation fee records found.</p>
           <p className="text-sm text-gray-500 mt-1">Once your bus application is approved by the incharge, your semester fee will be assigned here.</p>
         </div>
       ) : (
-        fees.map(fee => (
+        visibleFees.map(fee => (
           <div key={fee.id} className="card space-y-4">
             <div className="flex flex-wrap justify-between items-start gap-2">
               <div>
@@ -107,6 +134,11 @@ const FeeViewPage = () => {
           </div>
         ))
       )}
+
+      <div className="card">
+        <h3 className="mb-4 text-lg font-bold text-gray-800">Payment Transaction History</h3>
+        <DataTable columns={paymentColumns} data={visiblePayments} loading={false} searchable={false} />
+      </div>
 
       {/* Dummy Payment Modal — Online payment coming soon */}
       <Modal isOpen={payModalOpen} onClose={() => setPayModalOpen(false)} title="Transportation Fee Payment">

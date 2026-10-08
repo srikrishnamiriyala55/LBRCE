@@ -21,6 +21,7 @@ import com.web.sms.repository.BusPassRepository;
 import com.web.sms.repository.FeeRepository;
 import com.web.sms.repository.TransportAllocationRepository;
 import com.web.sms.repository.TransferRequestRepository;
+import com.web.sms.repository.PaymentRepository;
 import com.web.sms.exception.ForbiddenException;
 import com.web.sms.exception.ResourceNotFoundException;
 import com.web.sms.security.UserPrincipal;
@@ -39,6 +40,7 @@ import com.web.sms.dto.response.PassResponse;
 import com.web.sms.dto.response.BusResponse;
 import com.web.sms.dto.response.NotificationResponse;
 import com.web.sms.dto.response.InchargeStudentResponse;
+import com.web.sms.dto.response.PaymentResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
@@ -69,6 +71,7 @@ public class InchargeController {
     private final TransportReportService reportService;
     private final PassService passService;
     private final AdminService adminService;
+    private final PaymentRepository paymentRepo;
 
     public InchargeController(InchargeService inchargeService,
                               ApplicationService applicationService,
@@ -80,7 +83,7 @@ public class InchargeController {
                               AcademicYearRepository academicYearRepo,
                               TransferRequestRepository transferRepo, InchargeOperationsService operations,
                               NotificationService notificationService, TransportReportService reportService,
-                              PassService passService,AdminService adminService) {
+                              PassService passService,AdminService adminService, PaymentRepository paymentRepo) {
         this.inchargeService = inchargeService;
         this.applicationService = applicationService;
         this.transferService = transferService;
@@ -95,6 +98,7 @@ public class InchargeController {
         this.reportService = reportService;
         this.passService = passService;
         this.adminService=adminService;
+        this.paymentRepo=paymentRepo;
     }
 
     private UserPrincipal getCurrentUser() {
@@ -189,18 +193,21 @@ public class InchargeController {
     @PutMapping("/notifications/{id}/read") public void markNotificationRead(@PathVariable Long id){notificationService.markAsRead(id,getCurrentUser().getUsername());}
 
     @GetMapping("/applications")
-    public Page<ApplicationResponse> getApplications(@RequestParam(required = false) ApplicationStatus status, @RequestParam(defaultValue="false") boolean unpaged, Pageable pageable) {
+    public Page<ApplicationResponse> getApplications(@RequestParam(required = false) ApplicationStatus status, @RequestParam(required = false) Long academicYearId, @RequestParam(defaultValue="false") boolean unpaged, Pageable pageable) {
         Bus bus = getAssignedBus();
         if (bus == null) return Page.empty();
-        return applicationService.getApplicationsByBus(bus.getId(), status, requestedPage(unpaged,pageable));
+        return applicationService.getApplicationsByBus(bus.getId(), status, academicYearId, requestedPage(unpaged,pageable));
     }
     @GetMapping("/applications/summary")
-    public Map<String,Long> applicationSummary() {
+    public Map<String,Long> applicationSummary(@RequestParam(required = false) Long academicYearId) {
         Bus bus = requireAssignedBus();
         Map<String,Long> result = new LinkedHashMap<>();
-        result.put("total", applicationRepo.countByBusId(bus.getId()));
+        List<BusApplication> apps = applicationRepo.findByBusId(bus.getId(), Pageable.unpaged()).getContent().stream()
+                .filter(a -> academicYearId == null || (a.getAcademicYear() != null && a.getAcademicYear().getId().equals(academicYearId)))
+                .toList();
+        result.put("total", (long) apps.size());
         for (ApplicationStatus status : ApplicationStatus.values())
-            result.put(status.name().toLowerCase(), applicationRepo.countByBusIdAndStatus(bus.getId(), status));
+            result.put(status.name().toLowerCase(), apps.stream().filter(a -> a.getStatus() == status).count());
         return result;
     }
 
@@ -235,8 +242,8 @@ public class InchargeController {
     }
 
     @GetMapping("/students")
-    public Page<InchargeStudentResponse> getStudents(@RequestParam(required=false) String search,@RequestParam(required=false) String branch,@RequestParam(required=false) Integer year,@RequestParam(required=false) Long boardingPointId,@RequestParam(required=false) String paymentStatus,@RequestParam(required=false) String passStatus,@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable) {
-        return operations.students(requireAssignedBus(),search,branch,year,boardingPointId,paymentStatus,passStatus,requestedPage(unpaged,pageable));
+    public Page<InchargeStudentResponse> getStudents(@RequestParam(required=false) String search,@RequestParam(required=false) String branch,@RequestParam(required=false) Integer year,@RequestParam(required=false) Long boardingPointId,@RequestParam(required=false) String paymentStatus,@RequestParam(required=false) String passStatus,@RequestParam(required=false) Long academicYearId,@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable) {
+        return operations.students(requireAssignedBus(),search,branch,year,boardingPointId,paymentStatus,passStatus,academicYearId,requestedPage(unpaged,pageable));
     }
     @PutMapping(value="/students/{studentId}",consumes=MediaType.MULTIPART_FORM_DATA_VALUE) public StudentProfileResponse updateStudent(@PathVariable Long studentId,@Valid @RequestPart("student") UpdateStudentRequest req,@RequestPart(value="photo",required=false) org.springframework.web.multipart.MultipartFile photo){return adminService.updateStudentForIncharge(studentId,requireAssignedBus().getId(),req,photo,getCurrentUser().getUsername());}
 
@@ -289,6 +296,18 @@ public class InchargeController {
     public List<BusResponse> getBuses() {
         Bus b = getAssignedBus();
         return b == null ? List.of() : List.of(operations.bus(b));
+    }
+
+    @GetMapping("/academic-years")
+    public List<com.web.sms.entity.AcademicYear> academicYears() {
+        return academicYearRepo.findAll();
+    }
+
+    @GetMapping("/payments")
+    public List<PaymentResponse> payments(@RequestParam(required = false) Long academicYearId) {
+        return paymentRepo.findForIncharge(requireAssignedBus().getId(), academicYearId).stream()
+                .map(PaymentResponse::fromPayment)
+                .toList();
     }
 
     @GetMapping("/students/{studentId}/photo")

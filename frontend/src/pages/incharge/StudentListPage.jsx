@@ -11,10 +11,31 @@ import { DEPARTMENTS } from '../../utils/academicOptions';
 export default function StudentListPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ search: '', branch: '', year: '', paymentStatus: '', passStatus: '' });
+  const [filters, setFilters] = useState({ search: '', branch: '', year: '', paymentStatus: '', passStatus: '', academicYearId: '' });
+  const [academicYears, setAcademicYears] = useState([]);
+  const [yearsLoaded, setYearsLoaded] = useState(false);
   const [editing, setEditing] = useState(null);
   const [viewingStudent, setViewingStudent] = useState(null);
   const { addToast } = useToast();
+
+  useEffect(() => {
+    let active = true;
+    api.get('/incharge/academic-years').then((r) => {
+      if (!active) return;
+      const years = r.data || [];
+      setAcademicYears(years);
+      const activeYear = years.find((y) => y.active);
+      if (activeYear) {
+        setFilters((prev) => ({ ...prev, academicYearId: String(activeYear.id) }));
+      }
+      setYearsLoaded(true);
+    }).catch(() => {
+      if (!active) return;
+      addToast('Failed to load academic years', 'error');
+      setYearsLoaded(true);
+    });
+    return () => { active = false; };
+  }, [addToast]);
 
   const load = async () => {
     setLoading(true);
@@ -33,8 +54,9 @@ export default function StudentListPage() {
   };
 
   useEffect(() => {
+    if (!yearsLoaded) return;
     load();
-  }, [filters]);
+  }, [filters, yearsLoaded]);
 
   const save = async (form, photo) => {
     try {
@@ -90,7 +112,17 @@ export default function StudentListPage() {
     <>
       <div className="card space-y-4">
         <h2 className="text-xl font-bold">Assigned Bus Students</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+          <select
+            className="input-field"
+            value={filters.academicYearId}
+            onChange={(e) => setFilters({ ...filters, academicYearId: e.target.value })}
+          >
+            <option value="">All academic years</option>
+            {academicYears.map((y) => (
+              <option key={y.id} value={y.id}>{y.yearName}{y.active ? ' (Active)' : ''}</option>
+            ))}
+          </select>
           <input
             className="input-field"
             placeholder="Search name / roll"

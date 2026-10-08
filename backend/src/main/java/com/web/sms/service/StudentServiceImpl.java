@@ -78,6 +78,11 @@ public class StudentServiceImpl implements StudentService {
         if (activeYear.isPresent()) {
             Long yearId = activeYear.get().getId();
             response.put("academicYear", activeYear.get().getYearName());
+
+            // Whether the student has been registered for the active academic year by admin
+            boolean academicRegistered = academicDetailsRepository.findByStudentIdAndAcademicYearId(studentId, yearId).isPresent();
+            response.put("activeAcademicYearRegistered", academicRegistered);
+
             academicDetailsRepository.findByStudentIdAndAcademicYearId(studentId, yearId).ifPresentOrElse(details -> {
                 response.put("branch", details.getBranch());
                 response.put("year", details.getYear());
@@ -91,6 +96,15 @@ public class StudentServiceImpl implements StudentService {
             boolean hasActiveTransfer = !transferRepository.findByStudentIdAndAcademicYearIdAndStatusIn(
                     studentId, yearId, List.of(TransferStatus.TRANSFER_REQUESTED, TransferStatus.OLD_INCHARGE_APPROVED,
                             TransferStatus.NEW_INCHARGE_APPROVED)).isEmpty();
+
+            // Detect renewal candidates: had allocation in any previous year but not the current year
+            List<TransportAllocation> allPastAllocations = transportAllocationRepository.findByStudentId(studentId)
+                    .stream().filter(a -> !a.getAcademicYear().getId().equals(yearId)).toList();
+            boolean previousYearAllocated = !allPastAllocations.isEmpty();
+            response.put("previousYearAllocated", previousYearAllocated);
+
+            boolean needsRenewal = previousYearAllocated && allocation.isEmpty() && !hasActiveApplication;
+            response.put("needsRenewal", needsRenewal);
 
             if (allocation.isPresent()) {
                 TransportAllocation alloc = allocation.get();
@@ -111,6 +125,17 @@ public class StudentServiceImpl implements StudentService {
                 }
             } else {
                 response.put("transportationStatus", "NOT_ALLOCATED");
+                // Surface the most recent past allocation for the renewal banner reference
+                if (previousYearAllocated) {
+                    allPastAllocations.stream()
+                            .max(java.util.Comparator.comparing(a -> a.getAcademicYear().getId()))
+                            .ifPresent(prev -> {
+                                response.put("previousBusNumber", prev.getBus().getBusNumber());
+                                response.put("previousBoardingPoint",
+                                        prev.getBoardingPoint() != null ? prev.getBoardingPoint().getStationName() : null);
+                                response.put("previousAcademicYear", prev.getAcademicYear().getYearName());
+                            });
+                }
             }
             long usedTransfers = transferRepository.countByStudentIdAndAcademicYearIdAndStatusNot(studentId, yearId, TransferStatus.CANCELLED);
             boolean transferLimitReached = usedTransfers >= 2;
@@ -143,6 +168,9 @@ public class StudentServiceImpl implements StudentService {
             response.put("transportationStatus", "NO_ACTIVE_ACADEMIC_YEAR");
             response.put("canApply", false);
             response.put("canTransfer", false);
+            response.put("needsRenewal", false);
+            response.put("previousYearAllocated", false);
+            response.put("activeAcademicYearRegistered", false);
         }
 
         return response;
