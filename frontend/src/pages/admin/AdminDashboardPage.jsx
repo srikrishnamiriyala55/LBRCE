@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import DashboardCard from '../../components/common/DashboardCard';
 import api from '../../utils/axios';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { useToast } from '../../components/common/Toast';
 
 const StatChip = ({ label, value, onClick }) => (
   <span
@@ -22,26 +23,34 @@ const AdminDashboardPage = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { addToast } = useToast();
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const res = await api.get('/admin/dashboard');
-        setStats(res.data.data || res.data);
+        const payload = res.data?.data?.data ?? res.data?.data ?? res.data;
+        if (!payload || typeof payload !== 'object') throw new Error('Invalid dashboard response');
+        setStats(payload);
       } catch (err) {
         console.error(err);
+        addToast(err.response?.data?.message || 'Failed to load dashboard details', 'error');
+        setStats({});
       } finally {
         setLoading(false);
       }
     };
     fetchStats();
-  }, []);
+  }, [addToast]);
 
   if (loading) return <LoadingSpinner />;
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">System Overview</h2>
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800">System Overview</h2>
+        <p className="text-sm text-gray-500">Operational values are for {stats?.activeAcademicYear || 'the active academic year'}; registered students, buses and In-Charges are organization totals.</p>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <DashboardCard
@@ -105,7 +114,7 @@ const AdminDashboardPage = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {/* Students summary */}
         <div className="card space-y-2">
           <h3 className="font-semibold text-blue-900 mb-2">Students</h3>
@@ -169,6 +178,15 @@ const AdminDashboardPage = () => {
               value={stats?.passEligibleStudents || 0}
               onClick={() => navigate('/admin/passes')}
             />
+          </div>
+        </div>
+
+        <div className="card space-y-2">
+          <h3 className="font-semibold text-blue-900 mb-2">All Academic Years</h3>
+          <div className="flex flex-wrap gap-2">
+            <StatChip label="Applications" value={stats?.historicalApplications || 0} onClick={() => navigate('/admin/applications')} />
+            <StatChip label="Allocations" value={stats?.historicalAllocations || 0} onClick={() => navigate('/admin/students')} />
+            <StatChip label="Collected" value={`₹${stats?.historicalFeeCollection || 0}`} onClick={() => navigate('/admin/fees')} />
           </div>
         </div>
       </div>

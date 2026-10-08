@@ -43,7 +43,7 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
           ba.status AS applicationStatus, tr.status AS transferStatus
         FROM student s
         JOIN student_academic_details sad ON sad.student_id=s.id AND sad.academic_year_id=:academicYearId
-        LEFT JOIN transport_allocation ta ON ta.student_id=s.id AND ta.academic_year_id=:academicYearId AND ta.status='ACTIVE'
+        LEFT JOIN transport_allocation ta ON ta.id=(SELECT MAX(ta2.id) FROM transport_allocation ta2 WHERE ta2.student_id=s.id AND ta2.academic_year_id=:academicYearId)
         LEFT JOIN bus b ON b.id=ta.bus_id
         LEFT JOIN boarding_points bp ON bp.id=ta.boarding_point_id
         LEFT JOIN fee f ON f.student_id=s.id AND f.academic_year_id=:academicYearId
@@ -67,7 +67,7 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
         """, countQuery="""
         SELECT COUNT(*) FROM student s
         JOIN student_academic_details sad ON sad.student_id=s.id AND sad.academic_year_id=:academicYearId
-        LEFT JOIN transport_allocation ta ON ta.student_id=s.id AND ta.academic_year_id=:academicYearId AND ta.status='ACTIVE'
+        LEFT JOIN transport_allocation ta ON ta.id=(SELECT MAX(ta2.id) FROM transport_allocation ta2 WHERE ta2.student_id=s.id AND ta2.academic_year_id=:academicYearId)
         LEFT JOIN bus b ON b.id=ta.bus_id LEFT JOIN fee f ON f.student_id=s.id AND f.academic_year_id=:academicYearId
         LEFT JOIN bus_application ba ON ba.id=(SELECT MAX(ba2.id) FROM bus_application ba2 WHERE ba2.student_id=s.id AND ba2.academic_year_id=:academicYearId)
         LEFT JOIN transfer_request tr ON tr.id=(SELECT MAX(tr2.id) FROM transfer_request tr2 WHERE tr2.student_id=s.id AND tr2.academic_year_id=:academicYearId)

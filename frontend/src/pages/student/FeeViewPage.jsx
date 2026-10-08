@@ -53,8 +53,10 @@ const FeeViewPage = () => {
 
   if (loading) return <LoadingSpinner />;
 
-  const years = [...new Set([...fees.map(f => f.academicYear), ...payments.map(p => p.academicYear)].filter(Boolean))];
-  const visibleFees = academicYear ? fees.filter(f => f.academicYear === academicYear) : fees;
+  const newestFirst = (left, right) => String(right || '').localeCompare(String(left || ''), undefined, { numeric: true });
+  const years = [...new Set([...fees.map(f => f.academicYear), ...payments.map(p => p.academicYear)].filter(Boolean))].sort(newestFirst);
+  const visibleFees = (academicYear ? fees.filter(f => f.academicYear === academicYear) : fees)
+    .slice().sort((left, right) => newestFirst(left.academicYear, right.academicYear));
   const visiblePayments = academicYear ? payments.filter(p => p.academicYear === academicYear) : payments;
   const paymentColumns = [
     { key: 'createdAt', label: 'Date', render: row => new Date(row.paidAt || row.createdAt).toLocaleString() },
@@ -85,11 +87,16 @@ const FeeViewPage = () => {
           <p className="text-sm text-gray-500 mt-1">Once your bus application is approved by the incharge, your semester fee will be assigned here.</p>
         </div>
       ) : (
-        visibleFees.map(fee => (
+        visibleFees.map((fee, index) => (
           <div key={fee.id} className="card space-y-4">
             <div className="flex flex-wrap justify-between items-start gap-2">
               <div>
-                <h3 className="text-lg font-bold text-blue-900">Academic Year: {fee.academicYear}</h3>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-bold text-blue-900">Academic Year: {fee.academicYear}</h3>
+                  {!academicYear && index === 0
+                    ? <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">Newest fee</span>
+                    : <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">Previous-year fee</span>}
+                </div>
                 <p className="text-sm text-gray-600">Total Approved Fee: ₹{fee.totalAmount}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -125,7 +132,7 @@ const FeeViewPage = () => {
                   onClick={() => handleOpenPayment(fee)}
                   className="btn-primary flex items-center gap-2"
                 >
-                  <CreditCard size={18} /> Pay Transport Fee (₹{fee.remainingAmount})
+                  <CreditCard size={18} /> Pay {(!academicYear && index > 0) ? 'Previous-Year' : 'Transport'} Fee (₹{fee.remainingAmount})
                 </button>
               </div>
             ) : (
@@ -149,7 +156,7 @@ const FeeViewPage = () => {
               <div>
                 <p className="font-semibold text-amber-900">Online Payment — Coming Soon</p>
                 <p className="mt-1 text-sm text-amber-800">
-                  The online payment gateway is currently under development and will be available soon.
+                  The online payment gateway is currently under development. Previous-year dues remain payable without a current-year bus application.
                 </p>
               </div>
             </div>

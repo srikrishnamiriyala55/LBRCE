@@ -107,8 +107,11 @@ public class FeeService {
         if (!fee.getStudent().getId().equals(studentId)) {
             throw new ForbiddenException("Unauthorized fee payment attempt");
         }
-        if (fee.getAllocation() == null || fee.getAllocation().getStatus() != com.web.sms.enums.EntityStatus.ACTIVE) {
-            throw new BadRequestException("Payments are allowed only for an active approved bus allocation");
+        // A fee is a permanent academic-year liability. Students must be able to clear
+        // an older balance even when its allocation is no longer active and even when
+        // they have not submitted a renewal application for the current year.
+        if (fee.getAllocation() == null || fee.getAcademicYear() == null) {
+            throw new BadRequestException("This fee is not linked to a valid academic-year allocation");
         }
 
         if (req.getAmount() == null || req.getAmount() <= 0) {
@@ -203,7 +206,12 @@ public class FeeService {
                     .findByStudentIdAndAcademicYearIdAndStatus(student.getId(), year.getId(), PassStatus.ACTIVE)
                     .isPresent();
 
-            if (!passExists && fee.getAllocation() != null) {
+            // Paying historical dues must never recreate an expired pass. A new pass is
+            // generated only for the active year and an active allocation.
+            boolean currentActiveAllocation = year != null && year.isActive()
+                    && fee.getAllocation() != null
+                    && fee.getAllocation().getStatus() == com.web.sms.enums.EntityStatus.ACTIVE;
+            if (!passExists && currentActiveAllocation) {
                 BusPass pass = new BusPass();
                 pass.setStudent(student);
                 pass.setAllocation(fee.getAllocation());

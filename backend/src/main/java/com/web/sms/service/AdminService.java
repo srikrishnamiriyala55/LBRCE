@@ -168,6 +168,13 @@ public class AdminService {
                     .filter(sId -> !allocatedThisYear.contains(sId) && !appliedThisYear.contains(sId)).count();
         }
         res.put("renewalPending", renewalPending);
+        // Keep lifetime figures visible after a year rollover. Active-year operational
+        // values can correctly be zero until renewals are approved, but historical data
+        // must remain visible to the administrator.
+        res.put("historicalApplications", applicationRepo.count());
+        res.put("historicalAllocations", allocationRepo.count());
+        Long lifetimeCollection = feeRepo.sumTotalPaidAmount();
+        res.put("historicalFeeCollection", lifetimeCollection != null ? lifetimeCollection : 0L);
 
         res.put("totalStudents", totalStudents);
         res.put("totalBuses", totalBuses);
