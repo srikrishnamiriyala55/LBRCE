@@ -16,7 +16,10 @@ const StudentLayout = () => {
     { path: '/profile', label: 'Profile', icon: User },
     ...(capabilities?.canApply ? [{ path: '/apply', label: 'Apply for Bus', icon: FileText }] : []),
     { path: '/applications', label: 'Applications', icon: ClipboardList },
-    ...(allocated ? [{ path: '/fees', label: 'Fees', icon: CreditCard }, { path: '/pass', label: 'Bus Pass', icon: Ticket }] : []),
+    // Fees can include previous-year balances and pass history remains useful
+    // even when the student has no allocation in the currently active year.
+    { path: '/fees', label: 'Fees', icon: CreditCard },
+    { path: '/pass', label: 'Bus Pass', icon: Ticket },
     ...(allocated ? [{ path: '/transfers', label: 'Transfers', icon: ArrowLeftRight }] : []),
     { path: '/notifications', label: 'Notifications', icon: Bell },
   ];
