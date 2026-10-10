@@ -15,6 +15,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'transport' | 'fees' | 'passes' | 'transfers'
+  const [selectedYearId,setSelectedYearId]=useState('');
 
   useEffect(() => {
     let active = true;
@@ -31,7 +32,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
       api.get(`/admin/students/${studentId}/transport`)
         .then((res) => {
           if (active) {
-            setData(res.data);
+            setData(res.data);const years=res.data?.history||[];setSelectedYearId(String((years.find(y=>y.active)||years[0])?.academicYearId||''));
           }
         })
         .catch((err) => {
@@ -65,10 +66,14 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
   if (!isOpen) return null;
 
   const student = data?.student || initialStudent;
-  const assignments = data?.assignments || [];
-  const fees = data?.fees || [];
-  const passes = data?.passes || [];
-  const transfers = data?.transfers || [];
+  const years=data?.history||[];
+  const selectedHistory=years.find(y=>String(y.academicYearId)===selectedYearId);
+  const assignments = selectedHistory?.allocations || data?.assignments || [];
+  const fees = selectedHistory?.fees || data?.fees || [];
+  const passes = selectedHistory?.passes || data?.passes || [];
+  const transfers = selectedHistory?.transfers || data?.transfers || [];
+  const applications=selectedHistory?.applications||data?.applications||[];
+  const payments=selectedHistory?.payments||data?.payments||[];
 
   const formatDate = (val) => {
     if (!val) return '—';
@@ -122,7 +127,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
                   </span>
                 </div>
                 <p className="text-sm font-medium text-blue-900">
-                  {student?.branch || 'Department'} · Year {student?.year || '—'} · Semester {student?.semester || '—'}
+                  {selectedHistory?.branch || student?.branch || 'Department'} · Year {selectedHistory?.year || student?.year || '—'} · Semester {selectedHistory?.semester || student?.semester || '—'}
                 </p>
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 pt-2 text-xs text-gray-600">
                   {student?.email && (
@@ -142,7 +147,10 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
             </div>
 
             {/* Navigation Tabs */}
+            {years.length>0&&<label className="block max-w-xs text-sm font-medium text-gray-700">Academic Year<select className="input-field mt-1" value={selectedYearId} onChange={e=>setSelectedYearId(e.target.value)}>{years.map(y=><option key={y.academicYearId} value={y.academicYearId}>{y.academicYear}{y.active?' (Active)':''}</option>)}</select></label>}
             <div className="flex border-b border-gray-200 text-xs sm:text-sm font-medium overflow-x-auto">
+              <button
+                type="button" onClick={()=>setActiveTab('applications')} className={`px-3 py-2 border-b-2 whitespace-nowrap ${activeTab==='applications'?'border-blue-600 text-blue-600 font-semibold':'border-transparent text-gray-500'}`}>Applications ({applications.length})</button>
               <button
                 type="button"
                 onClick={() => setActiveTab('overview')}
@@ -150,6 +158,8 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
               >
                 Personal Details
               </button>
+              <button
+                type="button" onClick={()=>setActiveTab('payments')} className={`px-3 py-2 border-b-2 whitespace-nowrap ${activeTab==='payments'?'border-blue-600 text-blue-600 font-semibold':'border-transparent text-gray-500'}`}>Payments ({payments.length})</button>
               <button
                 type="button"
                 onClick={() => setActiveTab('transport')}
@@ -211,7 +221,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
                   </div>
                   <div>
                     <span className="block text-xs text-gray-500">Department</span>
-                    <span className="font-medium text-gray-800">{student?.branch || '—'}</span>
+                    <span className="font-medium text-gray-800">{selectedHistory?.branch || student?.branch || '—'}</span>
                   </div>
                   <div className="col-span-2 sm:col-span-3">
                     <span className="block text-xs text-gray-500 flex items-center gap-1">
@@ -246,7 +256,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
                         {assignments.map((a, i) => (
                           <tr key={a.id || i}>
                             <td className="px-4 py-2.5 font-medium text-gray-700">{a.academicYear || '—'}</td>
-                            <td className="px-4 py-2.5 font-bold text-blue-900">{a.bus || '—'}</td>
+                            <td className="px-4 py-2.5 font-bold text-blue-900">{a.busNumber || a.bus || '—'}</td>
                             <td className="px-4 py-2.5 text-gray-800">{a.boardingPoint || '—'}</td>
                             <td className="px-4 py-2.5">
                               <StatusBadge status={a.status} />
@@ -258,6 +268,13 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
                   </div>
                 )}
               </div>
+            )}
+
+            {activeTab === 'applications' && (
+              <HistoryCards rows={applications} empty="No applications for this academic year" render={(a) => <><b>{a.busNumber || '—'} · {a.boardingPointName || '—'}</b><span>{a.startingPoint || '—'} → {a.endingPoint || '—'} · {a.status || '—'}</span></>} />
+            )}
+            {activeTab === 'payments' && (
+              <HistoryCards rows={payments} empty="No payment transactions for this academic year" render={(p) => <><b>{formatINR(p.amount)} · {p.orderId || 'No receipt ID'}</b><span>{p.status || '—'} · {formatDate(p.paidAt || p.createdAt)}</span></>} />
             )}
 
             {/* Tab 3: Fees */}
@@ -368,3 +385,5 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
     </Modal>
   );
 }
+
+const HistoryCards=({rows,empty,render})=><div className="space-y-2">{rows.length?rows.map((row,index)=><div key={row.id||index} className="flex flex-col rounded-lg border bg-gray-50 p-3 text-sm">{render(row)}</div>):<p className="rounded-lg bg-gray-50 p-6 text-center text-sm text-gray-500">{empty}</p>}</div>;

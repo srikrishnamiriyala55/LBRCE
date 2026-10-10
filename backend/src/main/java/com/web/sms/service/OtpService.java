@@ -12,6 +12,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.time.Instant;
 
 /** Proxies OTP calls so the provider API key is never delivered to a browser. */
 @Service
@@ -20,6 +22,8 @@ public class OtpService {
     private final String baseUrl;
     private final String apiKey;
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    private record SendWindow(Instant startedAt, Instant lastSentAt, int count) {}
+    private final ConcurrentHashMap<String, SendWindow> sendWindows = new ConcurrentHashMap<>();
 
     public OtpService(@Value("${otp.enabled:false}") boolean enabled,
                       @Value("${otp.base-url:https://brevootpservice-production.up.railway.app}") String baseUrl,
@@ -27,7 +31,18 @@ public class OtpService {
         this.enabled = enabled; this.baseUrl = baseUrl.replaceAll("/$", ""); this.apiKey = apiKey;
     }
 
-    public void send(String email) { call("/api/otp/send", Map.of("email", email)); }
+    public void send(String email) {
+        String key=email==null?"":email.trim().toLowerCase();
+        Instant now=Instant.now();
+        sendWindows.compute(key,(ignored,current)->{
+            if(current==null||current.startedAt().plus(Duration.ofMinutes(15)).isBefore(now))return new SendWindow(now,now,1);
+            if(current.lastSentAt().plus(Duration.ofSeconds(30)).isAfter(now))throw new com.web.sms.exception.TooManyRequestsException("Please wait 30 seconds before requesting another OTP");
+            if(current.count()>=5)throw new com.web.sms.exception.TooManyRequestsException("OTP request limit reached. Try again after 15 minutes.");
+            return new SendWindow(current.startedAt(),now,current.count()+1);
+        });
+        try { call("/api/otp/send", Map.of("email", key)); }
+        catch (RuntimeException failure) { throw failure; }
+    }
     public void verify(String email, String otp) { call("/api/otp/verify", Map.of("email", email, "otp", otp)); }
 
     private void call(String path, Map<String, String> body) {

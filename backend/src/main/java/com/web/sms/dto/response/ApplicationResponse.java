@@ -24,20 +24,21 @@ public class ApplicationResponse {
     public static ApplicationResponse fromApplication(BusApplication app) {
         ApplicationResponse r = new ApplicationResponse();
         r.setId(app.getId());
-        if(app.getBus() != null) { r.setBusId(app.getBus().getId()); r.setBusNumber(app.getBus().getBusNumber()); }
+        if(app.getBus() != null) { r.setBusId(app.getBus().getId()); r.setBusNumber(snapshot(app.getBusNumberSnapshot(),app.getBus().getBusNumber())); }
         if(app.getBus() != null) {
-            r.setStartingPoint(app.getBus().getStartingPoint());
-            r.setEndingPoint(app.getBus().getEndingPoint());
+            r.setStartingPoint(snapshot(app.getStartingPointSnapshot(),app.getBus().getStartingPoint()));
+            r.setEndingPoint(snapshot(app.getEndingPointSnapshot(),app.getBus().getEndingPoint()));
         }
-        if(app.getBoardingPoint() != null) { r.setBoardingPointId(app.getBoardingPoint().getId()); r.setBoardingPointName(app.getBoardingPoint().getStationName()); }
+        if(app.getBoardingPoint() != null) { r.setBoardingPointId(app.getBoardingPoint().getId()); r.setBoardingPointName(snapshot(app.getBoardingPointSnapshot(),app.getBoardingPoint().getStationName())); }
         if(app.getAcademicYear() != null) r.setAcademicYear(app.getAcademicYear().getYearName());
         r.setStatus(app.getStatus());
         r.setRemarks(app.getRemarks());
         r.setAppliedAt(app.getAppliedAt());
         r.setReviewedAt(app.getReviewedAt());
-        if (app.getStudent() != null) { r.setStudentId(app.getStudent().getId()); r.setStudentName(app.getStudent().getName()); r.setRollNumber(app.getStudent().getRollNumber()); }
+        if (app.getStudent() != null) { r.setStudentId(app.getStudent().getId()); r.setStudentName(snapshot(app.getStudentNameSnapshot(),app.getStudent().getName())); r.setRollNumber(snapshot(app.getRollNumberSnapshot(),app.getStudent().getRollNumber())); }
         return r;
     }
+    private static String snapshot(String captured,String current){return captured==null||captured.isBlank()?current:captured;}
     
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

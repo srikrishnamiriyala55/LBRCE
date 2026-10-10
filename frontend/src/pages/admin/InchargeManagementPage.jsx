@@ -255,7 +255,7 @@ const InchargeManagementPage = () => {
               type={showPassword ? 'text' : 'password'}
               required={!editingIncharge}
               minLength={form.password ? 6 : undefined}
-              maxLength="15"
+              maxLength="72"
               pattern={form.password ? PASSWORD_PATTERN : undefined}
               title={PASSWORD_HELP}
               className="input-field"

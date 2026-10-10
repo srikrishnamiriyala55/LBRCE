@@ -472,3 +472,30 @@ npm run build
 - Keep the In-charge bus scope enforced in backend services and repository queries.
 - Treat generated Excel/PDF reports as confidential student data.
 - Review audit logs regularly and use least-privilege database credentials.
+
+# Production data and academic-year guarantees
+
+The production model treats applications, allocations, fees, payments, passes,
+transfers and audit events as historical records. Administrator "delete" actions
+archive students and cancel applications; they do not erase linked history.
+
+Flyway migrations `V3` and `V4` add immutable application/allocation snapshots
+and academic-year-specific bus in-charge assignment history. Take and verify a
+database backup before deploying a release that applies migrations. Never remove
+`flyway_schema_history`, and keep `JPA_DDL_AUTO=validate` in production.
+
+Creating a new academic year is an annual rollover operation. It expires the old
+operational allocation/pass state, preserves old fees and transactions, creates
+the next academic snapshot for eligible students, marks completed programmes as
+graduated, and requires students to submit a new bus application.
+
+The public `/api/public/health` readiness endpoint returns HTTP 200 only when the
+application can query MySQL. Render uses this endpoint for deployment health.
+
+Before applying migrations to production:
+
+1. Test them against a restored production backup in staging.
+2. Verify student/application/allocation/fee/pass counts before and after.
+3. Verify historical passes for at least two academic years.
+4. Verify each in-charge can access only their assigned academic-year data.
+5. Keep the pre-deployment backup until reconciliation is signed off.

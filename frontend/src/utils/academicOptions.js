@@ -10,5 +10,5 @@ export const semestersForYear = (year) => {
 
 export const normalizePhone = (value) => value.replace(/\D/g, '').slice(0, 10);
 
-export const PASSWORD_PATTERN = '^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).{6,15}$';
-export const PASSWORD_HELP = '6–15 characters with uppercase, lowercase, number and special character.';
+export const PASSWORD_PATTERN = '^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).{8,72}$';
+export const PASSWORD_HELP = '8–72 characters with uppercase, lowercase, number and special character.';

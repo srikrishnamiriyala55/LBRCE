@@ -100,6 +100,10 @@ public class PassService {
         return generatePdf(requireBusAccess(findPass(passId), busId));
     }
 
+    public PassResponse getPassForStudent(Long passId,Long studentId){return toPassResponse(requireStudentAccess(findPass(passId),studentId));}
+    public byte[] generatePdfForStudent(Long passId,Long studentId){return generatePdf(requireStudentAccess(findPass(passId),studentId));}
+    private BusPass requireStudentAccess(BusPass pass,Long studentId){if(pass.getStudent()==null||!pass.getStudent().getId().equals(studentId))throw new ForbiddenException("This bus pass does not belong to your account");return pass;}
+
     public ResponseEntity<byte[]> studentPhotoResponse(Long studentId) {
         Student student = studentRepo.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));

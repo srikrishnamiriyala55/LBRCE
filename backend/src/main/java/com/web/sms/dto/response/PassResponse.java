@@ -30,23 +30,24 @@ public class PassResponse {
         r.setId(pass.getId());
         r.setPassNumber(pass.getPassNumber());
         if(pass.getStudent() != null) {
-            r.setStudentName(pass.getStudent().getName());
-            r.setRollNumber(pass.getStudent().getRollNumber());
-            r.setBranch(pass.getStudent().getBranch());
-            r.setYear(pass.getStudent().getYear());
-            r.setSemester(pass.getStudent().getSemester());
-            r.setPhoneNumber(pass.getStudent().getPhoneNumber());
+            var allocation = pass.getAllocation();
+            r.setStudentName(snapshot(allocation == null ? null : allocation.getStudentNameSnapshot(), pass.getStudent().getName()));
+            r.setRollNumber(snapshot(allocation == null ? null : allocation.getRollNumberSnapshot(), pass.getStudent().getRollNumber()));
+            r.setBranch(snapshot(allocation == null ? null : allocation.getBranchSnapshot(), pass.getStudent().getBranch()));
+            r.setYear(allocation != null && allocation.getStudyYearSnapshot() != null ? allocation.getStudyYearSnapshot() : pass.getStudent().getYear());
+            r.setSemester(allocation != null && allocation.getSemesterSnapshot() != null ? allocation.getSemesterSnapshot() : pass.getStudent().getSemester());
+            r.setPhoneNumber(snapshot(allocation == null ? null : allocation.getPhoneNumberSnapshot(), pass.getStudent().getPhoneNumber()));
             r.setPhotoAvailable(pass.getStudent().getPhotoData() != null && pass.getStudent().getPhotoData().length > 0);
         }
         if(pass.getAllocation() != null) {
             if(pass.getAllocation().getBus() != null) {
                 com.web.sms.entity.Bus bus = pass.getAllocation().getBus();
-                r.setBusNumber(bus.getBusNumber());
-                r.setStartingPoint(bus.getStartingPoint());
-                r.setEndingPoint(bus.getEndingPoint());
+                r.setBusNumber(snapshot(pass.getAllocation().getBusNumberSnapshot(), bus.getBusNumber()));
+                r.setStartingPoint(snapshot(pass.getAllocation().getStartingPointSnapshot(), bus.getStartingPoint()));
+                r.setEndingPoint(snapshot(pass.getAllocation().getEndingPointSnapshot(), bus.getEndingPoint()));
             }
             if(pass.getAllocation().getBoardingPoint() != null) {
-                r.setBoardingPoint(pass.getAllocation().getBoardingPoint().getStationName());
+                r.setBoardingPoint(snapshot(pass.getAllocation().getBoardingPointSnapshot(), pass.getAllocation().getBoardingPoint().getStationName()));
             }
         }
         if(pass.getAcademicYear() != null) r.setAcademicYear(pass.getAcademicYear().getYearName());
@@ -55,6 +56,10 @@ public class PassResponse {
         r.setStatus(pass.getStatus());
         r.setVerificationToken(pass.getVerificationToken());
         return r;
+    }
+
+    private static String snapshot(String captured, String current) {
+        return captured == null || captured.isBlank() ? current : captured;
     }
     
     public Long getId() { return id; }

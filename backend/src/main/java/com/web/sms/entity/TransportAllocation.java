@@ -35,6 +35,22 @@ public class TransportAllocation {
     
     private LocalDateTime allocatedAt;
     private LocalDateTime deactivatedAt;
+
+    // Immutable values captured when the allocation is created. Historical
+    // passes and reports must not change when master data is edited later.
+    private String studentNameSnapshot;
+    private String rollNumberSnapshot;
+    private String branchSnapshot;
+    private Integer studyYearSnapshot;
+    private Integer semesterSnapshot;
+    private String phoneNumberSnapshot;
+    private String busNumberSnapshot;
+    private String startingPointSnapshot;
+    private String endingPointSnapshot;
+    private String boardingPointSnapshot;
+    private Long annualFeeSnapshot;
+    private String inchargeNameSnapshot;
+    private String inchargeTeacherIdSnapshot;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -66,6 +82,32 @@ public class TransportAllocation {
     public void setAllocatedAt(LocalDateTime allocatedAt) { this.allocatedAt = allocatedAt; }
     public LocalDateTime getDeactivatedAt() { return deactivatedAt; }
     public void setDeactivatedAt(LocalDateTime deactivatedAt) { this.deactivatedAt = deactivatedAt; }
+    public String getStudentNameSnapshot() { return studentNameSnapshot; }
+    public void setStudentNameSnapshot(String value) { this.studentNameSnapshot = value; }
+    public String getRollNumberSnapshot() { return rollNumberSnapshot; }
+    public void setRollNumberSnapshot(String value) { this.rollNumberSnapshot = value; }
+    public String getBranchSnapshot() { return branchSnapshot; }
+    public void setBranchSnapshot(String value) { this.branchSnapshot = value; }
+    public Integer getStudyYearSnapshot() { return studyYearSnapshot; }
+    public void setStudyYearSnapshot(Integer value) { this.studyYearSnapshot = value; }
+    public Integer getSemesterSnapshot() { return semesterSnapshot; }
+    public void setSemesterSnapshot(Integer value) { this.semesterSnapshot = value; }
+    public String getPhoneNumberSnapshot() { return phoneNumberSnapshot; }
+    public void setPhoneNumberSnapshot(String value) { this.phoneNumberSnapshot = value; }
+    public String getBusNumberSnapshot() { return busNumberSnapshot; }
+    public void setBusNumberSnapshot(String value) { this.busNumberSnapshot = value; }
+    public String getStartingPointSnapshot() { return startingPointSnapshot; }
+    public void setStartingPointSnapshot(String value) { this.startingPointSnapshot = value; }
+    public String getEndingPointSnapshot() { return endingPointSnapshot; }
+    public void setEndingPointSnapshot(String value) { this.endingPointSnapshot = value; }
+    public String getBoardingPointSnapshot() { return boardingPointSnapshot; }
+    public void setBoardingPointSnapshot(String value) { this.boardingPointSnapshot = value; }
+    public Long getAnnualFeeSnapshot() { return annualFeeSnapshot; }
+    public void setAnnualFeeSnapshot(Long value) { this.annualFeeSnapshot = value; }
+    public String getInchargeNameSnapshot() { return inchargeNameSnapshot; }
+    public void setInchargeNameSnapshot(String value) { this.inchargeNameSnapshot = value; }
+    public String getInchargeTeacherIdSnapshot() { return inchargeTeacherIdSnapshot; }
+    public void setInchargeTeacherIdSnapshot(String value) { this.inchargeTeacherIdSnapshot = value; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

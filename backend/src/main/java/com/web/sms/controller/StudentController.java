@@ -38,6 +38,7 @@ public class StudentController {
     private final TransportAllocationRepository allocationRepository;
     private final com.web.sms.repository.AcademicYearRepository academicYearRepository;
     private final PaymentRepository paymentRepository;
+    private final StudentHistoryService studentHistoryService;
 
     public StudentController(StudentService studentService, BusService busService,
                              ApplicationService applicationService, FeeService feeService,
@@ -45,7 +46,8 @@ public class StudentController {
                              NotificationService notificationService, StudentRepository studentRepository,
                              TransportAllocationRepository allocationRepository,
                              com.web.sms.repository.AcademicYearRepository academicYearRepository,
-                             PaymentRepository paymentRepository) {
+                             PaymentRepository paymentRepository,
+                             StudentHistoryService studentHistoryService) {
         this.studentService = studentService;
         this.busService = busService;
         this.applicationService = applicationService;
@@ -57,6 +59,7 @@ public class StudentController {
         this.allocationRepository = allocationRepository;
         this.academicYearRepository = academicYearRepository;
         this.paymentRepository = paymentRepository;
+        this.studentHistoryService = studentHistoryService;
     }
 
     private UserPrincipal getCurrentUser() {
@@ -158,6 +161,9 @@ public class StudentController {
                 .body(passService.generatePdf(getCurrentUser().getId()));
     }
 
+    @GetMapping("/passes/{id}") public PassResponse historicalPass(@PathVariable Long id){return passService.getPassForStudent(id,getCurrentUser().getId());}
+    @GetMapping("/passes/{id}/download") public ResponseEntity<byte[]> downloadHistoricalPass(@PathVariable Long id){PassResponse pass=passService.getPassForStudent(id,getCurrentUser().getId());return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=bus-pass-"+pass.getAcademicYear()+"-"+pass.getRollNumber()+".pdf").body(passService.generatePdfForStudent(id,getCurrentUser().getId()));}
+
     @PostMapping("/transfers")
     public TransferResponse submitTransfer(@Valid @RequestBody TransferRequestDto req) {
         return transferService.submitTransfer(getCurrentUser().getId(), req);
@@ -191,5 +197,10 @@ public class StudentController {
     @GetMapping("/academic-years")
     public List<com.web.sms.entity.AcademicYear> academicYears() {
         return academicYearRepository.findAll();
+    }
+
+    @GetMapping("/history")
+    public List<StudentYearHistoryResponse> history(){
+        return studentHistoryService.history(getCurrentUser().getId());
     }
 }

@@ -32,6 +32,17 @@ public interface BusApplicationRepository extends JpaRepository<BusApplication, 
     @Query(value = "select a from BusApplication a where (:status is null or a.status=:status) and (:search is null or :search='' or lower(a.student.name) like lower(concat('%',:search,'%')) or lower(a.student.rollNumber) like lower(concat('%',:search,'%')) or lower(a.bus.busNumber) like lower(concat('%',:search,'%')) or lower(a.boardingPoint.stationName) like lower(concat('%',:search,'%')) or lower(a.academicYear.yearName) like lower(concat('%',:search,'%')))",
            countQuery = "select count(a) from BusApplication a where (:status is null or a.status=:status) and (:search is null or :search='' or lower(a.student.name) like lower(concat('%',:search,'%')) or lower(a.student.rollNumber) like lower(concat('%',:search,'%')) or lower(a.bus.busNumber) like lower(concat('%',:search,'%')) or lower(a.boardingPoint.stationName) like lower(concat('%',:search,'%')) or lower(a.academicYear.yearName) like lower(concat('%',:search,'%')))")
     Page<BusApplication> searchForAdmin(@Param("search") String search, @Param("status") ApplicationStatus status, Pageable pageable);
+    @Query("select a from BusApplication a join fetch a.student join fetch a.bus join fetch a.boardingPoint join fetch a.academicYear " +
+           "where (:academicYearId is null or a.academicYear.id=:academicYearId) and (:status is null or a.status=:status) " +
+           "and (:search is null or :search='' or lower(a.student.name) like lower(concat('%',:search,'%')) " +
+           "or lower(a.student.rollNumber) like lower(concat('%',:search,'%')) or lower(a.bus.busNumber) like lower(concat('%',:search,'%')) " +
+           "or lower(a.boardingPoint.stationName) like lower(concat('%',:search,'%')) or lower(a.academicYear.yearName) like lower(concat('%',:search,'%'))) order by a.appliedAt desc")
+    List<BusApplication> searchAdminList(@Param("search") String search,@Param("status") ApplicationStatus status,@Param("academicYearId") Long academicYearId);
+    @Query("select count(a) from BusApplication a where (:academicYearId is null or a.academicYear.id=:academicYearId) and (:status is null or a.status=:status)")
+    long countForSummary(@Param("academicYearId") Long academicYearId,@Param("status") ApplicationStatus status);
+    @Query(value="select a from BusApplication a where a.bus.id=:busId and (:academicYearId is null or a.academicYear.id=:academicYearId) and (:status is null or a.status=:status)",
+           countQuery="select count(a) from BusApplication a where a.bus.id=:busId and (:academicYearId is null or a.academicYear.id=:academicYearId) and (:status is null or a.status=:status)")
+    Page<BusApplication> searchForIncharge(@Param("busId") Long busId,@Param("academicYearId") Long academicYearId,@Param("status") ApplicationStatus status,Pageable pageable);
     long countByBusIdAndStatusIn(Long busId, List<ApplicationStatus> statuses);
     /** Count methods used by incharge summary — avoids fetching all entities into memory. */
     long countByBusId(Long busId);

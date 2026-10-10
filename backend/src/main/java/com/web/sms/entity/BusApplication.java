@@ -35,6 +35,13 @@ public class BusApplication {
     private LocalDateTime appliedAt;
     private LocalDateTime reviewedAt;
     private String reviewedBy;
+    private String studentNameSnapshot;
+    private String rollNumberSnapshot;
+    private String busNumberSnapshot;
+    private String startingPointSnapshot;
+    private String endingPointSnapshot;
+    private String boardingPointSnapshot;
+    private Long annualFeeSnapshot;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -70,6 +77,13 @@ public class BusApplication {
     public void setReviewedAt(LocalDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
     public String getReviewedBy() { return reviewedBy; }
     public void setReviewedBy(String reviewedBy) { this.reviewedBy = reviewedBy; }
+    public String getStudentNameSnapshot(){return studentNameSnapshot;} public void setStudentNameSnapshot(String v){studentNameSnapshot=v;}
+    public String getRollNumberSnapshot(){return rollNumberSnapshot;} public void setRollNumberSnapshot(String v){rollNumberSnapshot=v;}
+    public String getBusNumberSnapshot(){return busNumberSnapshot;} public void setBusNumberSnapshot(String v){busNumberSnapshot=v;}
+    public String getStartingPointSnapshot(){return startingPointSnapshot;} public void setStartingPointSnapshot(String v){startingPointSnapshot=v;}
+    public String getEndingPointSnapshot(){return endingPointSnapshot;} public void setEndingPointSnapshot(String v){endingPointSnapshot=v;}
+    public String getBoardingPointSnapshot(){return boardingPointSnapshot;} public void setBoardingPointSnapshot(String v){boardingPointSnapshot=v;}
+    public Long getAnnualFeeSnapshot(){return annualFeeSnapshot;} public void setAnnualFeeSnapshot(Long v){annualFeeSnapshot=v;}
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

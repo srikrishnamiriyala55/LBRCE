@@ -182,10 +182,10 @@ export default function AdminApplicationsPage() {
   };
 
   const remove = async (row) => {
-    if (!window.confirm(`Delete the application for ${row.rollNumber} and ${row.busNumber}?`)) return;
+    if (!window.confirm(`Cancel the application for ${row.rollNumber} and ${row.busNumber}? The historical record will be retained.`)) return;
     try {
       await api.delete(`/admin/applications/${row.id}`);
-      addToast('Application deleted', 'success');
+      addToast('Application cancelled; historical record retained', 'success');
       load(new AbortController().signal);
     } catch (error) {
       addToast(error.response?.data?.message || 'Application deletion failed', 'error');
@@ -212,7 +212,7 @@ export default function AdminApplicationsPage() {
             <button type="button" onClick={() => openDecision(row, 'REJECT')} className="rounded bg-red-100 px-2 py-1 text-xs font-medium text-red-700">Reject</button>
             <button type="button" onClick={() => openEdit(row)} className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700"><Edit2 size={14} /> Edit</button>
           </>}
-          {deletable(row) && <button type="button" onClick={() => remove(row)} className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700"><Trash2 size={14} /> Delete</button>}
+          {deletable(row) && <button type="button" onClick={() => remove(row)} className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700"><Trash2 size={14} /> Cancel</button>}
           {row.status === 'APPROVED' && <span title="Linked to active transport records" className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-500">Allocated · Locked</span>}
         </div>
       )

@@ -46,6 +46,7 @@ public class AdminService {
     private final StudentAcademicDetailsRepository studentAcademicDetailsRepo;
     private final StudentAcademicDetailsService studentAcademicDetailsService;
     private final NotificationService notificationService;
+    private final BusInchargeAssignmentRepository busInchargeAssignmentRepo;
 
     public AdminService(StudentRepository studentRepo,
                         BusRepository busRepo,
@@ -59,7 +60,8 @@ public class AdminService {
                         PaymentRepository paymentRepo, NotificationRepository notificationRepo,
                         AuditService auditService, StudentAcademicDetailsRepository studentAcademicDetailsRepo,
                         StudentAcademicDetailsService studentAcademicDetailsService,
-                        NotificationService notificationService) {
+                        NotificationService notificationService,
+                        BusInchargeAssignmentRepository busInchargeAssignmentRepo) {
         this.studentRepo = studentRepo;
         this.busRepo = busRepo;
         this.inchargeRepo = inchargeRepo;
@@ -76,6 +78,7 @@ public class AdminService {
         this.studentAcademicDetailsRepo = studentAcademicDetailsRepo;
         this.studentAcademicDetailsService = studentAcademicDetailsService;
         this.notificationService = notificationService;
+        this.busInchargeAssignmentRepo = busInchargeAssignmentRepo;
     }
 
 
@@ -88,7 +91,12 @@ public class AdminService {
         java.util.List<Bus> existing=busRepo.findByInchargeId(inchargeId);
         if(!existing.isEmpty()&&!existing.get(0).getId().equals(busId))throw new BadRequestException("This In-Charge is already assigned to "+existing.get(0).getBusNumber());
         ensureNoPendingBusWorkflow(busId);
-        String old=bus.getIncharge()==null?null:bus.getIncharge().getTeacherId();bus.setIncharge(incharge);bus.setUpdatedAt(LocalDateTime.now());busRepo.saveAndFlush(bus);
+        String old=bus.getIncharge()==null?null:bus.getIncharge().getTeacherId();
+        AcademicYear activeYear=academicYearRepo.findByActiveTrue().orElseThrow(()->new BadRequestException("No active academic year is configured"));
+        busInchargeAssignmentRepo.findByBusIdAndStatus(busId,"ACTIVE").forEach(assignment->{assignment.setStatus("ENDED");assignment.setEndedAt(LocalDateTime.now());busInchargeAssignmentRepo.save(assignment);});
+        bus.setIncharge(incharge);bus.setUpdatedAt(LocalDateTime.now());busRepo.saveAndFlush(bus);
+        var history=busInchargeAssignmentRepo.findByBusIdAndInchargeIdAndAcademicYearId(busId,inchargeId,activeYear.getId()).orElseGet(com.web.sms.entity.BusInchargeAssignment::new);
+        history.setBus(bus);history.setIncharge(incharge);history.setAcademicYear(activeYear);history.setStatus("ACTIVE");history.setAssignedAt(LocalDateTime.now());history.setEndedAt(null);history.setAssignedBy(actor);busInchargeAssignmentRepo.save(history);
         auditService.log(actor,"ADMIN","BUS_INCHARGE_ASSIGNED","BUS",String.valueOf(busId),old,incharge.getTeacherId(),null);
         return com.web.sms.dto.response.BusResponse.fromBus(bus,(int)allocationRepo.countByBusIdAndStatus(busId,EntityStatus.ACTIVE));
     }
@@ -98,7 +106,7 @@ public class AdminService {
         Bus bus=busRepo.findByIdForUpdate(busId).orElseThrow(()->new com.web.sms.exception.ResourceNotFoundException("Bus not found"));
         if(bus.getIncharge()==null)return com.web.sms.dto.response.BusResponse.fromBus(bus,(int)allocationRepo.countByBusIdAndStatus(busId,EntityStatus.ACTIVE));
         ensureNoPendingBusWorkflow(busId);
-        String old=bus.getIncharge().getTeacherId();bus.setIncharge(null);bus.setUpdatedAt(LocalDateTime.now());busRepo.save(bus);
+        String old=bus.getIncharge().getTeacherId();busInchargeAssignmentRepo.findByBusIdAndStatus(busId,"ACTIVE").forEach(existing->{existing.setStatus("ENDED");existing.setEndedAt(LocalDateTime.now());busInchargeAssignmentRepo.save(existing);});bus.setIncharge(null);bus.setUpdatedAt(LocalDateTime.now());busRepo.save(bus);
         auditService.log(actor,"ADMIN","BUS_INCHARGE_UNASSIGNED","BUS",String.valueOf(busId),old,null,null);
         return com.web.sms.dto.response.BusResponse.fromBus(bus,(int)allocationRepo.countByBusIdAndStatus(busId,EntityStatus.ACTIVE));
     }
@@ -296,13 +304,17 @@ public class AdminService {
 
     @Transactional
     public void deleteStudent(Long studentId,String actor){
+        // Production records are never physically deleted: applications,
+        // allocations, fees, payments and passes are statutory/audit history.
         Student student=studentRepo.findByIdForUpdate(studentId).orElseThrow(()->new com.web.sms.exception.ResourceNotFoundException("Student not found"));
-        List<Bus> affected=allocationRepo.findByStudentId(studentId).stream().map(TransportAllocation::getBus).filter(java.util.Objects::nonNull).distinct().toList();
-        paymentRepo.deleteByStudentId(studentId);passRepo.deleteByStudentId(studentId);feeRepo.deleteByStudentId(studentId);
-        transferRepo.deleteByStudentId(studentId);allocationRepo.deleteByStudentId(studentId);applicationRepo.deleteByStudentId(studentId);
-        notificationRepo.deleteByRecipientRollNumber(student.getRollNumber());studentAcademicDetailsRepo.deleteByStudentId(studentId);studentRepo.delete(student);studentRepo.flush();
-        affected.forEach(bus->{long occupied=allocationRepo.countByBusIdAndStatus(bus.getId(),EntityStatus.ACTIVE);bus.setAvailableSeats(Math.max(0,bus.getTotalSeats()-(int)occupied));busRepo.save(bus);});
-        auditService.log(actor,"ADMIN","STUDENT_DELETED","STUDENT",String.valueOf(studentId),student.getRollNumber(),null,"Related applications, allocations, fees, payments, passes, transfers and notifications removed");
+        String previous=student.getStatus();
+        if (!"INACTIVE".equalsIgnoreCase(previous) && !"ARCHIVED".equalsIgnoreCase(previous)) {
+            updateStudentStatus(studentId,"INACTIVE",actor);
+            student=studentRepo.findByIdForUpdate(studentId).orElseThrow(()->new com.web.sms.exception.ResourceNotFoundException("Student not found"));
+        }
+        student.setStatus("ARCHIVED");
+        studentRepo.save(student);
+        auditService.log(actor,"ADMIN","STUDENT_ARCHIVED","STUDENT",String.valueOf(studentId),previous,"ARCHIVED","Historical and financial records retained");
     }
 
     private void applyStudentDetails(Student s,UpdateStudentRequest req,String email){s.setName(req.getName().trim());s.setEmail(email);s.setPhoneNumber(req.getPhoneNumber().trim());s.setDob(req.getDob());s.setGender(req.getGender());s.setAddress(req.getAddress().trim());s.setBranch(req.getBranch().trim().toUpperCase());s.setYear(req.getYear());s.setSemester(req.getSemester());s.setBloodGroup(req.getBloodGroup());s.setParentName(req.getParentName().trim());s.setParentPhoneNumber(req.getParentPhoneNumber().trim());}
@@ -367,16 +379,22 @@ public class AdminService {
 
     @Transactional
     public AcademicYear createAcademicYear(CreateAcademicYearRequest req) {
+        if (!req.getYearName().trim().matches("\\d{4}-\\d{2}")) {
+            throw new BadRequestException("Academic year must use the format YYYY-YY, for example 2027-28");
+        }
         if (academicYearRepo.findByYearName(req.getYearName()).isPresent()) {
             throw new BadRequestException("Academic year " + req.getYearName() + " already exists");
         }
 
-        LocalDate start=req.getStartDate()!=null&&!req.getStartDate().isBlank()?LocalDate.parse(req.getStartDate()):null;
-        LocalDate end=req.getEndDate()!=null&&!req.getEndDate().isBlank()?LocalDate.parse(req.getEndDate()):null;
+        if(req.getStartDate()==null||req.getStartDate().isBlank()||req.getEndDate()==null||req.getEndDate().isBlank())throw new BadRequestException("Academic year start and end dates are required");
+        LocalDate start=LocalDate.parse(req.getStartDate());
+        LocalDate end=LocalDate.parse(req.getEndDate());
         if(start!=null&&end!=null&&!end.isAfter(start))throw new BadRequestException("Academic year end date must be after its start date");
         // A rollover closes operational access for the old year. Students keep
         // their accounts but must submit a new application in the new year.
         AcademicYear current = academicYearRepo.findByActiveTrue().orElse(null);
+        java.util.List<com.web.sms.entity.StudentAcademicDetails> previousAcademicDetails = current == null
+                ? java.util.List.of() : studentAcademicDetailsRepo.findByAcademicYearId(current.getId());
         java.util.List<String> renewalRollNumbers = new java.util.ArrayList<>();
         if (current != null) {
             long pending = applicationRepo.findAllForAdminList().stream()
@@ -408,6 +426,28 @@ public class AdminService {
         y.setCreatedAt(LocalDateTime.now());
 
         AcademicYear saved = academicYearRepo.save(y);
+
+        // Create the new year's progression records. Completed programmes are
+        // retained as historical records but are not given an active renewal row.
+        for (var previous : previousAcademicDetails) {
+            Student student = previous.getStudent();
+            if (!"ACTIVE".equalsIgnoreCase(student.getStatus())) continue;
+            int programmeYears = "MBA".equalsIgnoreCase(previous.getBranch()) ? 2 : 4;
+            if (previous.getYear() >= programmeYears) {
+                previous.setStatus("COMPLETED");
+                student.setStatus("GRADUATED");
+                studentRepo.save(student);
+                studentAcademicDetailsRepo.save(previous);
+                continue;
+            }
+            int nextYear = previous.getYear() + 1;
+            int nextSemester = (nextYear * 2) - 1;
+            var next = studentAcademicDetailsService.upsert(student, saved, previous.getBranch(), nextYear, nextSemester);
+            student.setBranch(next.getBranch());
+            student.setYear(next.getYear());
+            student.setSemester(next.getSemester());
+            studentRepo.save(student);
+        }
 
         // Notify all students who had a bus allocation in the previous year to renew
         String newYearName = saved.getYearName();

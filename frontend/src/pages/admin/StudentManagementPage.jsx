@@ -120,13 +120,13 @@ export default function StudentManagementPage() {
   };
 
   const remove = async (s) => {
-    if (!window.confirm(`Permanently delete ${s.rollNumber}? Related records will also be removed.`)) return;
+    if (!window.confirm(`Archive ${s.rollNumber}? Login and active transport access will be disabled, while historical records are retained.`)) return;
     try {
       await api.delete(`/admin/students/${s.id}`);
-      addToast('Student and related records deleted', 'success');
+      addToast('Student archived; historical records retained', 'success');
       load(new AbortController().signal);
     } catch (e) {
-      addToast(e.response?.data?.message || 'Student deletion failed', 'error');
+      addToast(e.response?.data?.message || 'Student archival failed', 'error');
     }
   };
 
@@ -175,7 +175,7 @@ export default function StudentManagementPage() {
           </button>
           <button
             type="button"
-            title="Delete student"
+            title="Archive student"
             className="p-1.5 text-red-600 hover:text-red-800 transition-colors"
             onClick={() => remove(r)}
           >

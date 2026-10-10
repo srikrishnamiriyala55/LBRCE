@@ -22,6 +22,8 @@ import com.web.sms.repository.FeeRepository;
 import com.web.sms.repository.TransportAllocationRepository;
 import com.web.sms.repository.TransferRequestRepository;
 import com.web.sms.repository.PaymentRepository;
+import com.web.sms.repository.BusInchargeAssignmentRepository;
+import com.web.sms.repository.StudentAcademicDetailsRepository;
 import com.web.sms.exception.ForbiddenException;
 import com.web.sms.exception.ResourceNotFoundException;
 import com.web.sms.security.UserPrincipal;
@@ -41,6 +43,8 @@ import com.web.sms.dto.response.BusResponse;
 import com.web.sms.dto.response.NotificationResponse;
 import com.web.sms.dto.response.InchargeStudentResponse;
 import com.web.sms.dto.response.PaymentResponse;
+import com.web.sms.dto.response.StudentYearHistoryResponse;
+import com.web.sms.service.StudentHistoryService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
@@ -72,6 +76,9 @@ public class InchargeController {
     private final PassService passService;
     private final AdminService adminService;
     private final PaymentRepository paymentRepo;
+    private final BusInchargeAssignmentRepository busInchargeAssignmentRepo;
+    private final StudentAcademicDetailsRepository studentAcademicDetailsRepo;
+    private final StudentHistoryService studentHistoryService;
 
     public InchargeController(InchargeService inchargeService,
                               ApplicationService applicationService,
@@ -83,7 +90,10 @@ public class InchargeController {
                               AcademicYearRepository academicYearRepo,
                               TransferRequestRepository transferRepo, InchargeOperationsService operations,
                               NotificationService notificationService, TransportReportService reportService,
-                              PassService passService,AdminService adminService, PaymentRepository paymentRepo) {
+                              PassService passService,AdminService adminService, PaymentRepository paymentRepo,
+                              BusInchargeAssignmentRepository busInchargeAssignmentRepo,
+                              StudentAcademicDetailsRepository studentAcademicDetailsRepo,
+                              StudentHistoryService studentHistoryService) {
         this.inchargeService = inchargeService;
         this.applicationService = applicationService;
         this.transferService = transferService;
@@ -99,6 +109,9 @@ public class InchargeController {
         this.passService = passService;
         this.adminService=adminService;
         this.paymentRepo=paymentRepo;
+        this.busInchargeAssignmentRepo=busInchargeAssignmentRepo;
+        this.studentAcademicDetailsRepo=studentAcademicDetailsRepo;
+        this.studentHistoryService=studentHistoryService;
     }
 
     private UserPrincipal getCurrentUser() {
@@ -114,6 +127,13 @@ public class InchargeController {
         if (bus == null) throw new ForbiddenException("No bus is assigned to this incharge");
         if (bus.getStatus() != EntityStatus.ACTIVE) throw new ForbiddenException("Your assigned bus is inactive");
         return bus;
+    }
+
+    private Bus requireAssignedBus(Long academicYearId) {
+        if (academicYearId == null) return requireAssignedBus();
+        return busInchargeAssignmentRepo.findFirstByInchargeIdAndAcademicYearIdOrderByAssignedAtDesc(getCurrentUser().getId(), academicYearId)
+                .map(com.web.sms.entity.BusInchargeAssignment::getBus)
+                .orElseThrow(() -> new ForbiddenException("You were not assigned to a bus in the selected academic year"));
     }
 
     private Pageable requestedPage(boolean unpaged, Pageable pageable) { return unpaged ? Pageable.unpaged() : checked(pageable); }
@@ -168,13 +188,13 @@ public class InchargeController {
 
     @GetMapping("/fees")
     public List<com.web.sms.dto.response.FeeResponse> fees(@RequestParam(required = false) Long academicYearId) {
-        return feeRepo.findForIncharge(requireAssignedBus().getId(), academicYearId)
+        return feeRepo.findForIncharge(requireAssignedBus(academicYearId).getId(), academicYearId)
                 .stream().map(com.web.sms.dto.response.FeeResponse::fromFee).toList();
     }
 
     @GetMapping("/passes")
     public List<PassResponse> passes(@RequestParam(required = false) Long academicYearId) {
-        return passRepo.findForIncharge(requireAssignedBus().getId(), academicYearId)
+        return passRepo.findForIncharge(requireAssignedBus(academicYearId).getId(), academicYearId)
                 .stream().map(PassResponse::fromBusPass).toList();
     }
     @GetMapping("/passes/{id}") public PassResponse pass(@PathVariable Long id){return passService.getPassForIncharge(id,requireAssignedBus().getId());}
@@ -183,8 +203,8 @@ public class InchargeController {
 
     @GetMapping("/reports")
     public DashboardResponse reports(){return operations.dashboard(requireAssignedBus());}
-    @GetMapping("/reports/students") public Page<TransportReportRow> studentReport(@ModelAttribute com.web.sms.dto.request.TransportReportFilter filter,@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable){return reportService.report(requireAssignedBus().getId(),filter,requestedPage(unpaged,pageable));}
-    @GetMapping("/reports/students/export/{format}") public ResponseEntity<byte[]> exportStudentReport(@PathVariable String format,@ModelAttribute com.web.sms.dto.request.TransportReportFilter filter){Bus bus=requireAssignedBus();boolean excel="excel".equalsIgnoreCase(format)||"xlsx".equalsIgnoreCase(format);boolean pdf="pdf".equalsIgnoreCase(format);if(!excel&&!pdf)throw new com.web.sms.exception.BadRequestException("Export format must be excel or pdf");byte[] body=excel?reportService.excel(bus.getId(),filter,"Transport Report - "+bus.getBusNumber()):reportService.pdf(bus.getId(),filter,"Transport Report - "+bus.getBusNumber());String ext=excel?"xlsx":"pdf";MediaType type=excel?MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):MediaType.APPLICATION_PDF;return ResponseEntity.ok().contentType(type).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename="+bus.getBusNumber()+"-transport-report."+ext).body(body);}
+    @GetMapping("/reports/students") public Page<TransportReportRow> studentReport(@ModelAttribute com.web.sms.dto.request.TransportReportFilter filter,@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable){return reportService.report(requireAssignedBus(filter.getAcademicYearId()).getId(),filter,requestedPage(unpaged,pageable));}
+    @GetMapping("/reports/students/export/{format}") public ResponseEntity<byte[]> exportStudentReport(@PathVariable String format,@ModelAttribute com.web.sms.dto.request.TransportReportFilter filter){Bus bus=requireAssignedBus(filter.getAcademicYearId());boolean excel="excel".equalsIgnoreCase(format)||"xlsx".equalsIgnoreCase(format);boolean pdf="pdf".equalsIgnoreCase(format);if(!excel&&!pdf)throw new com.web.sms.exception.BadRequestException("Export format must be excel or pdf");byte[] body=excel?reportService.excel(bus.getId(),filter,"Transport Report - "+bus.getBusNumber()):reportService.pdf(bus.getId(),filter,"Transport Report - "+bus.getBusNumber());String ext=excel?"xlsx":"pdf";MediaType type=excel?MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):MediaType.APPLICATION_PDF;return ResponseEntity.ok().contentType(type).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename="+bus.getBusNumber()+"-transport-report."+ext).body(body);}
 
     @GetMapping("/notifications")
     public List<com.web.sms.dto.response.NotificationResponse> notifications() {
@@ -194,13 +214,13 @@ public class InchargeController {
 
     @GetMapping("/applications")
     public Page<ApplicationResponse> getApplications(@RequestParam(required = false) ApplicationStatus status, @RequestParam(required = false) Long academicYearId, @RequestParam(defaultValue="false") boolean unpaged, Pageable pageable) {
-        Bus bus = getAssignedBus();
+        Bus bus = academicYearId == null ? getAssignedBus() : requireAssignedBus(academicYearId);
         if (bus == null) return Page.empty();
         return applicationService.getApplicationsByBus(bus.getId(), status, academicYearId, requestedPage(unpaged,pageable));
     }
     @GetMapping("/applications/summary")
     public Map<String,Long> applicationSummary(@RequestParam(required = false) Long academicYearId) {
-        Bus bus = requireAssignedBus();
+        Bus bus = requireAssignedBus(academicYearId);
         Map<String,Long> result = new LinkedHashMap<>();
         List<BusApplication> apps = applicationRepo.findByBusId(bus.getId(), Pageable.unpaged()).getContent().stream()
                 .filter(a -> academicYearId == null || (a.getAcademicYear() != null && a.getAcademicYear().getId().equals(academicYearId)))
@@ -229,7 +249,9 @@ public class InchargeController {
     public StudentProfileResponse getApplicationStudentDetails(@PathVariable Long id) {
         requireApplicationAccess(id);
         BusApplication app = applicationRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Application not found"));
-        return StudentProfileResponse.fromStudent(app.getStudent());
+        return studentAcademicDetailsRepo.findByStudentIdAndAcademicYearId(app.getStudent().getId(), app.getAcademicYear().getId())
+                .map(details -> StudentProfileResponse.fromStudent(app.getStudent(), details))
+                .orElseGet(() -> StudentProfileResponse.fromStudent(app.getStudent()));
     }
 
     @GetMapping("/applications/{id}/student-photo")
@@ -243,7 +265,7 @@ public class InchargeController {
 
     @GetMapping("/students")
     public Page<InchargeStudentResponse> getStudents(@RequestParam(required=false) String search,@RequestParam(required=false) String branch,@RequestParam(required=false) Integer year,@RequestParam(required=false) Long boardingPointId,@RequestParam(required=false) String paymentStatus,@RequestParam(required=false) String passStatus,@RequestParam(required=false) Long academicYearId,@RequestParam(defaultValue="false") boolean unpaged,Pageable pageable) {
-        return operations.students(requireAssignedBus(),search,branch,year,boardingPointId,paymentStatus,passStatus,academicYearId,requestedPage(unpaged,pageable));
+        return operations.students(requireAssignedBus(academicYearId),search,branch,year,boardingPointId,paymentStatus,passStatus,academicYearId,requestedPage(unpaged,pageable));
     }
     @PutMapping(value="/students/{studentId}",consumes=MediaType.MULTIPART_FORM_DATA_VALUE) public StudentProfileResponse updateStudent(@PathVariable Long studentId,@Valid @RequestPart("student") UpdateStudentRequest req,@RequestPart(value="photo",required=false) org.springframework.web.multipart.MultipartFile photo){return adminService.updateStudentForIncharge(studentId,requireAssignedBus().getId(),req,photo,getCurrentUser().getUsername());}
 
@@ -312,15 +334,27 @@ public class InchargeController {
 
     @GetMapping("/students/{studentId}/photo")
     public ResponseEntity<byte[]> getStudentPhoto(@PathVariable Long studentId) {
-        TransportAllocation allocation = allocationRepo.findByStudentId(studentId).stream()
-                .filter(a -> a.getBus().getId().equals(requireAssignedBus().getId()))
-                .findFirst()
-                .orElseThrow(() -> new ForbiddenException("This student is not assigned to your bus"));
+        var allowed=authorizedStudentHistory(studentId);
+        if(allowed.isEmpty())throw new ForbiddenException("This student was not assigned to a bus you managed");
+        TransportAllocation allocation = allocationRepo.findByStudentId(studentId).stream().findFirst().orElseThrow(()->new ResourceNotFoundException("Student allocation not found"));
         Student st = allocation.getStudent();
         if (st.getPhotoData() == null || st.getPhotoData().length == 0) throw new ResourceNotFoundException("Student photo not found");
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(st.getPhotoContentType() == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : st.getPhotoContentType()))
                 .body(st.getPhotoData());
+    }
+
+    @GetMapping("/students/{studentId}/history")
+    public List<StudentYearHistoryResponse> studentHistory(@PathVariable Long studentId){return authorizedStudentHistory(studentId);}
+
+    private List<StudentYearHistoryResponse> authorizedStudentHistory(Long studentId){
+        var assignments=busInchargeAssignmentRepo.findByInchargeId(getCurrentUser().getId());
+        java.util.Set<String> scopes=assignments.stream().map(a->a.getBus().getId()+":"+a.getAcademicYear().getId()).collect(java.util.stream.Collectors.toSet());
+        java.util.Set<Long> allowedYears=allocationRepo.findByStudentId(studentId).stream()
+                .filter(a->a.getBus()!=null&&a.getAcademicYear()!=null&&scopes.contains(a.getBus().getId()+":"+a.getAcademicYear().getId()))
+                .map(a->a.getAcademicYear().getId()).collect(java.util.stream.Collectors.toSet());
+        if(allowedYears.isEmpty())throw new ForbiddenException("This student was not assigned to a bus you managed");
+        return studentHistoryService.history(studentId,allowedYears);
     }
 
 }

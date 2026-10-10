@@ -106,6 +106,7 @@ public class ApplicationService {
         app.setBoardingPoint(boardingPoint);
         app.setAcademicYear(year);
         app.setStatus(ApplicationStatus.PENDING);
+        captureApplicationSnapshot(app);
         app.setAppliedAt(LocalDateTime.now());
         app.setCreatedAt(LocalDateTime.now());
 
@@ -185,7 +186,7 @@ public class ApplicationService {
         if(bus.getStatus()!=EntityStatus.ACTIVE||bus.getIncharge()==null||!"ACTIVE".equalsIgnoreCase(bus.getIncharge().getStatus()))throw new BadRequestException("The selected bus is not accepting applications");
         if(!point.getBus().getId().equals(bus.getId())||point.getStatus()!=EntityStatus.ACTIVE)throw new BadRequestException("Select an active boarding point belonging to the selected bus");
         String old=app.getBus().getBusNumber()+" / "+app.getBoardingPoint().getStationName();
-        app.setBus(bus);app.setBoardingPoint(point);app.setRemarks(req.getRemarks()==null?null:req.getRemarks().trim());
+        app.setBus(bus);app.setBoardingPoint(point);app.setRemarks(req.getRemarks()==null?null:req.getRemarks().trim());captureApplicationSnapshot(app);
         BusApplication saved=appRepo.save(app);auditService.log(actor,"ADMIN","APPLICATION_UPDATED","BUS_APPLICATION",String.valueOf(applicationId),old,bus.getBusNumber()+" / "+point.getStationName(),null);return ApplicationResponse.fromApplication(saved);
     }
 
@@ -194,7 +195,7 @@ public class ApplicationService {
         BusApplication app=appRepo.findByIdForUpdate(applicationId).orElseThrow(()->new ResourceNotFoundException("Application not found"));
         requireActiveAcademicYear(app);
         if(app.getStatus()==ApplicationStatus.APPROVED||allocationRepo.existsByApplicationId(applicationId))throw new BadRequestException("Approved or allocated applications cannot be deleted");
-        appRepo.delete(app);auditService.log(actor,"ADMIN","APPLICATION_DELETED","BUS_APPLICATION",String.valueOf(applicationId),app.getStudent().getRollNumber()+" / "+app.getBus().getBusNumber(),null,null);
+        ApplicationStatus previous=app.getStatus();app.setStatus(ApplicationStatus.CANCELLED);app.setReviewedAt(LocalDateTime.now());app.setReviewedBy(actor);app.setRemarks("Cancelled by administrator; record retained for audit");appRepo.save(app);auditService.log(actor,"ADMIN","APPLICATION_CANCELLED","BUS_APPLICATION",String.valueOf(applicationId),previous.name(),"CANCELLED","Historical record retained");
     }
 
     @Transactional
@@ -239,7 +240,7 @@ public class ApplicationService {
             return ApplicationResponse.fromApplication(reconciled);
         }
 
-        long occupied = allocationRepo.countByBusIdAndStatus(bus.getId(), EntityStatus.ACTIVE);
+        long occupied = allocationRepo.countByBusIdAndAcademicYearIdAndStatus(bus.getId(), app.getAcademicYear().getId(), EntityStatus.ACTIVE);
         int capacity = bus.getTotalSeats() != null ? bus.getTotalSeats() : 0;
         if (bus.getStatus() != EntityStatus.ACTIVE || bus.getIncharge() == null ||
                 !"ACTIVE".equalsIgnoreCase(bus.getIncharge().getStatus()) ||
@@ -263,9 +264,10 @@ public class ApplicationService {
         allocation.setStatus(EntityStatus.ACTIVE);
         allocation.setAllocatedAt(LocalDateTime.now());
         allocation.setCreatedAt(LocalDateTime.now());
+        captureHistoricalSnapshot(allocation, app);
         TransportAllocation savedAllocation = allocationRepo.save(allocation);
 
-        long occupiedSeats = allocationRepo.countByBusIdAndStatus(bus.getId(), EntityStatus.ACTIVE);
+        long occupiedSeats = allocationRepo.countByBusIdAndAcademicYearIdAndStatus(bus.getId(), app.getAcademicYear().getId(), EntityStatus.ACTIVE);
         bus.setAvailableSeats(Math.max(0, (bus.getTotalSeats() != null ? bus.getTotalSeats() : 0) - (int) occupiedSeats));
         busRepo.save(bus);
 
@@ -331,17 +333,7 @@ public class ApplicationService {
     }
 
     public Page<ApplicationResponse> getApplicationsByBus(Long busId, ApplicationStatus status, Long academicYearId, Pageable pageable) {
-        List<BusApplication> base = (status != null ? appRepo.findByBusIdAndStatus(busId, status, Pageable.unpaged()) : appRepo.findByBusId(busId, Pageable.unpaged())).getContent();
-        List<ApplicationResponse> list = base.stream()
-                .filter(a -> academicYearId == null || (a.getAcademicYear() != null && a.getAcademicYear().getId().equals(academicYearId)))
-                .map(ApplicationResponse::fromApplication)
-                .toList();
-        if (pageable.isUnpaged()) {
-            return new PageImpl<>(list);
-        }
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), list.size());
-        return new PageImpl<>(start < list.size() ? list.subList(start, end) : List.of(), pageable, list.size());
+        return appRepo.searchForIncharge(busId,academicYearId,status,pageable).map(ApplicationResponse::fromApplication);
     }
 
     private void requireActiveAcademicYear(BusApplication application) {
@@ -350,5 +342,37 @@ public class ApplicationService {
         if (application.getAcademicYear() == null || !active.getId().equals(application.getAcademicYear().getId())) {
             throw new BadRequestException("Historical applications are read-only. Actions are allowed only for " + active.getYearName());
         }
+    }
+
+    private void captureHistoricalSnapshot(TransportAllocation allocation, BusApplication application) {
+        Student student = application.getStudent();
+        Bus bus = application.getBus();
+        BoardingPoints point = application.getBoardingPoint();
+        var academic = academicDetailsRepo.findByStudentIdAndAcademicYearId(student.getId(), application.getAcademicYear().getId()).orElse(null);
+        allocation.setStudentNameSnapshot(student.getName());
+        allocation.setRollNumberSnapshot(student.getRollNumber());
+        allocation.setPhoneNumberSnapshot(student.getPhoneNumber());
+        allocation.setBranchSnapshot(academic != null ? academic.getBranch() : student.getBranch());
+        allocation.setStudyYearSnapshot(academic != null ? academic.getYear() : student.getYear());
+        allocation.setSemesterSnapshot(academic != null ? academic.getSemester() : student.getSemester());
+        allocation.setBusNumberSnapshot(bus.getBusNumber());
+        allocation.setStartingPointSnapshot(bus.getStartingPoint());
+        allocation.setEndingPointSnapshot(bus.getEndingPoint());
+        allocation.setBoardingPointSnapshot(point.getStationName());
+        allocation.setAnnualFeeSnapshot(point.getFeeAmount());
+        if (bus.getIncharge() != null) {
+            allocation.setInchargeNameSnapshot(bus.getIncharge().getName());
+            allocation.setInchargeTeacherIdSnapshot(bus.getIncharge().getTeacherId());
+        }
+    }
+
+    private void captureApplicationSnapshot(BusApplication application){
+        application.setStudentNameSnapshot(application.getStudent().getName());
+        application.setRollNumberSnapshot(application.getStudent().getRollNumber());
+        application.setBusNumberSnapshot(application.getBus().getBusNumber());
+        application.setStartingPointSnapshot(application.getBus().getStartingPoint());
+        application.setEndingPointSnapshot(application.getBus().getEndingPoint());
+        application.setBoardingPointSnapshot(application.getBoardingPoint().getStationName());
+        application.setAnnualFeeSnapshot(application.getBoardingPoint().getFeeAmount());
     }
 }

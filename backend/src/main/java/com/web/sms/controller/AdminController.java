@@ -84,6 +84,7 @@ import com.web.sms.service.InchargeService;
 import com.web.sms.service.PassService;
 import com.web.sms.service.TransferService;
 import com.web.sms.service.TransportReportService;
+import com.web.sms.service.StudentHistoryService;
 
 import jakarta.validation.Valid;
 
@@ -114,6 +115,7 @@ public class AdminController {
     private final PassService passService;
     private final FeeService feeService;
     private final StudentAcademicDetailsRepository studentAcademicDetailsRepo;
+    private final StudentHistoryService studentHistoryService;
 
     public AdminController(AdminService adminService,
                            BusService busService,
@@ -132,7 +134,8 @@ public class AdminController {
                            NotificationRepository notificationRepo, AdminRepository adminRepo,
                            TransportAllocationRepository allocationRepo,
                            InchargeRepository inchargeRepo, TransportReportService reportService,
-                           PassService passService, FeeService feeService, StudentAcademicDetailsRepository studentAcademicDetailsRepo) {
+                           PassService passService, FeeService feeService, StudentAcademicDetailsRepository studentAcademicDetailsRepo,
+                           StudentHistoryService studentHistoryService) {
         this.adminService = adminService;
         this.busService = busService;
         this.inchargeService = inchargeService;
@@ -153,6 +156,7 @@ public class AdminController {
         this.passService=passService;
         this.feeService=feeService;
         this.studentAcademicDetailsRepo=studentAcademicDetailsRepo;
+        this.studentHistoryService=studentHistoryService;
     }
 
     private UserPrincipal getCurrentUser() {
@@ -390,22 +394,9 @@ public class AdminController {
     public List<ApplicationResponse> getApplications(@RequestParam(required = false) String search,
                                                      @RequestParam(required = false) ApplicationStatus status,
                                                      @RequestParam(required = false) Long academicYearId) {
-        String term = search == null ? "" : search.trim().toLowerCase();
-        List<BusApplication> list;
-        try {
-            list = applicationRepo.findAllForAdminList();
-        } catch (Exception e) {
-            list = applicationRepo.findAll();
-        }
-        return list.stream()
-                .filter(application -> status == null || application.getStatus() == status)
-                .filter(application -> academicYearId == null || (application.getAcademicYear() != null && application.getAcademicYear().getId().equals(academicYearId)))
+        String term = search == null ? "" : search.trim();
+        return applicationRepo.searchAdminList(term,status,academicYearId).stream()
                 .map(ApplicationResponse::fromApplication)
-                .filter(application -> term.isEmpty() || String.join(" ",
-                        safe(application.getStudentName()), safe(application.getRollNumber()), safe(application.getBusNumber()),
-                        safe(application.getBoardingPointName()), safe(application.getAcademicYear()),
-                        application.getStatus() == null ? "" : application.getStatus().name())
-                        .toLowerCase().contains(term))
                 .toList();
     }
 
@@ -414,10 +405,8 @@ public class AdminController {
     @GetMapping("/applications/summary")
     public Map<String, Long> applicationSummary(@RequestParam(required = false) Long academicYearId) {
         Map<String, Long> summary = new LinkedHashMap<>();
-        List<BusApplication> applications = academicYearId == null ? applicationRepo.findAllForAdminList() : applicationRepo.findAllForAdminList().stream()
-                .filter(app -> app.getAcademicYear() != null && app.getAcademicYear().getId().equals(academicYearId)).toList();
-        summary.put("registered", (long) applications.size());
-        for (ApplicationStatus status : ApplicationStatus.values()) summary.put(status.name().toLowerCase(), applications.stream().filter(a -> a.getStatus() == status).count());
+        summary.put("registered", applicationRepo.countForSummary(academicYearId,null));
+        for (ApplicationStatus status : ApplicationStatus.values()) summary.put(status.name().toLowerCase(), applicationRepo.countForSummary(academicYearId,status));
         return summary;
     }
 
@@ -439,7 +428,9 @@ public class AdminController {
     @GetMapping("/applications/{id}/student-details")
     public StudentProfileResponse getApplicationStudentDetails(@PathVariable Long id) {
         BusApplication app = applicationRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Application not found"));
-        return StudentProfileResponse.fromStudent(app.getStudent());
+        return studentAcademicDetailsRepo.findByStudentIdAndAcademicYearId(app.getStudent().getId(),app.getAcademicYear().getId())
+                .map(details -> StudentProfileResponse.fromStudent(app.getStudent(),details))
+                .orElseGet(() -> StudentProfileResponse.fromStudent(app.getStudent()));
     }
 
     @GetMapping("/applications/{id}/student-photo")
@@ -490,7 +481,7 @@ public class AdminController {
     @GetMapping("/passes/{id}/download") public ResponseEntity<byte[]> downloadPass(@PathVariable Long id){PassResponse pass=passService.getPassForAdmin(id);return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=bus-pass-"+pass.getRollNumber()+".pdf").body(passService.generatePdfForAdmin(id));}
     @GetMapping("/notifications") public List<NotificationResponse> notifications(){return notificationRepo.findAll().stream().map(NotificationResponse::fromNotification).toList();}
     @GetMapping("/profile") public Map<String,Object> profile(){Admin a=adminRepo.findById(getCurrentUser().getId()).orElseThrow(()->new ResourceNotFoundException("Admin not found"));Map<String,Object> r=new LinkedHashMap<>();r.put("adminId",a.getAdminId());r.put("name",a.getName());r.put("email",a.getEmail());r.put("phoneNumber",a.getPhoneNumber());r.put("status",a.getStatus());return r;}
-    @GetMapping("/students/{id}/transport") public Map<String,Object> studentTransport(@PathVariable Long id){Student s=studentRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("Student not found"));Map<String,Object> r=new LinkedHashMap<>();r.put("student",StudentProfileResponse.fromStudent(s));java.util.List<TransportAllocation> history=allocationRepo.findByStudentId(id);r.put("assignments",history.stream().map(a->{Map<String,Object>x=new LinkedHashMap<>();x.put("id",a.getId());x.put("academicYear",a.getAcademicYear()!=null?a.getAcademicYear().getYearName():"—");x.put("bus",a.getBus().getBusNumber());x.put("boardingPoint",a.getBoardingPoint().getStationName());x.put("status",a.getStatus());return x;}).toList());r.put("fees",feeRepo.findByStudentId(id).stream().map(FeeResponse::fromFee).toList());r.put("passes",passRepo.findByStudentId(id).stream().map(PassResponse::fromBusPass).toList());r.put("transfers",transferRepo.findByStudentId(id).stream().map(TransferResponse::fromTransfer).toList());return r;}
+    @GetMapping("/students/{id}/transport") public Map<String,Object> studentTransport(@PathVariable Long id){Student s=studentRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("Student not found"));Map<String,Object> r=new LinkedHashMap<>();r.put("student",StudentProfileResponse.fromStudent(s));var yearHistory=studentHistoryService.history(id);r.put("history",yearHistory);r.put("assignments",yearHistory.stream().flatMap(y->y.getAllocations().stream()).toList());r.put("fees",yearHistory.stream().flatMap(y->y.getFees().stream()).toList());r.put("passes",yearHistory.stream().flatMap(y->y.getPasses().stream()).toList());r.put("transfers",yearHistory.stream().flatMap(y->y.getTransfers().stream()).toList());r.put("applications",yearHistory.stream().flatMap(y->y.getApplications().stream()).toList());r.put("payments",yearHistory.stream().flatMap(y->y.getPayments().stream()).toList());return r;}
 
 
     @PostMapping("/academic-years")

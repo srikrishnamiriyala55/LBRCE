@@ -15,6 +15,7 @@ public interface TransportAllocationRepository extends JpaRepository<TransportAl
     Optional<TransportAllocation> findByStudentIdAndAcademicYearIdAndStatus(Long studentId, Long academicYearId, EntityStatus status);
     List<TransportAllocation> findByBusIdAndStatus(Long busId, EntityStatus status);
     long countByBusIdAndStatus(Long busId, EntityStatus status);
+    long countByBusIdAndAcademicYearIdAndStatus(Long busId, Long academicYearId, EntityStatus status);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from TransportAllocation a where a.student.id = :studentId and a.academicYear.id = :yearId and a.status = com.web.sms.enums.EntityStatus.ACTIVE")
     Optional<TransportAllocation> findActiveForUpdate(Long studentId, Long yearId);

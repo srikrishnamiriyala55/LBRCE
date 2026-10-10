@@ -14,8 +14,8 @@ public class CreateInchargeRequest {
     private String email;
     @NotBlank @Pattern(regexp="^[0-9]{10}$", message="Phone number must contain exactly 10 digits")
     private String phoneNumber;
-    @Size(max=15, message="Password must not exceed 15 characters")
-    @Pattern(regexp="^$|^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).{6,15}$", message="Password must be 6 to 15 characters and include uppercase, lowercase, number and special character")
+    @Size(max=72, message="Password must not exceed 72 characters")
+    @Pattern(regexp="^$|^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).{8,72}$", message="Password must be 8 to 72 characters and include uppercase, lowercase, number and special character")
     private String password;
     @NotBlank @Size(max=500)
     private String address;
