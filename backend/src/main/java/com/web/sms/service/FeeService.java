@@ -14,6 +14,7 @@ import com.web.sms.exception.BadRequestException;
 import com.web.sms.exception.ResourceNotFoundException;
 import com.web.sms.repository.*;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -31,19 +32,22 @@ public class FeeService {
     private final NotificationService notificationService;
     private final AdminRepository adminRepo;
     private final BusInchargeAssignmentRepository busInchargeAssignmentRepo;
+    private final ApplicationEventPublisher eventPublisher;
 
     public FeeService(FeeRepository feeRepo,
                       PaymentRepository paymentRepo,
                       BusPassRepository passRepo,
                       NotificationService notificationService,
                       AdminRepository adminRepo,
-                      BusInchargeAssignmentRepository busInchargeAssignmentRepo) {
+                      BusInchargeAssignmentRepository busInchargeAssignmentRepo,
+                      ApplicationEventPublisher eventPublisher) {
         this.feeRepo = feeRepo;
         this.paymentRepo = paymentRepo;
         this.passRepo = passRepo;
         this.notificationService = notificationService;
         this.adminRepo = adminRepo;
         this.busInchargeAssignmentRepo = busInchargeAssignmentRepo;
+        this.eventPublisher = eventPublisher;
     }
 
     public List<FeeResponse> getStudentFees(Long studentId) {
@@ -97,6 +101,7 @@ public class FeeService {
         feeRepo.save(fee);
 
         notifyPaymentStakeholders(fee, req.getAmount(), receipt, "Manual fee payment recorded");
+        publishReceipt(payment, fee);
         return FeeResponse.fromFee(fee);
     }
 
@@ -136,6 +141,25 @@ public class FeeService {
         feeRepo.save(fee);
 
         notifyPaymentStakeholders(fee, payment.getAmount(), orderId, "Online fee payment successful");
+        publishReceipt(payment, fee);
+    }
+
+    private void publishReceipt(Payment payment, Fee fee) {
+        var allocation = fee.getAllocation();
+        String busNumber = allocation == null ? null
+                : allocation.getBusNumberSnapshot() != null ? allocation.getBusNumberSnapshot()
+                : allocation.getBus() == null ? null : allocation.getBus().getBusNumber();
+        String boardingPoint = allocation == null ? null
+                : allocation.getBoardingPointSnapshot() != null ? allocation.getBoardingPointSnapshot()
+                : allocation.getBoardingPoint() == null ? null : allocation.getBoardingPoint().getStationName();
+        long totalPaid = fee.getPaidAmount() == null ? 0L : fee.getPaidAmount();
+        long totalFee = fee.getTotalAmount() == null ? 0L : fee.getTotalAmount();
+        eventPublisher.publishEvent(new PaymentReceiptEvent(
+                fee.getStudent().getEmail(), fee.getStudent().getName(), fee.getStudent().getRollNumber(),
+                fee.getAcademicYear() == null ? null : fee.getAcademicYear().getYearName(), busNumber, boardingPoint,
+                payment.getStatus().name(), payment.getTransactionId(), payment.getOrderId(), payment.getGatewayName(),
+                payment.getAmount(), totalFee, totalPaid, Math.max(0L, totalFee - totalPaid), fee.getStatus(),
+                fee.isPassEligible(), payment.getPaidAt()));
     }
 
     private void notifyPaymentStakeholders(Fee fee, Long amount, String reference, String title) {

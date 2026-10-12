@@ -372,21 +372,31 @@ RAZORPAY_BASE_URL=https://api.razorpay.com
 RAZORPAY_KEY_ID=set-only-in-deployment-secrets
 RAZORPAY_KEY_SECRET=set-only-in-deployment-secrets
 RAZORPAY_WEBHOOK_SECRET=set-only-in-deployment-secrets
+MAIL_ENABLED=false
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=your-smtp-login
+MAIL_PASSWORD=set-only-in-deployment-secrets
+MAIL_FROM=verified-sender@example.com
+MAIL_FROM_NAME=LBRCE BUS
+MAIL_SMTP_AUTH=true
+MAIL_STARTTLS=true
+TRANSPORT_CONTACT_EMAIL=lbcemym@lbrce.ac.in
+TRANSPORT_CONTACT_PHONES=7386349999, 9912030759
 BTMS_SEED_ENABLED=false
 BTMS_SEED_ADMIN_PASSWORD=replace-only-when-local-seeding-is-enabled
 BTMS_SEED_INCHARGE_PASSWORD=replace-only-when-local-seeding-is-enabled
 BTMS_SEED_STUDENT_PASSWORD=replace-only-when-local-seeding-is-enabled
 PASS_VERIFICATION_URL=http://localhost:8089/api/public/verify-pass?token=
 OTP_ENABLED=false
-OTP_BASE_URL=https://your-otp-service.example
-OTP_API_KEY=set-only-in-deployment-secrets
+OTP_HASH_SECRET=use-a-different-random-secret-of-at-least-32-characters
 ```
 
 `BTMS_SEED_ENABLED` must remain `false` for a real college database. Razorpay credentials and webhook secrets must be stored only in local `.env` files or deployment environment variables; never commit them.
 
 Set `DB_USERNAME`, `DB_PASSWORD`, and `JWT_SECRET` as deployment secrets. Local database defaults exist only for developer convenience and must not be used in deployed environments. The login limiter temporarily blocks repeated failures from the same login-ID/address pair.
 
-To enable OTP, set `OTP_ENABLED=true` and configure `OTP_BASE_URL` and `OTP_API_KEY` only in deployment secrets. The browser never receives the OTP provider key.
+To enable OTP, set `OTP_ENABLED=true`, configure a separate high-entropy `OTP_HASH_SECRET`, and enable the SMTP settings. OTPs are generated inside the backend, stored in MySQL only as keyed hashes, expire after five minutes, are single-use, allow at most five failed verification attempts, and are rate-limited to five sends per email/purpose in fifteen minutes. The retired external OTP API, its URL, and its API key are no longer used.
 
 ### Razorpay payment setup
 
@@ -399,6 +409,8 @@ https://lbrce-btms-web.onrender.com/api/public/payments/razorpay/webhook
 ```
 
 Subscribe to `payment.captured`, `payment.failed`, and `order.paid`, and enter the same secret as `RAZORPAY_WEBHOOK_SECRET` in Render. Configure the account to auto-capture payments where available; the backend also attempts capture for an authorized payment. Checkout callbacks and signed webhooks are idempotent, so a successful fee is credited only once.
+
+After a verified online payment or an administrator-recorded manual payment commits successfully, the application asynchronously emails an HTML receipt to the student's registered email address. The receipt includes the student and route details, transaction status and identifiers, amount paid, total paid, outstanding balance, pass eligibility, college logo, and transport-office contact information. Email delivery is retried three times and cannot roll back or duplicate a successful payment. Set `MAIL_ENABLED=true` only after the SMTP credentials and verified sender are configured.
 
 Start the backend:
 

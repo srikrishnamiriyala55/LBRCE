@@ -21,24 +21,22 @@ const Login = () => {
   const [registrationToken, setRegistrationToken] = useState('');
   const [loginChallenge, setLoginChallenge] = useState(null);
   const [loginOtp, setLoginOtp] = useState('');
+  const [loginOtpTimer, setLoginOtpTimer] = useState(0);
   const [registration, setRegistration] = useState({
     rollNumber: '', name: '', email: '', phoneNumber: '', branch: '',
     year: '', semester: '', dob: '', gender: '', address: '', bloodGroup: '',
     parentName: '', parentPhoneNumber: '', password: '', confirmPassword: ''
   });
 
-  // 5-minute (300s) countdown timer for registration OTP
+  // Keep both OTP countdowns moving while their challenge is active.
   useEffect(() => {
-    let interval = null;
-    if (registrationOtpTimer > 0) {
-      interval = setInterval(() => {
-        setRegistrationOtpTimer((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [registrationOtpTimer]);
+    if (registrationOtpTimer <= 0 && loginOtpTimer <= 0) return undefined;
+    const interval = window.setInterval(() => {
+      setRegistrationOtpTimer((current) => Math.max(0, current - 1));
+      setLoginOtpTimer((current) => Math.max(0, current - 1));
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [registrationOtpTimer > 0, loginOtpTimer > 0]);
 
   const formatTimer = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -87,7 +85,11 @@ const Login = () => {
     setIsLoading(true);
     try {
       const result = await login(rollNumber, password);
-      if (result.otpRequired) { setLoginChallenge(result); setSuccess('A 6-digit verification code was sent to your registered email.'); }
+      if (result.otpRequired) {
+        setLoginChallenge(result);
+        setLoginOtpTimer(300);
+        setSuccess('A 6-digit verification code was sent to your registered email.');
+      }
       else navigateForRole(result);
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
@@ -96,8 +98,39 @@ const Login = () => {
     }
   };
 
-  const verifyLoginOtp = async (event) => { event.preventDefault(); setError(''); setIsLoading(true); try { const user=await completeOtpLogin(loginChallenge.otpChallengeToken, loginOtp); navigateForRole(user); } catch(err) { setError(err.response?.data?.message || 'Invalid or expired OTP.'); } finally { setIsLoading(false); } };
-  const resendLoginOtp = async () => { setError(''); setIsLoading(true); try { await api.post('/auth/login/resend-otp', { challengeToken: loginChallenge.otpChallengeToken }); setLoginOtp(''); setSuccess('A new OTP was sent. It is valid for 5 minutes.'); } catch(err) { setError(err.response?.data?.message || 'Unable to resend OTP.'); } finally { setIsLoading(false); } };
+  const verifyLoginOtp = async (event) => {
+    event.preventDefault();
+    setError('');
+    if (loginOtpTimer === 0) {
+      setError('The OTP has expired. Please request a new OTP.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const user = await completeOtpLogin(loginChallenge.otpChallengeToken, loginOtp);
+      setLoginOtpTimer(0);
+      navigateForRole(user);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid or expired OTP.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resendLoginOtp = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      await api.post('/auth/login/resend-otp', { challengeToken: loginChallenge.otpChallengeToken });
+      setLoginOtp('');
+      setLoginOtpTimer(300);
+      setSuccess('A new OTP was sent.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to resend OTP.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const sendRegistrationOtp = async () => {
     setError('');
@@ -264,7 +297,16 @@ const Login = () => {
 
         {success && <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-500 text-green-700 text-sm">{success}</div>}
 
-        {loginChallenge ? <form onSubmit={verifyLoginOtp} className="space-y-5"><p className="text-sm text-gray-600">Verify the code sent to <strong>{loginChallenge.user?.email}</strong>. It is valid for 5 minutes.</p><input required inputMode="numeric" pattern="[0-9]{6}" maxLength="6" className="input-field" placeholder="Enter 6-digit OTP" value={loginOtp} onChange={e=>setLoginOtp(e.target.value.replace(/\D/g,''))}/><button type="submit" disabled={isLoading} className="w-full btn-primary py-3">{isLoading?'Verifying...':'Verify and Sign In'}</button><button type="button" disabled={isLoading} onClick={resendLoginOtp} className="w-full text-sm text-blue-700 hover:text-blue-900">Resend OTP</button><button type="button" className="w-full text-sm text-blue-700" onClick={()=>{setLoginChallenge(null);setLoginOtp('');}}>Back to sign in</button></form> : !isRegistering ? <form onSubmit={handleLogin} className="space-y-5">
+        {loginChallenge ? <form onSubmit={verifyLoginOtp} className="space-y-5">
+          <p className="text-sm text-gray-600">Verify the code sent to <strong>{loginChallenge.user?.email}</strong>.</p>
+          <div className={`rounded-md border px-3 py-2 text-center text-sm font-medium ${loginOtpTimer > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-200 bg-red-50 text-red-700'}`}>
+            {loginOtpTimer > 0 ? <>OTP expires in <span className="font-mono text-base">{formatTimer(loginOtpTimer)}</span></> : 'OTP expired. Request a new OTP.'}
+          </div>
+          <input required inputMode="numeric" pattern="[0-9]{6}" maxLength="6" className="input-field" placeholder="Enter 6-digit OTP" value={loginOtp} onChange={e=>setLoginOtp(e.target.value.replace(/\D/g,''))}/>
+          <button type="submit" disabled={isLoading || loginOtp.length !== 6 || loginOtpTimer === 0} className="w-full btn-primary py-3 disabled:cursor-not-allowed disabled:opacity-60">{isLoading?'Verifying...':'Verify and Sign In'}</button>
+          <button type="button" disabled={isLoading} onClick={resendLoginOtp} className="w-full text-sm text-blue-700 hover:text-blue-900 disabled:opacity-50">Resend OTP</button>
+          <button type="button" className="w-full text-sm text-blue-700" onClick={()=>{setLoginChallenge(null);setLoginOtp('');setLoginOtpTimer(0);}}>Back to sign in</button>
+        </form> : !isRegistering ? <form onSubmit={handleLogin} className="space-y-5">
           <div>
             <label htmlFor="loginId" className="block text-sm font-medium text-gray-700 mb-1">Roll Number / User ID</label>
             <input

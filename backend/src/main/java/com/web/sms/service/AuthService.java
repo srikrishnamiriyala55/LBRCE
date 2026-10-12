@@ -52,7 +52,7 @@ public class AuthService {
         if (principal.getRole() == Role.STUDENT) return buildLogin(principal);
         String email = getEmail(principal);
         if (email == null || email.isBlank()) throw new BadRequestException("This account has no email address. Contact the transport administrator.");
-        otpService.send(email);
+        otpService.send(email, OtpService.loginPurpose(principal.getUsername()));
         LoginResponse response = new LoginResponse(null, buildUserInfo(principal, email));
         response.setOtpRequired(true);
         response.setOtpChallengeToken(tokenProvider.generateVerificationToken(principal.getUsername(), "LOGIN_OTP",
@@ -64,7 +64,7 @@ public class AuthService {
         Claims claims;
         try { claims = tokenProvider.getVerifiedClaims(challengeToken, "LOGIN_OTP"); }
         catch (Exception e) { throw new BadRequestException("Your login verification expired. Please sign in again."); }
-        String email = claims.get("email", String.class); otpService.verify(email, otp);
+        String email = claims.get("email", String.class); otpService.verify(email, OtpService.loginPurpose(claims.getSubject()), otp);
         Role role = Role.valueOf(claims.get("role", String.class));
         Long id = claims.get("id", Long.class);
         String loginId = claims.getSubject();
@@ -74,7 +74,7 @@ public class AuthService {
     }
 
     public void resendLoginOtp(String challengeToken) {
-        try { otpService.send(tokenProvider.getVerifiedClaims(challengeToken, "LOGIN_OTP").get("email", String.class)); }
+        try { Claims claims=tokenProvider.getVerifiedClaims(challengeToken, "LOGIN_OTP"); otpService.send(claims.get("email", String.class), OtpService.loginPurpose(claims.getSubject())); }
         catch (BadRequestException e) { throw e; }
         catch (Exception e) { throw new BadRequestException("Your login verification expired. Please sign in again."); }
     }
@@ -84,10 +84,10 @@ public class AuthService {
         if (studentRepository.existsByEmail(normalized)) {
             throw new BadRequestException("An account already exists for this email address");
         }
-        otpService.send(normalized);
+        otpService.send(normalized, OtpService.REGISTRATION);
     }
     public String verifyRegistrationOtp(String email, String otp) {
-        String normalized = email.trim().toLowerCase(); otpService.verify(normalized, otp);
+        String normalized = email.trim().toLowerCase(); otpService.verify(normalized, OtpService.REGISTRATION, otp);
         return tokenProvider.generateVerificationToken(normalized, "REGISTRATION_OTP", java.util.Map.of("email", normalized), 5 * 60 * 1000);
     }
 

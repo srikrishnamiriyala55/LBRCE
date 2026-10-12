@@ -25,6 +25,36 @@ services:
         sync: false
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
+      - key: MAIL_ENABLED
+        value: "true"
+      - key: OTP_ENABLED
+        value: "true"
+      - key: OTP_HASH_SECRET
+        generateValue: true
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USERNAME
+        value: shaiksadhik940@gmail.com
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        value: shaiksadhik940@gmail.com
+      - key: MAIL_FROM_NAME
+        value: LBRCE BUS
+      - key: MAIL_SMTP_AUTH
+        value: "true"
+      - key: MAIL_STARTTLS
+        value: "true"
+      - key: MAIL_STARTTLS_REQUIRED
+        value: "true"
+      - key: TRANSPORT_CONTACT_EMAIL
+        value: lbcemym@lbrce.ac.in
+      - key: TRANSPORT_CONTACT_PHONES
+        value: 7386349999, 9912030759
+      - key: COLLEGE_ADDRESS
+        value: Lakireddy Bali Reddy College of Engineering (Autonomous), L.B. Reddy Nagar, Mylavaram - 521230, Krishna District, Andhra Pradesh, India
       - key: BTMS_SEED_ENABLED
         value: "false"
       - key: PASS_VERIFICATION_URL

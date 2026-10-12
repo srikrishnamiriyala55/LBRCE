@@ -15,6 +15,7 @@ import com.web.sms.repository.FeeRepository;
 import com.web.sms.repository.PaymentRepository;
 import com.web.sms.repository.AdminRepository;
 import com.web.sms.repository.BusInchargeAssignmentRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,12 +36,13 @@ class FeeServiceTest {
     @Mock NotificationService notifications;
     @Mock AdminRepository admins;
     @Mock BusInchargeAssignmentRepository assignments;
+    @Mock ApplicationEventPublisher events;
     FeeService service;
     Fee fee;
 
     @BeforeEach
     void setUp() {
-        service = new FeeService(fees, payments, passes, notifications, admins, assignments);
+        service = new FeeService(fees, payments, passes, notifications, admins, assignments, events);
         lenient().when(admins.findAll()).thenReturn(java.util.List.of());
         Student student = new Student(); student.setId(7L); student.setRollNumber("STU007");
         AcademicYear year = new AcademicYear(); year.setId(2L); year.setYearName("2026-27");
@@ -64,6 +66,7 @@ class FeeServiceTest {
         assertEquals("ADMIN_MANUAL", payment.getValue().getGatewayName());
         assertTrue(payment.getValue().getOrderId().startsWith("MAN_"));
         verify(fees).save(fee);
+        verify(events).publishEvent(any(PaymentReceiptEvent.class));
         verify(notifications).createNotification(eq("STU007"), anyString(), contains("₹3000"), eq("PAYMENT"));
     }
 

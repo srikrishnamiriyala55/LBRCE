@@ -2,9 +2,11 @@ package com.web.sms.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 
 public class OtpRequest {
     @NotBlank @Email private String email;
+    @Pattern(regexp = "^[0-9]{6}$", message = "OTP must contain 6 digits")
     private String otp;
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
