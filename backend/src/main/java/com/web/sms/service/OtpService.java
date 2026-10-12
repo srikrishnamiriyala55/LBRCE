@@ -2,6 +2,7 @@ package com.web.sms.service;
 
 import com.web.sms.entity.OtpChallenge;
 import com.web.sms.exception.BadRequestException;
+import com.web.sms.exception.ServiceUnavailableException;
 import com.web.sms.exception.TooManyRequestsException;
 import com.web.sms.repository.OtpChallengeRepository;
 import jakarta.mail.internet.InternetAddress;
@@ -13,6 +14,8 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -24,6 +27,7 @@ import java.util.HexFormat;
 
 @Service
 public class OtpService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OtpService.class);
     public static final String REGISTRATION = "REGISTRATION";
     private static final int EXPIRY_MINUTES = 5;
     private static final int MAX_SENDS_PER_WINDOW = 5;
@@ -136,7 +140,9 @@ public class OtpService {
             if (logo.exists()) helper.addInline("lbrceLogo", logo, "image/jpeg");
             mailSender.send(message);
         } catch (Exception exception) {
-            throw new BadRequestException("Unable to send the OTP email. Please try again shortly.");
+            LOGGER.error("OTP email delivery failed for recipient domain {} using SMTP user {}: {}",
+                    recipient.substring(recipient.lastIndexOf('@') + 1), maskEmail(mailUsername), exception.getMessage(), exception);
+            throw new ServiceUnavailableException("Unable to send the OTP email. Please try again shortly.", exception);
         }
     }
 
@@ -159,6 +165,12 @@ public class OtpService {
     private String normalizePurpose(String purpose) {
         if (!(purpose != null && purpose.startsWith("LOGIN_") && purpose.length() == 30) && !REGISTRATION.equals(purpose)) throw new IllegalArgumentException("Invalid OTP purpose");
         return purpose;
+    }
+
+    private String maskEmail(String email) {
+        if (!StringUtils.hasText(email) || !email.contains("@")) return "not-configured";
+        int at = email.indexOf('@');
+        return email.substring(0, Math.min(2, at)) + "***" + email.substring(at);
     }
 
     public static String loginPurpose(String loginId) {

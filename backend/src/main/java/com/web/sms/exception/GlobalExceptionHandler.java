@@ -49,6 +49,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.TOO_MANY_REQUESTS);
     }
 
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleServiceUnavailable(ServiceUnavailableException ex, HttpServletRequest request) {
+        ApiErrorResponse error = new ApiErrorResponse(LocalDateTime.now(), HttpStatus.SERVICE_UNAVAILABLE.value(), ex.getMessage(), request.getRequestURI());
+        return new ResponseEntity<>(error, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         ApiErrorResponse error = new ApiErrorResponse(LocalDateTime.now(), HttpStatus.FORBIDDEN.value(), ex.getMessage(), request.getRequestURI());
