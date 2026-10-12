@@ -7,6 +7,7 @@ import Modal from '../../components/common/Modal';
 import { CreditCard, ShieldCheck } from 'lucide-react';
 import DataTable from '../../components/common/DataTable';
 import { formatINR } from '../../utils/currency';
+import { apiMessage, openRazorpayCheckout } from '../../utils/razorpay';
 
 const FeeViewPage = () => {
   const [fees, setFees] = useState([]);
@@ -41,14 +42,62 @@ const FeeViewPage = () => {
 
   const handleOpenPayment = (fee) => {
     setSelectedFee(fee);
-    // Note: online payment not yet live — show Coming Soon modal
+    setAmountToPay(String(fee.remainingAmount));
     setPayModalOpen(true);
   };
 
-  // Dummy handler: actual payment gateway not yet integrated
-  const handleProcessPayment = (e) => {
-    e.preventDefault();
+  const closePaymentModal = () => {
+    if (processing) return;
     setPayModalOpen(false);
+    setSelectedFee(null);
+    setAmountToPay('');
+  };
+
+  const handleProcessPayment = async (e) => {
+    e.preventDefault();
+    const amount = Number(amountToPay);
+    if (!selectedFee || !Number.isInteger(amount) || amount < 1 || amount > selectedFee.remainingAmount) {
+      addToast(`Enter a whole-rupee amount between ₹1 and ${formatINR(selectedFee?.remainingAmount || 0)}`, 'error');
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const { data: order } = await api.post('/student/payments/order', {
+        feeId: selectedFee.id,
+        amount
+      });
+
+      await openRazorpayCheckout({
+        order,
+        onDismiss: () => setProcessing(false),
+        onSuccess: async response => {
+          try {
+            await api.post('/student/payments/verify', {
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature
+            });
+            addToast('Payment verified successfully. Your fee balance has been updated.', 'success');
+            setPayModalOpen(false);
+            setSelectedFee(null);
+            setAmountToPay('');
+            await fetchFees();
+          } catch (error) {
+            addToast(apiMessage(error, 'Payment verification failed. Please contact the transport office with the payment ID.'), 'error');
+          } finally {
+            setProcessing(false);
+          }
+        },
+        onFailure: message => {
+          addToast(message, 'error');
+          setProcessing(false);
+        }
+      });
+    } catch (error) {
+      addToast(apiMessage(error, 'Unable to start the secure payment checkout'), 'error');
+      setProcessing(false);
+    }
   };
 
   if (loading) return <LoadingSpinner />;
@@ -62,6 +111,8 @@ const FeeViewPage = () => {
     { key: 'createdAt', label: 'Date', render: row => new Date(row.paidAt || row.createdAt).toLocaleString() },
     { key: 'academicYear', label: 'Academic Year' },
     { key: 'orderId', label: 'Receipt / Order ID', render: row => row.orderId || '—' },
+    { key: 'transactionId', label: 'Payment ID', render: row => row.transactionId || '—' },
+    { key: 'gatewayName', label: 'Mode', render: row => row.gatewayName === 'RAZORPAY' ? 'Online' : (row.gatewayName || '—') },
     { key: 'amount', label: 'Amount', render: row => formatINR(row.amount) },
     { key: 'status', label: 'Status', render: row => <StatusBadge status={row.status} /> }
   ];
@@ -147,34 +198,38 @@ const FeeViewPage = () => {
         <DataTable columns={paymentColumns} data={visiblePayments} loading={false} searchable={false} />
       </div>
 
-      {/* Dummy Payment Modal — Online payment coming soon */}
-      <Modal isOpen={payModalOpen} onClose={() => setPayModalOpen(false)} title="Transportation Fee Payment">
-        <div className="space-y-5">
-          <div className="rounded-lg bg-amber-50 border border-amber-200 p-4">
-            <div className="flex items-start gap-3">
-              <CreditCard className="mt-0.5 shrink-0 text-amber-600" size={22} />
-              <div>
-                <p className="font-semibold text-amber-900">Online Payment — Coming Soon</p>
-                <p className="mt-1 text-sm text-amber-800">
-                  The online payment gateway is currently under development. Previous-year dues remain payable without a current-year bus application.
-                </p>
-              </div>
-            </div>
+      <Modal isOpen={payModalOpen} onClose={closePaymentModal} title="Secure Transportation Fee Payment">
+        <form className="space-y-5" onSubmit={handleProcessPayment}>
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+            <p className="font-semibold">Academic Year: {selectedFee?.academicYear}</p>
+            <p className="mt-1">Outstanding balance: <strong>{formatINR(selectedFee?.remainingAmount || 0)}</strong></p>
+            <p className="mt-2 text-xs text-blue-700">Payment is processed securely by Razorpay. Your balance changes only after server-side signature and payment verification.</p>
           </div>
 
-          <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
-            <p className="text-sm font-semibold text-blue-900 mb-2">Pay via Cash / DD at the Transport Office:</p>
-            <ul className="text-sm text-blue-800 list-disc list-inside space-y-1">
-              <li>Visit the LBRCE Transport Office with your student ID</li>
-              <li>Pay the required fee amount: <strong>₹{selectedFee?.remainingAmount}</strong></li>
-              <li>Your payment will be recorded and your pass status will be updated</li>
-            </ul>
+          <div>
+            <label htmlFor="payment-amount" className="mb-1 block text-sm font-medium text-gray-700">Amount to pay (₹)</label>
+            <input
+              id="payment-amount"
+              type="number"
+              min="1"
+              max={selectedFee?.remainingAmount || 1}
+              step="1"
+              required
+              className="input-field"
+              value={amountToPay}
+              onChange={event => setAmountToPay(event.target.value)}
+              disabled={processing}
+            />
+            <p className="mt-1 text-xs text-gray-500">Amounts are shown and recorded in Indian rupees.</p>
           </div>
 
-          <div className="flex justify-end">
-            <button type="button" className="btn-primary" onClick={() => setPayModalOpen(false)}>Close</button>
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary" onClick={closePaymentModal} disabled={processing}>Cancel</button>
+            <button type="submit" className="btn-primary flex items-center gap-2" disabled={processing}>
+              <CreditCard size={18} /> {processing ? 'Opening secure checkout…' : `Pay ${formatINR(Number(amountToPay) || 0)}`}
+            </button>
           </div>
-        </div>
+        </form>
       </Modal>
     </div>
   );

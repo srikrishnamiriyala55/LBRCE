@@ -31,11 +31,13 @@ public class CacheControlFilter extends OncePerRequestFilter {
         response.setHeader("X-Content-Type-Options", "nosniff");
         response.setHeader("X-Frame-Options", "DENY");
         response.setHeader("Referrer-Policy", "same-origin");
-        response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+        response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(self)");
         response.setHeader("Content-Security-Policy",
                 "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; " +
-                "script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
-                "font-src 'self' data:; connect-src 'self'");
+                "script-src 'self' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; " +
+                "img-src 'self' data: blob: https://*.razorpay.com; font-src 'self' data:; " +
+                "frame-src https://api.razorpay.com https://*.razorpay.com; " +
+                "connect-src 'self' https://api.razorpay.com https://*.razorpay.com");
 
         filterChain.doFilter(request, response);
     }

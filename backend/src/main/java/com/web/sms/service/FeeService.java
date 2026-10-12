@@ -1,6 +1,5 @@
 package com.web.sms.service;
 
-import com.web.sms.dto.request.PaymentRequest;
 import com.web.sms.dto.request.AdminManualPaymentRequest;
 import com.web.sms.dto.response.FeeResponse;
 import com.web.sms.dto.response.PaymentResponse;
@@ -12,11 +11,9 @@ import com.web.sms.entity.Student;
 import com.web.sms.enums.PassStatus;
 import com.web.sms.enums.PaymentStatus;
 import com.web.sms.exception.BadRequestException;
-import com.web.sms.exception.ForbiddenException;
 import com.web.sms.exception.ResourceNotFoundException;
 import com.web.sms.repository.*;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -28,25 +25,25 @@ import java.util.stream.Collectors;
 @Service
 public class FeeService {
 
-    @Value("${btms.payments.auto-confirm}")
-    private boolean autoConfirmPayments;
-
     private final FeeRepository feeRepo;
     private final PaymentRepository paymentRepo;
     private final BusPassRepository passRepo;
-    private final StudentRepository studentRepo;
     private final NotificationService notificationService;
+    private final AdminRepository adminRepo;
+    private final BusInchargeAssignmentRepository busInchargeAssignmentRepo;
 
     public FeeService(FeeRepository feeRepo,
                       PaymentRepository paymentRepo,
                       BusPassRepository passRepo,
-                      StudentRepository studentRepo,
-                      NotificationService notificationService) {
+                      NotificationService notificationService,
+                      AdminRepository adminRepo,
+                      BusInchargeAssignmentRepository busInchargeAssignmentRepo) {
         this.feeRepo = feeRepo;
         this.paymentRepo = paymentRepo;
         this.passRepo = passRepo;
-        this.studentRepo = studentRepo;
         this.notificationService = notificationService;
+        this.adminRepo = adminRepo;
+        this.busInchargeAssignmentRepo = busInchargeAssignmentRepo;
     }
 
     public List<FeeResponse> getStudentFees(Long studentId) {
@@ -66,8 +63,14 @@ public class FeeService {
         long paid = fee.getPaidAmount() == null ? 0L : fee.getPaidAmount();
         long remaining = fee.getTotalAmount() - paid;
         if (remaining <= 0) throw new BadRequestException("This fee has already been paid in full");
+        if (req.getAmount() == null || req.getAmount() <= 0) {
+            throw new BadRequestException("Payment amount must be at least ₹1");
+        }
         if (req.getAmount() > remaining) {
             throw new BadRequestException("Payment amount cannot exceed remaining balance of ₹" + remaining);
+        }
+        if (paymentRepo.existsByFeeIdAndStatus(fee.getId(), PaymentStatus.INITIATED)) {
+            throw new BadRequestException("An online payment is already in progress for this fee. Complete or reconcile it before recording another payment");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -93,61 +96,8 @@ public class FeeService {
         checkAndGeneratePass(fee);
         feeRepo.save(fee);
 
-        notificationService.createNotification(fee.getStudent().getRollNumber(), "Fee Payment Recorded",
-                "The Transport Administrator recorded a payment of ₹" + req.getAmount() + ". Receipt: " + receipt,
-                "PAYMENT");
+        notifyPaymentStakeholders(fee, req.getAmount(), receipt, "Manual fee payment recorded");
         return FeeResponse.fromFee(fee);
-    }
-
-    @Transactional
-    public PaymentResponse processPayment(Long studentId, PaymentRequest req) {
-        Fee fee = feeRepo.findByIdForUpdate(req.getFeeId())
-                .orElseThrow(() -> new ResourceNotFoundException("Fee record not found"));
-
-        if (!fee.getStudent().getId().equals(studentId)) {
-            throw new ForbiddenException("Unauthorized fee payment attempt");
-        }
-        // A fee is a permanent academic-year liability. Students must be able to clear
-        // an older balance even when its allocation is no longer active and even when
-        // they have not submitted a renewal application for the current year.
-        if (fee.getAllocation() == null || fee.getAcademicYear() == null) {
-            throw new BadRequestException("This fee is not linked to a valid academic-year allocation");
-        }
-
-        if (req.getAmount() == null || req.getAmount() <= 0) {
-            throw new BadRequestException("Payment amount must be greater than zero");
-        }
-
-        long remainingAmount = fee.getTotalAmount() - (fee.getPaidAmount() != null ? fee.getPaidAmount() : 0L);
-        if (remainingAmount <= 0 || "PAID".equalsIgnoreCase(fee.getStatus())) {
-            throw new BadRequestException("This fee has already been paid in full");
-        }
-        if (paymentRepo.existsByFeeIdAndStatus(fee.getId(), PaymentStatus.INITIATED)) {
-            throw new BadRequestException("A payment is already in progress for this fee");
-        }
-        if (req.getAmount() > remainingAmount) {
-            throw new BadRequestException("Payment amount cannot exceed remaining balance of ₹" + remainingAmount);
-        }
-
-        Student student = studentRepo.findById(studentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-
-        Payment payment = new Payment();
-        payment.setFee(fee);
-        payment.setStudent(student);
-        payment.setAmount(req.getAmount());
-        payment.setOrderId("ORD_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase());
-        payment.setStatus(PaymentStatus.INITIATED);
-        payment.setGatewayName("READY_GATEWAY");
-        payment.setCreatedAt(LocalDateTime.now());
-
-        Payment saved = paymentRepo.save(payment);
-        if (autoConfirmPayments) {
-            String txnId = "TXN_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
-            confirmPayment(saved.getOrderId(), txnId, "LOCAL_DEMO_SUCCESS");
-            saved = paymentRepo.findById(saved.getId()).orElse(saved);
-        }
-        return PaymentResponse.fromPayment(saved);
     }
 
     @Transactional
@@ -185,12 +135,28 @@ public class FeeService {
         checkAndGeneratePass(fee);
         feeRepo.save(fee);
 
-        notificationService.createNotification(
-                fee.getStudent().getRollNumber(),
-                "Payment Successful",
-                "Payment of ₹" + payment.getAmount() + " processed successfully. Order ID: " + orderId,
-                "PAYMENT"
-        );
+        notifyPaymentStakeholders(fee, payment.getAmount(), orderId, "Online fee payment successful");
+    }
+
+    private void notifyPaymentStakeholders(Fee fee, Long amount, String reference, String title) {
+        String year = fee.getAcademicYear() == null ? "the selected academic year" : fee.getAcademicYear().getYearName();
+        String student = fee.getStudent().getName() + " (" + fee.getStudent().getRollNumber() + ")";
+        String message = "Payment of ₹" + amount + " for " + student + " in " + year
+                + " was recorded successfully. Reference: " + reference;
+        notificationService.createNotification(fee.getStudent().getRollNumber(), title, message, "PAYMENT");
+
+        if (fee.getAllocation() != null && fee.getAllocation().getBus() != null && fee.getAcademicYear() != null) {
+            busInchargeAssignmentRepo.findFirstByBusIdAndAcademicYearIdOrderByAssignedAtDesc(
+                            fee.getAllocation().getBus().getId(), fee.getAcademicYear().getId())
+                    .map(assignment -> assignment.getIncharge().getTeacherId())
+                    .or(() -> java.util.Optional.ofNullable(fee.getAllocation().getBus().getIncharge())
+                            .map(com.web.sms.entity.Incharge::getTeacherId))
+                    .ifPresent(teacherId -> notificationService.createNotification(teacherId, title, message, "PAYMENT"));
+        }
+
+        adminRepo.findAll().stream()
+                .filter(admin -> admin.getStatus() == null || "ACTIVE".equalsIgnoreCase(admin.getStatus()))
+                .forEach(admin -> notificationService.createNotification(admin.getAdminId(), title, message, "PAYMENT"));
     }
 
     @Transactional

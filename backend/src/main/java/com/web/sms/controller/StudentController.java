@@ -2,6 +2,7 @@ package com.web.sms.controller;
 
 import com.web.sms.dto.request.BusApplicationRequest;
 import com.web.sms.dto.request.PaymentRequest;
+import com.web.sms.dto.request.RazorpayVerificationRequest;
 import com.web.sms.dto.request.TransferRequestDto;
 import com.web.sms.dto.response.*;
 import com.web.sms.security.UserPrincipal;
@@ -39,6 +40,7 @@ public class StudentController {
     private final com.web.sms.repository.AcademicYearRepository academicYearRepository;
     private final PaymentRepository paymentRepository;
     private final StudentHistoryService studentHistoryService;
+    private final RazorpayPaymentService razorpayPaymentService;
 
     public StudentController(StudentService studentService, BusService busService,
                              ApplicationService applicationService, FeeService feeService,
@@ -47,7 +49,8 @@ public class StudentController {
                              TransportAllocationRepository allocationRepository,
                              com.web.sms.repository.AcademicYearRepository academicYearRepository,
                              PaymentRepository paymentRepository,
-                             StudentHistoryService studentHistoryService) {
+                             StudentHistoryService studentHistoryService,
+                             RazorpayPaymentService razorpayPaymentService) {
         this.studentService = studentService;
         this.busService = busService;
         this.applicationService = applicationService;
@@ -60,6 +63,7 @@ public class StudentController {
         this.academicYearRepository = academicYearRepository;
         this.paymentRepository = paymentRepository;
         this.studentHistoryService = studentHistoryService;
+        this.razorpayPaymentService = razorpayPaymentService;
     }
 
     private UserPrincipal getCurrentUser() {
@@ -126,9 +130,14 @@ public class StudentController {
         return feeService.getStudentFees(getCurrentUser().getId());
     }
 
-    @PostMapping("/payments")
-    public PaymentResponse initiatePayment(@Valid @RequestBody PaymentRequest req) {
-        return feeService.processPayment(getCurrentUser().getId(), req);
+    @PostMapping("/payments/order")
+    public RazorpayOrderResponse createPaymentOrder(@Valid @RequestBody PaymentRequest req) {
+        return razorpayPaymentService.createOrder(getCurrentUser().getId(), req);
+    }
+
+    @PostMapping("/payments/verify")
+    public PaymentResponse verifyPayment(@Valid @RequestBody RazorpayVerificationRequest req) {
+        return razorpayPaymentService.verifyCheckout(getCurrentUser().getId(), req);
     }
 
     @GetMapping("/payments")

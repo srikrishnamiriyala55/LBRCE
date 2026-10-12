@@ -368,7 +368,10 @@ LOGIN_MAX_FAILURES=5
 LOGIN_BLOCK_MINUTES=15
 JPA_DDL_AUTO=validate
 FLYWAY_ENABLED=true
-PAYMENTS_AUTO_CONFIRM=false
+RAZORPAY_BASE_URL=https://api.razorpay.com
+RAZORPAY_KEY_ID=set-only-in-deployment-secrets
+RAZORPAY_KEY_SECRET=set-only-in-deployment-secrets
+RAZORPAY_WEBHOOK_SECRET=set-only-in-deployment-secrets
 BTMS_SEED_ENABLED=false
 BTMS_SEED_ADMIN_PASSWORD=replace-only-when-local-seeding-is-enabled
 BTMS_SEED_INCHARGE_PASSWORD=replace-only-when-local-seeding-is-enabled
@@ -379,11 +382,23 @@ OTP_BASE_URL=https://your-otp-service.example
 OTP_API_KEY=set-only-in-deployment-secrets
 ```
 
-`PAYMENTS_AUTO_CONFIRM` must remain `false` outside explicit local demonstrations. `BTMS_SEED_ENABLED` must remain `false` for a real college database.
+`BTMS_SEED_ENABLED` must remain `false` for a real college database. Razorpay credentials and webhook secrets must be stored only in local `.env` files or deployment environment variables; never commit them.
 
 Set `DB_USERNAME`, `DB_PASSWORD`, and `JWT_SECRET` as deployment secrets. Local database defaults exist only for developer convenience and must not be used in deployed environments. The login limiter temporarily blocks repeated failures from the same login-ID/address pair.
 
 To enable OTP, set `OTP_ENABLED=true` and configure `OTP_BASE_URL` and `OTP_API_KEY` only in deployment secrets. The browser never receives the OTP provider key.
+
+### Razorpay payment setup
+
+Student payments use server-created Razorpay orders. The backend validates the checkout signature, verifies the order, amount and currency with Razorpay, captures an authorized payment when required, and only then updates the fee balance. The database and all application screens store amounts in Indian rupees; conversion to paise happens only at the Razorpay API boundary.
+
+Configure this webhook in the Razorpay Dashboard:
+
+```text
+https://lbrce-btms-web.onrender.com/api/public/payments/razorpay/webhook
+```
+
+Subscribe to `payment.captured`, `payment.failed`, and `order.paid`, and enter the same secret as `RAZORPAY_WEBHOOK_SECRET` in Render. Configure the account to auto-capture payments where available; the backend also attempts capture for an authorized payment. Checkout callbacks and signed webhooks are idempotent, so a successful fee is credited only once.
 
 Start the backend:
 
@@ -454,7 +469,7 @@ npm run build
 
 ## Production checklist
 
-1. Integrate a real payment gateway with signed webhooks and reconciliation.
+1. Replace Razorpay test credentials with live credentials after college approval, verify the production webhook, and add a daily settlement-reconciliation report.
 2. Implement password reset/change and optional OTP or MFA.
 3. Remove all default database and JWT secrets from production configuration.
 4. Use reviewed schema migrations and `JPA_DDL_AUTO=validate`.

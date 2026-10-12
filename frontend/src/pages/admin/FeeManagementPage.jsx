@@ -5,6 +5,8 @@ import StatusBadge from '../../components/common/StatusBadge';
 import { useToast } from '../../components/common/Toast';
 import { formatINR } from '../../utils/currency';
 import Modal from '../../components/common/Modal';
+import { CreditCard } from 'lucide-react';
+import { apiMessage, openRazorpayCheckout } from '../../utils/razorpay';
 
 const FeeManagementPage = () => {
   const [fees, setFees] = useState([]);
@@ -12,6 +14,9 @@ const FeeManagementPage = () => {
   const [selectedFee, setSelectedFee] = useState(null);
   const [payment, setPayment] = useState({ amount: '', reference: '', remarks: '' });
   const [saving, setSaving] = useState(false);
+  const [onlineFee, setOnlineFee] = useState(null);
+  const [onlineAmount, setOnlineAmount] = useState('');
+  const [onlineProcessing, setOnlineProcessing] = useState(false);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [academicYears, setAcademicYears] = useState([]);
@@ -98,6 +103,55 @@ const FeeManagementPage = () => {
     }
   };
 
+  const openOnlinePayment = (fee) => {
+    setOnlineFee(fee);
+    setOnlineAmount(String(fee.remainingAmount));
+  };
+
+  const closeOnlinePayment = () => {
+    if (onlineProcessing) return;
+    setOnlineFee(null);
+    setOnlineAmount('');
+  };
+
+  const submitOnlinePayment = async (event) => {
+    event.preventDefault();
+    const amount = Number(onlineAmount);
+    if (!onlineFee || !Number.isInteger(amount) || amount < 1 || amount > onlineFee.remainingAmount) {
+      addToast(`Enter a whole-number amount between ₹1 and ${formatINR(onlineFee?.remainingAmount || 0)}`, 'error');
+      return;
+    }
+    setOnlineProcessing(true);
+    try {
+      const { data: order } = await api.post('/admin/payments/order', { feeId: onlineFee.id, amount });
+      await openRazorpayCheckout({
+        order,
+        onDismiss: () => setOnlineProcessing(false),
+        onFailure: message => { addToast(message, 'error'); setOnlineProcessing(false); },
+        onSuccess: async response => {
+          try {
+            await api.post('/admin/payments/verify', {
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature
+            });
+            addToast('Online payment verified and the student fee was updated', 'success');
+            setOnlineFee(null);
+            setOnlineAmount('');
+            await fetchFees(new AbortController().signal);
+          } catch (error) {
+            addToast(apiMessage(error, 'Payment verification failed'), 'error');
+          } finally {
+            setOnlineProcessing(false);
+          }
+        }
+      });
+    } catch (error) {
+      addToast(apiMessage(error, 'Unable to start secure payment checkout'), 'error');
+      setOnlineProcessing(false);
+    }
+  };
+
   const columns = [
     { key: 'student', label: 'Student', render: (row) => (
       <div>
@@ -128,10 +182,11 @@ const FeeManagementPage = () => {
       )
     },
     { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },
-    { key: 'actions', label: 'Action', render: (row) => row.remainingAmount > 0 ? (
-      <button type="button" className="whitespace-nowrap text-sm font-medium text-blue-700 hover:underline" onClick={() => openPayment(row)}>
-        Record Payment
-      </button>
+    { key: 'actions', label: 'Actions', render: (row) => row.remainingAmount > 0 ? (
+      <div className="flex flex-wrap gap-3">
+        <button type="button" className="whitespace-nowrap text-sm font-medium text-blue-700 hover:underline" onClick={() => openOnlinePayment(row)}>Pay Online</button>
+        <button type="button" className="whitespace-nowrap text-sm font-medium text-gray-700 hover:underline" onClick={() => openPayment(row)}>Record Manual</button>
+      </div>
     ) : <span className="text-sm text-gray-400">Fully paid</span> }
   ];
 
@@ -171,6 +226,23 @@ const FeeManagementPage = () => {
           <div className="flex justify-end gap-2">
             <button type="button" className="btn-secondary" disabled={saving} onClick={() => setSelectedFee(null)}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Recording...' : 'Record Payment'}</button>
+          </div>
+        </form>}
+      </Modal>
+      <Modal isOpen={Boolean(onlineFee)} onClose={closeOnlinePayment} title="Pay Student Fee Online">
+        {onlineFee && <form className="space-y-4" onSubmit={submitOnlinePayment}>
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
+            <p className="font-semibold">{onlineFee.studentName} ({onlineFee.rollNumber})</p>
+            <p className="mt-1">Academic year: {onlineFee.academicYear}</p>
+            <p>Outstanding balance: {formatINR(onlineFee.remainingAmount)}</p>
+          </div>
+          <label className="block text-sm font-medium text-gray-700">Amount to pay (₹) *
+            <input className="input-field mt-1" type="number" min="1" max={onlineFee.remainingAmount} step="1" required value={onlineAmount} disabled={onlineProcessing} onChange={(e) => setOnlineAmount(e.target.value)}/>
+          </label>
+          <p className="text-xs text-gray-500">The transaction is credited only after server-side Razorpay verification. The student, assigned In-Charge, and administrators will be notified.</p>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-secondary" disabled={onlineProcessing} onClick={closeOnlinePayment}>Cancel</button>
+            <button type="submit" className="btn-primary flex items-center gap-2" disabled={onlineProcessing}><CreditCard size={17}/>{onlineProcessing ? 'Opening checkout…' : `Pay ${formatINR(Number(onlineAmount) || 0)}`}</button>
           </div>
         </form>}
       </Modal>

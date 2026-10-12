@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.web.sms.dto.request.AdminManualPaymentRequest;
+import com.web.sms.dto.request.PaymentRequest;
+import com.web.sms.dto.request.RazorpayVerificationRequest;
 import com.web.sms.dto.request.AssignInchargeRequest;
 import com.web.sms.dto.request.CreateAcademicYearRequest;
 import com.web.sms.dto.request.CreateBoardingPointRequest;
@@ -44,6 +46,7 @@ import com.web.sms.dto.response.FeeResponse;
 import com.web.sms.dto.response.NotificationResponse;
 import com.web.sms.dto.response.PassResponse;
 import com.web.sms.dto.response.PaymentResponse;
+import com.web.sms.dto.response.RazorpayOrderResponse;
 import com.web.sms.dto.response.StudentProfileResponse;
 import com.web.sms.dto.response.TransferResponse;
 import com.web.sms.dto.response.TransportReportRow;
@@ -85,6 +88,7 @@ import com.web.sms.service.PassService;
 import com.web.sms.service.TransferService;
 import com.web.sms.service.TransportReportService;
 import com.web.sms.service.StudentHistoryService;
+import com.web.sms.service.RazorpayPaymentService;
 
 import jakarta.validation.Valid;
 
@@ -116,6 +120,7 @@ public class AdminController {
     private final FeeService feeService;
     private final StudentAcademicDetailsRepository studentAcademicDetailsRepo;
     private final StudentHistoryService studentHistoryService;
+    private final RazorpayPaymentService razorpayPaymentService;
 
     public AdminController(AdminService adminService,
                            BusService busService,
@@ -135,7 +140,8 @@ public class AdminController {
                            TransportAllocationRepository allocationRepo,
                            InchargeRepository inchargeRepo, TransportReportService reportService,
                            PassService passService, FeeService feeService, StudentAcademicDetailsRepository studentAcademicDetailsRepo,
-                           StudentHistoryService studentHistoryService) {
+                           StudentHistoryService studentHistoryService,
+                           RazorpayPaymentService razorpayPaymentService) {
         this.adminService = adminService;
         this.busService = busService;
         this.inchargeService = inchargeService;
@@ -157,6 +163,7 @@ public class AdminController {
         this.feeService=feeService;
         this.studentAcademicDetailsRepo=studentAcademicDetailsRepo;
         this.studentHistoryService=studentHistoryService;
+        this.razorpayPaymentService=razorpayPaymentService;
     }
 
     private UserPrincipal getCurrentUser() {
@@ -456,6 +463,16 @@ public class AdminController {
         auditService.log(getCurrentUser().getUsername(), "ADMIN", "MANUAL_PAYMENT_RECORDED", "FEE",
                 String.valueOf(id), null, String.valueOf(req.getAmount()), req.getRemarks());
         return result;
+    }
+
+    @PostMapping("/payments/order")
+    public RazorpayOrderResponse createPaymentOrder(@Valid @RequestBody PaymentRequest req) {
+        return razorpayPaymentService.createStaffOrder(getCurrentUser().getId(), getCurrentUser().getRole(), req);
+    }
+
+    @PostMapping("/payments/verify")
+    public PaymentResponse verifyPayment(@Valid @RequestBody RazorpayVerificationRequest req) {
+        return razorpayPaymentService.verifyStaffCheckout(getCurrentUser().getId(), getCurrentUser().getRole(), req);
     }
 
     @GetMapping({"/transfers", "/transfers/all"})

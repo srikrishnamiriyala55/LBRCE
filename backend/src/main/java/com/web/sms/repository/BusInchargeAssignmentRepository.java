@@ -9,6 +9,7 @@ public interface BusInchargeAssignmentRepository extends JpaRepository<BusInchar
     Optional<BusInchargeAssignment> findByBusIdAndAcademicYearIdAndStatus(Long busId,Long academicYearId,String status);
     Optional<BusInchargeAssignment> findByBusIdAndInchargeIdAndAcademicYearId(Long busId,Long inchargeId,Long academicYearId);
     Optional<BusInchargeAssignment> findFirstByInchargeIdAndAcademicYearIdOrderByAssignedAtDesc(Long inchargeId,Long academicYearId);
+    Optional<BusInchargeAssignment> findFirstByBusIdAndAcademicYearIdOrderByAssignedAtDesc(Long busId,Long academicYearId);
     List<BusInchargeAssignment> findByBusIdAndStatus(Long busId,String status);
     List<BusInchargeAssignment> findByInchargeId(Long inchargeId);
 }

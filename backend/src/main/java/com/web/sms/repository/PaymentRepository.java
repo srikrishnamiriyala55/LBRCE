@@ -18,6 +18,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     void deleteByStudentId(Long studentId);
     Optional<Payment> findByOrderIdAndStatus(String orderId, PaymentStatus status);
     boolean existsByFeeIdAndStatus(Long feeId, PaymentStatus status);
+    Optional<Payment> findFirstByFeeIdAndStatusOrderByCreatedAtDesc(Long feeId, PaymentStatus status);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Payment p where p.orderId=:orderId") Optional<Payment> findByOrderIdForUpdate(String orderId);
 }

@@ -44,7 +44,11 @@ import com.web.sms.dto.response.NotificationResponse;
 import com.web.sms.dto.response.InchargeStudentResponse;
 import com.web.sms.dto.response.PaymentResponse;
 import com.web.sms.dto.response.StudentYearHistoryResponse;
+import com.web.sms.dto.request.PaymentRequest;
+import com.web.sms.dto.request.RazorpayVerificationRequest;
+import com.web.sms.dto.response.RazorpayOrderResponse;
 import com.web.sms.service.StudentHistoryService;
+import com.web.sms.service.RazorpayPaymentService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
@@ -79,6 +83,7 @@ public class InchargeController {
     private final BusInchargeAssignmentRepository busInchargeAssignmentRepo;
     private final StudentAcademicDetailsRepository studentAcademicDetailsRepo;
     private final StudentHistoryService studentHistoryService;
+    private final RazorpayPaymentService razorpayPaymentService;
 
     public InchargeController(InchargeService inchargeService,
                               ApplicationService applicationService,
@@ -93,7 +98,8 @@ public class InchargeController {
                               PassService passService,AdminService adminService, PaymentRepository paymentRepo,
                               BusInchargeAssignmentRepository busInchargeAssignmentRepo,
                               StudentAcademicDetailsRepository studentAcademicDetailsRepo,
-                              StudentHistoryService studentHistoryService) {
+                              StudentHistoryService studentHistoryService,
+                              RazorpayPaymentService razorpayPaymentService) {
         this.inchargeService = inchargeService;
         this.applicationService = applicationService;
         this.transferService = transferService;
@@ -112,6 +118,7 @@ public class InchargeController {
         this.busInchargeAssignmentRepo=busInchargeAssignmentRepo;
         this.studentAcademicDetailsRepo=studentAcademicDetailsRepo;
         this.studentHistoryService=studentHistoryService;
+        this.razorpayPaymentService=razorpayPaymentService;
     }
 
     private UserPrincipal getCurrentUser() {
@@ -190,6 +197,16 @@ public class InchargeController {
     public List<com.web.sms.dto.response.FeeResponse> fees(@RequestParam(required = false) Long academicYearId) {
         return feeRepo.findForIncharge(requireAssignedBus(academicYearId).getId(), academicYearId)
                 .stream().map(com.web.sms.dto.response.FeeResponse::fromFee).toList();
+    }
+
+    @PostMapping("/payments/order")
+    public RazorpayOrderResponse createPaymentOrder(@Valid @RequestBody PaymentRequest req) {
+        return razorpayPaymentService.createStaffOrder(getCurrentUser().getId(), getCurrentUser().getRole(), req);
+    }
+
+    @PostMapping("/payments/verify")
+    public PaymentResponse verifyPayment(@Valid @RequestBody RazorpayVerificationRequest req) {
+        return razorpayPaymentService.verifyStaffCheckout(getCurrentUser().getId(), getCurrentUser().getRole(), req);
     }
 
     @GetMapping("/passes")
