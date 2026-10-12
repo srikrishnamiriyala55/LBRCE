@@ -129,6 +129,8 @@ public class OtpService {
                       <div style="padding:24px;text-align:center"><p>Use this code to complete your %s verification:</p><div style="font-size:32px;letter-spacing:8px;font-weight:bold;color:#1e3a8a;margin:22px">%s</div><p>This OTP is valid for 5 minutes and can be used only once.</p><p style="font-size:12px;color:#6b7280">If you did not request this code, do not share it with anyone.</p></div>
                     </div></body></html>
                     """.formatted(REGISTRATION.equals(purpose) ? "student registration" : "login", otp));
+        } catch (ServiceUnavailableException exception) {
+            throw exception;
         } catch (Exception exception) {
             LOGGER.error("OTP email delivery failed for recipient domain {}: {}",
                     recipient.substring(recipient.lastIndexOf('@') + 1), exception.getMessage(), exception);

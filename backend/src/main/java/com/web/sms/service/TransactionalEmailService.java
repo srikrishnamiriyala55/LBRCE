@@ -11,6 +11,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
@@ -55,6 +57,14 @@ public class TransactionalEmailService {
             else throw new IllegalStateException("MAIL_PROVIDER must be BREVO_API or SMTP");
         } catch (ServiceUnavailableException exception) {
             throw exception;
+        } catch (HttpClientErrorException exception) {
+            log.warn("Email provider rejected request through {} with HTTP {} for recipient domain {}",
+                    provider, exception.getStatusCode().value(), recipientDomain(recipient));
+            throw providerRejection(exception);
+        } catch (ResourceAccessException exception) {
+            log.error("Email provider connection failed through {} for recipient domain {}: {}",
+                    provider, recipientDomain(recipient), exception.getMessage());
+            throw new ServiceUnavailableException("Unable to connect to the email provider. Please try again shortly.", exception);
         } catch (Exception exception) {
             log.error("Transactional email failed through {} for recipient domain {}: {}",
                     provider, recipientDomain(recipient), exception.getMessage(), exception);
@@ -63,7 +73,9 @@ public class TransactionalEmailService {
     }
 
     private String sendWithBrevo(String recipient, String subject, String html, String sender) {
-        if (!StringUtils.hasText(brevoApiKey)) throw new IllegalStateException("BREVO_API_KEY is not configured");
+        if (!StringUtils.hasText(brevoApiKey)) {
+            throw new ServiceUnavailableException("BREVO_API_KEY is not configured in the deployment environment.", null);
+        }
         BrevoResponse response = restClient.post()
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
@@ -95,6 +107,17 @@ public class TransactionalEmailService {
     private String recipientDomain(String recipient) {
         int at = recipient == null ? -1 : recipient.lastIndexOf('@');
         return at >= 0 ? recipient.substring(at + 1) : "invalid";
+    }
+
+    private ServiceUnavailableException providerRejection(HttpClientErrorException exception) {
+        int status = exception.getStatusCode().value();
+        String message = switch (status) {
+            case 400 -> "Brevo rejected the sender or message. Verify that MAIL_FROM is registered and verified in Brevo.";
+            case 401, 403 -> "Brevo authentication failed. Replace BREVO_API_KEY with a valid Brevo API key.";
+            case 429 -> "The Brevo email sending limit has been reached. Please try again later.";
+            default -> "The email provider rejected the request. Contact the transport administrator.";
+        };
+        return new ServiceUnavailableException(message, exception);
     }
 
     private record BrevoResponse(String messageId) {}
