@@ -147,8 +147,10 @@ public class OtpService {
     }
 
     private void requireConfigured() {
-        if (!enabled) throw new BadRequestException("Email OTP is not enabled. Contact the transport administrator.");
-        if (!StringUtils.hasText(hashSecret) || hashSecret.length() < 32) throw new IllegalStateException("OTP_HASH_SECRET must contain at least 32 characters");
+        if (!enabled) throw new ServiceUnavailableException("Email OTP is not enabled. Contact the transport administrator.", null);
+        if (!StringUtils.hasText(hashSecret) || hashSecret.length() < 32) {
+            throw new ServiceUnavailableException("OTP security configuration is incomplete. Contact the transport administrator.", null);
+        }
     }
     private String normalize(String email) {
         if (email == null || email.isBlank()) throw new BadRequestException("Email is required");
