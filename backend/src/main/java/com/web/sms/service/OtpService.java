@@ -1,24 +1,28 @@
 package com.web.sms.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.HexFormat;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
 import com.web.sms.entity.OtpChallenge;
 import com.web.sms.exception.BadRequestException;
 import com.web.sms.exception.ServiceUnavailableException;
 import com.web.sms.exception.TooManyRequestsException;
 import com.web.sms.repository.OtpChallengeRepository;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.SecureRandom;
-import java.time.LocalDateTime;
-import java.util.HexFormat;
 
 @Service
 public class OtpService {
@@ -44,7 +48,7 @@ public class OtpService {
         this.hashSecret = hashSecret;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ServiceUnavailableException.class)
     public void send(String email, String purpose) {
         requireConfigured();
         String normalizedEmail = normalize(email);
@@ -76,9 +80,19 @@ public class OtpService {
         challenge.setSendCount(nextCount);
         challenge.setFailedAttempts(0);
         challenge.setConsumedAt(null);
+        challenge.setProviderMessageId(null);
+        challenge.setDeliveryStatus("PENDING");
         challenge.setUpdatedAt(now);
         repository.saveAndFlush(challenge);
-        sendEmail(normalizedEmail, otp, normalizedPurpose);
+        try {
+            challenge.setProviderMessageId(sendEmail(normalizedEmail, otp, normalizedPurpose));
+            challenge.setDeliveryStatus("SENT");
+            repository.save(challenge);
+        } catch (ServiceUnavailableException exception) {
+            challenge.setDeliveryStatus("FAILED");
+            repository.save(challenge);
+            throw exception;
+        }
     }
 
     @Transactional(noRollbackFor = BadRequestException.class)
@@ -106,9 +120,9 @@ public class OtpService {
         repository.save(challenge);
     }
 
-    private void sendEmail(String recipient, String otp, String purpose) {
+    private String sendEmail(String recipient, String otp, String purpose) {
         try {
-            emailService.sendHtml(recipient, "Your LBRCE BUS verification code", """
+            return emailService.sendHtml(recipient, "Your LBRCE BUS verification code", """
                     <!doctype html><html><body style="font-family:Arial,sans-serif;background:#f3f4f6;padding:24px">
                     <div style="max-width:560px;margin:auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb">
                       <div style="background:#1e40af;color:white;text-align:center;padding:20px"><h2 style="margin:8px 0 0">LBRCE BUS</h2></div>
@@ -127,7 +141,9 @@ public class OtpService {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(hashSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             return HexFormat.of().formatHex(mac.doFinal((salt + "|" + email + "|" + purpose + "|" + otp).getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception exception) { throw new IllegalStateException("Unable to secure OTP", exception); }
+        } catch (NoSuchAlgorithmException | InvalidKeyException exception) {
+            throw new IllegalStateException("Unable to secure OTP", exception);
+        }
     }
 
     private void requireConfigured() {
@@ -147,6 +163,8 @@ public class OtpService {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(loginId.trim().toUpperCase().getBytes(StandardCharsets.UTF_8));
             return "LOGIN_" + HexFormat.of().formatHex(digest).substring(0, 24);
-        } catch (Exception exception) { throw new IllegalStateException("Unable to create OTP login context", exception); }
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("Unable to create OTP login context", exception);
+        }
     }
 }

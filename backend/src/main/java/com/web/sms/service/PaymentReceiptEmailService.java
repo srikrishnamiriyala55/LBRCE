@@ -53,8 +53,8 @@ public class PaymentReceiptEmailService {
         Exception lastFailure = null;
         for (int attempt = 1; attempt <= 3; attempt++) {
             try {
-                send(event);
-                log.info("Payment receipt email sent for transaction {}", event.transactionId());
+                String messageId = send(event);
+                log.info("Payment receipt email sent for transaction {} with provider message {}", event.transactionId(), messageId);
                 return;
             } catch (Exception exception) {
                 lastFailure = exception;
@@ -69,8 +69,8 @@ public class PaymentReceiptEmailService {
                 event.transactionId(), lastFailure == null ? "unknown error" : lastFailure.getMessage());
     }
 
-    private void send(PaymentReceiptEvent event) throws Exception {
-        emailService.sendHtml(event.recipientEmail(), "LBRCE Bus Fee Payment Receipt - " + event.transactionId(), html(event));
+    private String send(PaymentReceiptEvent event) throws Exception {
+        return emailService.sendHtml(event.recipientEmail(), "LBRCE Bus Fee Payment Receipt - " + event.transactionId(), html(event));
     }
 
     private String html(PaymentReceiptEvent event) {

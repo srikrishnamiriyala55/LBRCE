@@ -17,6 +17,8 @@ public class OtpChallenge {
     @Column(nullable = false) private LocalDateTime windowStartedAt;
     @Column(nullable = false) private int sendCount;
     @Column(nullable = false) private int failedAttempts;
+    @Column(length = 255) private String providerMessageId;
+    @Column(nullable = false, length = 20) private String deliveryStatus = "PENDING";
     private LocalDateTime consumedAt;
     @Column(nullable = false) private LocalDateTime createdAt;
     @Column(nullable = false) private LocalDateTime updatedAt;
@@ -33,6 +35,8 @@ public class OtpChallenge {
     public LocalDateTime getWindowStartedAt(){return windowStartedAt;} public void setWindowStartedAt(LocalDateTime v){windowStartedAt=v;}
     public int getSendCount(){return sendCount;} public void setSendCount(int v){sendCount=v;}
     public int getFailedAttempts(){return failedAttempts;} public void setFailedAttempts(int v){failedAttempts=v;}
+    public String getProviderMessageId(){return providerMessageId;} public void setProviderMessageId(String v){providerMessageId=v;}
+    public String getDeliveryStatus(){return deliveryStatus;} public void setDeliveryStatus(String v){deliveryStatus=v;}
     public LocalDateTime getConsumedAt(){return consumedAt;} public void setConsumedAt(LocalDateTime v){consumedAt=v;}
     public LocalDateTime getCreatedAt(){return createdAt;} public void setCreatedAt(LocalDateTime v){createdAt=v;}
     public LocalDateTime getUpdatedAt(){return updatedAt;} public void setUpdatedAt(LocalDateTime v){updatedAt=v;}

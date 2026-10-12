@@ -46,12 +46,12 @@ public class TransactionalEmailService {
         this.fromName = fromName;
     }
 
-    public void sendHtml(String recipient, String subject, String html) {
+    public String sendHtml(String recipient, String subject, String html) {
         String sender = StringUtils.hasText(from) ? from : mailUsername;
         if (!StringUtils.hasText(sender)) throw new IllegalStateException("MAIL_FROM is not configured");
         try {
-            if ("BREVO_API".equals(provider)) sendWithBrevo(recipient, subject, html, sender);
-            else if ("SMTP".equals(provider)) sendWithSmtp(recipient, subject, html, sender);
+            if ("BREVO_API".equals(provider)) return sendWithBrevo(recipient, subject, html, sender);
+            else if ("SMTP".equals(provider)) return sendWithSmtp(recipient, subject, html, sender);
             else throw new IllegalStateException("MAIL_PROVIDER must be BREVO_API or SMTP");
         } catch (ServiceUnavailableException exception) {
             throw exception;
@@ -62,9 +62,9 @@ public class TransactionalEmailService {
         }
     }
 
-    private void sendWithBrevo(String recipient, String subject, String html, String sender) {
+    private String sendWithBrevo(String recipient, String subject, String html, String sender) {
         if (!StringUtils.hasText(brevoApiKey)) throw new IllegalStateException("BREVO_API_KEY is not configured");
-        restClient.post()
+        BrevoResponse response = restClient.post()
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
                 .header("api-key", brevoApiKey)
@@ -74,10 +74,14 @@ public class TransactionalEmailService {
                         "subject", subject,
                         "htmlContent", html))
                 .retrieve()
-                .toBodilessEntity();
+                .body(BrevoResponse.class);
+        if (response == null || !StringUtils.hasText(response.messageId())) {
+            throw new IllegalStateException("Brevo returned an empty message ID");
+        }
+        return response.messageId();
     }
 
-    private void sendWithSmtp(String recipient, String subject, String html, String sender) throws Exception {
+    private String sendWithSmtp(String recipient, String subject, String html, String sender) throws Exception {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, false, StandardCharsets.UTF_8.name());
         helper.setFrom(new InternetAddress(sender, fromName, StandardCharsets.UTF_8.name()));
@@ -85,10 +89,13 @@ public class TransactionalEmailService {
         helper.setSubject(subject);
         helper.setText(html, true);
         mailSender.send(message);
+        return StringUtils.hasText(message.getMessageID()) ? message.getMessageID() : "smtp-accepted";
     }
 
     private String recipientDomain(String recipient) {
         int at = recipient == null ? -1 : recipient.lastIndexOf('@');
         return at >= 0 ? recipient.substring(at + 1) : "invalid";
     }
+
+    private record BrevoResponse(String messageId) {}
 }
