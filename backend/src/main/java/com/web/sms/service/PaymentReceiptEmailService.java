@@ -1,20 +1,14 @@
 package com.web.sms.service;
 
-import jakarta.mail.internet.InternetAddress;
-import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.util.StringUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -26,28 +20,19 @@ public class PaymentReceiptEmailService {
     private static final ZoneId INDIA = ZoneId.of("Asia/Kolkata");
     private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a");
 
-    private final JavaMailSender mailSender;
+    private final TransactionalEmailService emailService;
     private final boolean enabled;
-    private final String username;
-    private final String from;
-    private final String fromName;
     private final String contactEmail;
     private final String contactPhones;
     private final String collegeAddress;
 
-    public PaymentReceiptEmailService(JavaMailSender mailSender,
+    public PaymentReceiptEmailService(TransactionalEmailService emailService,
                                       @Value("${btms.mail.enabled:false}") boolean enabled,
-                                      @Value("${spring.mail.username:}") String username,
-                                      @Value("${btms.mail.from:}") String from,
-                                      @Value("${btms.mail.from-name:LBRCE BUS}") String fromName,
                                       @Value("${btms.transport.contact-email}") String contactEmail,
                                       @Value("${btms.transport.contact-phones}") String contactPhones,
                                       @Value("${btms.college.address}") String collegeAddress) {
-        this.mailSender = mailSender;
+        this.emailService = emailService;
         this.enabled = enabled;
-        this.username = username;
-        this.from = from;
-        this.fromName = fromName;
         this.contactEmail = contactEmail;
         this.contactPhones = contactPhones;
         this.collegeAddress = collegeAddress;
@@ -85,18 +70,7 @@ public class PaymentReceiptEmailService {
     }
 
     private void send(PaymentReceiptEvent event) throws Exception {
-        String sender = StringUtils.hasText(from) ? from : username;
-        if (!StringUtils.hasText(sender)) throw new IllegalStateException("MAIL_FROM or MAIL_USERNAME is not configured");
-
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
-        helper.setFrom(new InternetAddress(sender, fromName, StandardCharsets.UTF_8.name()));
-        helper.setTo(event.recipientEmail());
-        helper.setSubject("LBRCE Bus Fee Payment Receipt - " + event.transactionId());
-        helper.setText(html(event), true);
-        ClassPathResource logo = new ClassPathResource("logo.jpg");
-        if (logo.exists()) helper.addInline("lbrceLogo", logo, "image/jpeg");
-        mailSender.send(message);
+        emailService.sendHtml(event.recipientEmail(), "LBRCE Bus Fee Payment Receipt - " + event.transactionId(), html(event));
     }
 
     private String html(PaymentReceiptEvent event) {
@@ -105,7 +79,6 @@ public class PaymentReceiptEmailService {
                 <!doctype html><html><body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#1f2937">
                 <div style="max-width:680px;margin:24px auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
                   <div style="background:#1e40af;color:#fff;padding:22px;text-align:center">
-                    <img src="cid:lbrceLogo" alt="LBRCE" width="70" height="70" style="background:#fff;border-radius:50%%;object-fit:contain;padding:5px">
                     <h2 style="margin:10px 0 2px">LBRCE BUS</h2><div>Transportation Fee Payment Receipt</div>
                   </div>
                   <div style="padding:24px">

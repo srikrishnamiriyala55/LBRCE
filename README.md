@@ -373,12 +373,16 @@ RAZORPAY_KEY_ID=set-only-in-deployment-secrets
 RAZORPAY_KEY_SECRET=set-only-in-deployment-secrets
 RAZORPAY_WEBHOOK_SECRET=set-only-in-deployment-secrets
 MAIL_ENABLED=false
+MAIL_PROVIDER=BREVO_API
+BREVO_API_URL=https://api.brevo.com/v3/smtp/email
+BREVO_API_KEY=set-only-in-deployment-secrets
+MAIL_FROM=verified-brevo-sender@example.com
+MAIL_FROM_NAME=LBRCE BUS
+# SMTP is an optional local or paid-host fallback; Render free blocks SMTP ports.
 MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
 MAIL_USERNAME=your-smtp-login
 MAIL_PASSWORD=set-only-in-deployment-secrets
-MAIL_FROM=verified-sender@example.com
-MAIL_FROM_NAME=LBRCE BUS
 MAIL_SMTP_AUTH=true
 MAIL_STARTTLS=true
 TRANSPORT_CONTACT_EMAIL=lbcemym@lbrce.ac.in
@@ -396,7 +400,7 @@ OTP_HASH_SECRET=use-a-different-random-secret-of-at-least-32-characters
 
 Set `DB_USERNAME`, `DB_PASSWORD`, and `JWT_SECRET` as deployment secrets. Local database defaults exist only for developer convenience and must not be used in deployed environments. The login limiter temporarily blocks repeated failures from the same login-ID/address pair.
 
-To enable OTP, set `OTP_ENABLED=true`, configure a separate high-entropy `OTP_HASH_SECRET`, and enable the SMTP settings. OTPs are generated inside the backend, stored in MySQL only as keyed hashes, expire after five minutes, are single-use, allow at most five failed verification attempts, and are rate-limited to five sends per email/purpose in fifteen minutes. The retired external OTP API, its URL, and its API key are no longer used.
+To enable OTP on Render free, set `OTP_ENABLED=true`, configure a separate high-entropy `OTP_HASH_SECRET`, set `MAIL_PROVIDER=BREVO_API`, and configure `BREVO_API_KEY` plus a Brevo-verified `MAIL_FROM` sender. Render free blocks outbound SMTP ports, so Gmail SMTP cannot be used there. OTPs are generated inside the backend, stored in MySQL only as keyed hashes, expire after five minutes, are single-use, allow at most five failed verification attempts, and are rate-limited to five sends per email/purpose in fifteen minutes. The retired external OTP service, its URL, and its API key are not used.
 
 ### Razorpay payment setup
 
@@ -410,7 +414,7 @@ https://lbrce-btms-web.onrender.com/api/public/payments/razorpay/webhook
 
 Subscribe to `payment.captured`, `payment.failed`, and `order.paid`, and enter the same secret as `RAZORPAY_WEBHOOK_SECRET` in Render. Configure the account to auto-capture payments where available; the backend also attempts capture for an authorized payment. Checkout callbacks and signed webhooks are idempotent, so a successful fee is credited only once.
 
-After a verified online payment or an administrator-recorded manual payment commits successfully, the application asynchronously emails an HTML receipt to the student's registered email address. The receipt includes the student and route details, transaction status and identifiers, amount paid, total paid, outstanding balance, pass eligibility, college logo, and transport-office contact information. Email delivery is retried three times and cannot roll back or duplicate a successful payment. Set `MAIL_ENABLED=true` only after the SMTP credentials and verified sender are configured.
+After a verified online payment or an administrator-recorded manual payment commits successfully, the application asynchronously emails an HTML receipt to the student's registered email address. The receipt includes the student and route details, transaction status and identifiers, amount paid, total paid, outstanding balance, pass eligibility, and transport-office contact information. Email delivery is retried three times and cannot roll back or duplicate a successful payment. Set `MAIL_ENABLED=true` only after the selected mail provider and verified sender are configured.
 
 Start the backend:
 

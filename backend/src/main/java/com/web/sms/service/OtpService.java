@@ -5,12 +5,7 @@ import com.web.sms.exception.BadRequestException;
 import com.web.sms.exception.ServiceUnavailableException;
 import com.web.sms.exception.TooManyRequestsException;
 import com.web.sms.repository.OtpChallengeRepository;
-import jakarta.mail.internet.InternetAddress;
-import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -35,27 +30,18 @@ public class OtpService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final OtpChallengeRepository repository;
-    private final JavaMailSender mailSender;
+    private final TransactionalEmailService emailService;
     private final boolean enabled;
     private final String hashSecret;
-    private final String mailUsername;
-    private final String from;
-    private final String fromName;
 
     public OtpService(OtpChallengeRepository repository,
-                      JavaMailSender mailSender,
+                      TransactionalEmailService emailService,
                       @Value("${otp.enabled:false}") boolean enabled,
-                      @Value("${otp.hash-secret:}") String hashSecret,
-                      @Value("${spring.mail.username:}") String mailUsername,
-                      @Value("${btms.mail.from:}") String from,
-                      @Value("${btms.mail.from-name:LBRCE BUS}") String fromName) {
+                      @Value("${otp.hash-secret:}") String hashSecret) {
         this.repository = repository;
-        this.mailSender = mailSender;
+        this.emailService = emailService;
         this.enabled = enabled;
         this.hashSecret = hashSecret;
-        this.mailUsername = mailUsername;
-        this.from = from;
-        this.fromName = fromName;
     }
 
     @Transactional
@@ -121,27 +107,17 @@ public class OtpService {
     }
 
     private void sendEmail(String recipient, String otp, String purpose) {
-        String sender = StringUtils.hasText(from) ? from : mailUsername;
-        if (!StringUtils.hasText(sender)) throw new BadRequestException("OTP email sender is not configured");
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
-            helper.setFrom(new InternetAddress(sender, fromName, StandardCharsets.UTF_8.name()));
-            helper.setTo(recipient);
-            helper.setSubject("Your LBRCE BUS verification code");
-            helper.setText("""
+            emailService.sendHtml(recipient, "Your LBRCE BUS verification code", """
                     <!doctype html><html><body style="font-family:Arial,sans-serif;background:#f3f4f6;padding:24px">
                     <div style="max-width:560px;margin:auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb">
-                      <div style="background:#1e40af;color:white;text-align:center;padding:20px"><img src="cid:lbrceLogo" width="64" height="64" style="background:white;border-radius:50%%;padding:4px"><h2 style="margin:8px 0 0">LBRCE BUS</h2></div>
+                      <div style="background:#1e40af;color:white;text-align:center;padding:20px"><h2 style="margin:8px 0 0">LBRCE BUS</h2></div>
                       <div style="padding:24px;text-align:center"><p>Use this code to complete your %s verification:</p><div style="font-size:32px;letter-spacing:8px;font-weight:bold;color:#1e3a8a;margin:22px">%s</div><p>This OTP is valid for 5 minutes and can be used only once.</p><p style="font-size:12px;color:#6b7280">If you did not request this code, do not share it with anyone.</p></div>
                     </div></body></html>
-                    """.formatted(REGISTRATION.equals(purpose) ? "student registration" : "login", otp), true);
-            ClassPathResource logo = new ClassPathResource("logo.jpg");
-            if (logo.exists()) helper.addInline("lbrceLogo", logo, "image/jpeg");
-            mailSender.send(message);
+                    """.formatted(REGISTRATION.equals(purpose) ? "student registration" : "login", otp));
         } catch (Exception exception) {
-            LOGGER.error("OTP email delivery failed for recipient domain {} using SMTP user {}: {}",
-                    recipient.substring(recipient.lastIndexOf('@') + 1), maskEmail(mailUsername), exception.getMessage(), exception);
+            LOGGER.error("OTP email delivery failed for recipient domain {}: {}",
+                    recipient.substring(recipient.lastIndexOf('@') + 1), exception.getMessage(), exception);
             throw new ServiceUnavailableException("Unable to send the OTP email. Please try again shortly.", exception);
         }
     }
@@ -165,12 +141,6 @@ public class OtpService {
     private String normalizePurpose(String purpose) {
         if (!(purpose != null && purpose.startsWith("LOGIN_") && purpose.length() == 30) && !REGISTRATION.equals(purpose)) throw new IllegalArgumentException("Invalid OTP purpose");
         return purpose;
-    }
-
-    private String maskEmail(String email) {
-        if (!StringUtils.hasText(email) || !email.contains("@")) return "not-configured";
-        int at = email.indexOf('@');
-        return email.substring(0, Math.min(2, at)) + "***" + email.substring(at);
     }
 
     public static String loginPurpose(String loginId) {
