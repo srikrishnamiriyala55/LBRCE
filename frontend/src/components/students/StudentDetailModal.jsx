@@ -4,9 +4,10 @@ import StatusBadge from '../common/StatusBadge';
 import LoadingSpinner from '../common/LoadingSpinner';
 import api from '../../utils/axios';
 import { formatINR } from '../../utils/currency';
+import { downloadCompleteStudentHistoryPdf } from '../../utils/studentHistoryPdf';
 import {
   User, Phone, Mail, MapPin, BookOpen, ShieldCheck, Bus, Heart,
-  CreditCard, Ticket, ArrowLeftRight, Calendar, AlertCircle
+  CreditCard, Ticket, ArrowLeftRight, Calendar, AlertCircle, Download
 } from 'lucide-react';
 
 export default function StudentDetailModal({ isOpen, onClose, studentId, initialStudent }) {
@@ -16,6 +17,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'transport' | 'fees' | 'passes' | 'transfers'
   const [selectedYearId,setSelectedYearId]=useState('');
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -85,6 +87,18 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
     }
   };
 
+  const downloadCompleteHistory = async () => {
+    if (!data?.student || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadCompleteStudentHistoryPdf(data, photoUrl);
+    } catch (downloadError) {
+      setError(downloadError.message || 'Unable to generate the student history PDF');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Complete Student & Transportation Profile" size="xl">
       <div className="space-y-5">
@@ -99,6 +113,17 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
           </div>
         ) : (
           <>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="btn-primary flex items-center gap-2"
+                disabled={downloading}
+                onClick={downloadCompleteHistory}
+              >
+                <Download size={16} />
+                {downloading ? 'Generating PDF...' : 'Download Complete PDF'}
+              </button>
+            </div>
             {/* Header: Photo + Student Identification */}
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
               <div className="relative w-24 h-28 rounded-lg overflow-hidden border-2 border-white shadow-md bg-gray-100 shrink-0 flex items-center justify-center">
