@@ -10,6 +10,13 @@ import {
   CreditCard, Ticket, ArrowLeftRight, Calendar, AlertCircle, Download
 } from 'lucide-react';
 
+const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result || ''));
+  reader.onerror = reject;
+  reader.readAsDataURL(blob);
+});
+
 export default function StudentDetailModal({ isOpen, onClose, studentId, initialStudent }) {
   const [data, setData] = useState(null);
   const [photoUrl, setPhotoUrl] = useState('');
@@ -21,8 +28,6 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
 
   useEffect(() => {
     let active = true;
-    let objectUrl = '';
-
     if (isOpen && studentId) {
       setLoading(true);
       setError('');
@@ -48,10 +53,10 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
 
       // 2. Fetch student photo
       api.get(`/admin/students/${studentId}/photo`, { responseType: 'blob' })
-        .then((res) => {
+        .then(async (res) => {
           if (active && res.data) {
-            objectUrl = URL.createObjectURL(res.data);
-            setPhotoUrl(objectUrl);
+            const dataUrl = await blobToDataUrl(res.data);
+            if (active) setPhotoUrl(dataUrl);
           }
         })
         .catch(() => {
@@ -61,7 +66,6 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
 
     return () => {
       active = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [isOpen, studentId]);
 
@@ -76,6 +80,11 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
   const transfers = selectedHistory?.transfers || data?.transfers || [];
   const applications=selectedHistory?.applications||data?.applications||[];
   const payments=selectedHistory?.payments||data?.payments||[];
+  const feeSummary=fees.reduce((summary,fee)=>({
+    total:summary.total+Number(fee.totalAmount||0),
+    paid:summary.paid+Number(fee.paidAmount||0),
+    pending:summary.pending+Number(fee.remainingAmount||0)
+  }),{total:0,paid:0,pending:0});
 
   const formatDate = (val) => {
     if (!val) return '—';
@@ -91,7 +100,17 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
     if (!data?.student || downloading) return;
     setDownloading(true);
     try {
-      await downloadCompleteStudentHistoryPdf(data, photoUrl);
+      let downloadablePhoto = photoUrl;
+      if (!downloadablePhoto) {
+        try {
+          const response = await api.get(`/admin/students/${studentId}/photo`, { responseType: 'blob' });
+          downloadablePhoto = await blobToDataUrl(response.data);
+          setPhotoUrl(downloadablePhoto);
+        } catch {
+          // Older student records may legitimately have no stored photo.
+        }
+      }
+      await downloadCompleteStudentHistoryPdf(data, downloadablePhoto);
     } catch (downloadError) {
       setError(downloadError.message || 'Unable to generate the student history PDF');
     } finally {
@@ -184,7 +203,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
                 Personal Details
               </button>
               <button
-                type="button" onClick={()=>setActiveTab('payments')} className={`px-3 py-2 border-b-2 whitespace-nowrap ${activeTab==='payments'?'border-blue-600 text-blue-600 font-semibold':'border-transparent text-gray-500'}`}>Payments ({payments.length})</button>
+                type="button" onClick={()=>setActiveTab('payments')} className={`px-3 py-2 border-b-2 whitespace-nowrap ${activeTab==='payments'?'border-blue-600 text-blue-600 font-semibold':'border-transparent text-gray-500'}`}>Payment History ({payments.length})</button>
               <button
                 type="button"
                 onClick={() => setActiveTab('transport')}
@@ -274,6 +293,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
                           <th className="px-4 py-2 text-left">Academic Year</th>
                           <th className="px-4 py-2 text-left">Bus Number</th>
                           <th className="px-4 py-2 text-left">Boarding Point</th>
+                          <th className="px-4 py-2 text-left">Allocated Date</th>
                           <th className="px-4 py-2 text-left">Status</th>
                         </tr>
                       </thead>
@@ -283,6 +303,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
                             <td className="px-4 py-2.5 font-medium text-gray-700">{a.academicYear || '—'}</td>
                             <td className="px-4 py-2.5 font-bold text-blue-900">{a.busNumber || a.bus || '—'}</td>
                             <td className="px-4 py-2.5 text-gray-800">{a.boardingPoint || '—'}</td>
+                            <td className="px-4 py-2.5 text-gray-800">{formatDate(a.allocatedAt)}</td>
                             <td className="px-4 py-2.5">
                               <StatusBadge status={a.status} />
                             </td>
@@ -296,15 +317,16 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
             )}
 
             {activeTab === 'applications' && (
-              <HistoryCards rows={applications} empty="No applications for this academic year" render={(a) => <><b>{a.busNumber || '—'} · {a.boardingPointName || '—'}</b><span>{a.startingPoint || '—'} → {a.endingPoint || '—'} · {a.status || '—'}</span></>} />
+              <HistoryCards rows={applications} empty="No applications for this academic year" render={(a) => <><b>{a.busNumber || '—'} · {a.boardingPointName || '—'}</b><span>{a.startingPoint || '—'} → {a.endingPoint || '—'} · Applied: {formatDate(a.appliedAt)} · {a.status || '—'}</span></>} />
             )}
             {activeTab === 'payments' && (
-              <HistoryCards rows={payments} empty="No payment transactions for this academic year" render={(p) => <><b>{formatINR(p.amount)} · {p.orderId || 'No receipt ID'}</b><span>{p.status || '—'} · {formatDate(p.paidAt || p.createdAt)}</span></>} />
+              <div className="space-y-4"><FeeSummary summary={feeSummary}/><HistoryCards rows={payments} empty="No payments for this academic year" render={(p) => <><b>{formatINR(p.amount)} · {p.orderId || 'No receipt ID'}</b><span>{p.status || '—'} · Paid: {formatDate(p.paidAt || p.createdAt)}</span></>} /></div>
             )}
 
             {/* Tab 3: Fees */}
             {activeTab === 'fees' && (
               <div className="space-y-3">
+                <FeeSummary summary={feeSummary}/>
                 {fees.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border">
                     <CreditCard size={32} className="mx-auto text-gray-400 mb-2" />
@@ -331,6 +353,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
                           <span className="font-semibold text-red-600">{formatINR(fee.remainingAmount)}</span>
                         </div>
                       </div>
+                      <p className="text-xs text-gray-500">Fee created: {formatDate(fee.createdAt)}{fee.updatedAt ? ` · Last updated: ${formatDate(fee.updatedAt)}` : ''}</p>
                     </div>
                   ))
                 )}
@@ -352,7 +375,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
                         <span className="font-bold text-blue-900 text-sm">Pass #{p.passNumber}</span>
                         <StatusBadge status={p.status} />
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs pt-1">
                         <div>
                           <span className="text-gray-500 block">Bus</span>
                           <span className="font-medium text-gray-800">{p.busNumber || '—'}</span>
@@ -360,6 +383,10 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
                         <div>
                           <span className="text-gray-500 block">Boarding Point</span>
                           <span className="font-medium text-gray-800">{p.boardingPoint || '—'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 block">Generated Date</span>
+                          <span className="font-medium text-gray-800">{formatDate(p.generatedAt || p.validFrom)}</span>
                         </div>
                         <div>
                           <span className="text-gray-500 block">Valid Until</span>
@@ -388,6 +415,7 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
                         <StatusBadge status={t.status} />
                       </div>
                       <p className="text-xs text-gray-600">Reason: {t.reason || '—'}</p>
+                      <p className="text-xs text-gray-500">Requested Date: {formatDate(t.requestedAt)}</p>
                       {t.remarks && (
                         <p className="text-xs text-amber-800 bg-amber-50 p-2 rounded border border-amber-200">
                           Remarks: {t.remarks}
@@ -412,3 +440,5 @@ export default function StudentDetailModal({ isOpen, onClose, studentId, initial
 }
 
 const HistoryCards=({rows,empty,render})=><div className="space-y-2">{rows.length?rows.map((row,index)=><div key={row.id||index} className="flex flex-col rounded-lg border bg-gray-50 p-3 text-sm">{render(row)}</div>):<p className="rounded-lg bg-gray-50 p-6 text-center text-sm text-gray-500">{empty}</p>}</div>;
+const FeeSummary=({summary})=><div className="grid grid-cols-1 gap-3 sm:grid-cols-3"><FeeSummaryValue label="Total Fee" value={summary.total} tone="blue"/><FeeSummaryValue label="Paid" value={summary.paid} tone="green"/><FeeSummaryValue label="Pending" value={summary.pending} tone="red"/></div>;
+const FeeSummaryValue=({label,value,tone})=><div className={`rounded-lg border p-3 ${tone==='green'?'border-green-200 bg-green-50 text-green-800':tone==='red'?'border-red-200 bg-red-50 text-red-800':'border-blue-200 bg-blue-50 text-blue-900'}`}><span className="block text-xs font-medium">{label}</span><strong className="text-lg">{formatINR(value)}</strong></div>;

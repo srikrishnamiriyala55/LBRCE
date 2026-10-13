@@ -3,6 +3,7 @@ package com.web.sms.dto.response;
 import com.web.sms.entity.BusPass;
 import com.web.sms.enums.PassStatus;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class PassResponse {
     private Long id;
@@ -24,6 +25,7 @@ public class PassResponse {
     private String verificationToken;
     private String verificationUrl;
     private boolean photoAvailable;
+    private LocalDateTime generatedAt;
 
     public static PassResponse fromBusPass(BusPass pass) {
         PassResponse r = new PassResponse();
@@ -54,6 +56,7 @@ public class PassResponse {
         r.setValidFrom(pass.getValidFrom());
         r.setValidUntil(pass.getValidUntil());
         r.setStatus(pass.getStatus());
+        r.setGeneratedAt(pass.getGeneratedAt() != null ? pass.getGeneratedAt() : pass.getCreatedAt());
         r.setVerificationToken(pass.getVerificationToken());
         return r;
     }
@@ -100,4 +103,6 @@ public class PassResponse {
     public void setVerificationUrl(String verificationUrl) { this.verificationUrl = verificationUrl; }
     public boolean isPhotoAvailable() { return photoAvailable; }
     public void setPhotoAvailable(boolean photoAvailable) { this.photoAvailable = photoAvailable; }
+    public LocalDateTime getGeneratedAt() { return generatedAt; }
+    public void setGeneratedAt(LocalDateTime generatedAt) { this.generatedAt = generatedAt; }
 }

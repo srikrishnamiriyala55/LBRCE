@@ -26,7 +26,8 @@ class OtpServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new OtpService(repository, emailService, true,
+        service = new OtpService(repository, emailService,
+                new OfficialBrandingService("https://btms.example.edu"), true,
                 "test-only-otp-hash-secret-with-more-than-32-characters");
     }
 
@@ -45,6 +46,8 @@ class OtpServiceTest {
         ArgumentCaptor<String> htmlCaptor = ArgumentCaptor.forClass(String.class);
         verify(emailService).sendHtml(eq("student@example.com"), anyString(), htmlCaptor.capture());
         String otp = extractOtp(htmlCaptor.getValue());
+        assertTrue(htmlCaptor.getValue().contains("https://btms.example.edu/logo.jpg"));
+        assertTrue(htmlCaptor.getValue().contains("Lakireddy Bali Reddy College of Engineering"));
         assertNotEquals(otp, challenge.getOtpHash());
         assertEquals("SENT", challenge.getDeliveryStatus());
         assertEquals("brevo-message-1", challenge.getProviderMessageId());

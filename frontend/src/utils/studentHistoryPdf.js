@@ -24,6 +24,8 @@ const readImage = async (url) => {
   }
 };
 
+const imageFormat = (dataUrl) => dataUrl?.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+
 export async function downloadCompleteStudentHistoryPdf(data, photoUrl) {
   if (!data?.student) throw new Error('Student history is not available');
   const { jsPDF } = await import('jspdf');
@@ -36,6 +38,8 @@ export async function downloadCompleteStudentHistoryPdf(data, photoUrl) {
   const contentWidth = pageWidth - (margin * 2);
   const bottom = pageHeight - 15;
   let y = 14;
+
+  const logo = await readImage('/logo.jpg');
 
   const newPage = () => { pdf.addPage(); y = 14; };
   const ensure = (height) => { if (y + height > bottom) newPage(); };
@@ -110,15 +114,26 @@ export async function downloadCompleteStudentHistoryPdf(data, photoUrl) {
 
   pdf.setFillColor(26, 62, 133);
   pdf.rect(0, 0, pageWidth, 31, 'F');
+  if (logo) {
+    try {
+      pdf.setFillColor(255, 255, 255);
+      pdf.roundedRect(margin, 3.5, 24, 24, 2, 2, 'F');
+      pdf.addImage(logo, imageFormat(logo), margin + 1.5, 5, 21, 21);
+    } catch {
+      // The official text header remains visible if a browser cannot decode the logo.
+    }
+  }
   pdf.setTextColor(255, 255, 255);
   pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(16);
-  pdf.text('LBRCE Bus Transport Management System', margin, 13);
-  pdf.setFontSize(11);
-  pdf.text('Complete Student History Report', margin, 21);
+  pdf.setFontSize(12.5);
+  pdf.text('Lakireddy Bali Reddy College of Engineering (Autonomous)', margin + 29, 10);
+  pdf.setFontSize(9.5);
+  pdf.text('Bus Transportation Management System', margin + 29, 17);
+  pdf.setFontSize(8.5);
+  pdf.text('Complete Student History Report', margin + 29, 23);
   pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(7.5);
-  pdf.text(`Generated: ${new Date().toLocaleString('en-IN')}`, margin, 27);
+  pdf.setFontSize(6.5);
+  pdf.text(`Generated: ${new Date().toLocaleString('en-IN')}`, margin + 29, 28);
   pdf.setTextColor(25, 25, 25);
   y = 37;
 
@@ -145,7 +160,7 @@ export async function downloadCompleteStudentHistoryPdf(data, photoUrl) {
   const photo = await readImage(photoUrl);
   if (photo) {
     try {
-      pdf.addImage(photo, undefined, margin + detailsWidth + 7, photoTop + 2, photoWidth - 4, 36);
+      pdf.addImage(photo, imageFormat(photo), margin + detailsWidth + 7, photoTop + 2, photoWidth - 4, 36);
     } catch {
       pdf.setFontSize(7); pdf.text('Photo unavailable', margin + detailsWidth + 8, photoTop + 21);
     }

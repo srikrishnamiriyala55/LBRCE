@@ -25,13 +25,16 @@ public class PaymentReceiptEmailService {
     private final String contactEmail;
     private final String contactPhones;
     private final String collegeAddress;
+    private final OfficialBrandingService brandingService;
 
     public PaymentReceiptEmailService(TransactionalEmailService emailService,
+                                      OfficialBrandingService brandingService,
                                       @Value("${btms.mail.enabled:false}") boolean enabled,
                                       @Value("${btms.transport.contact-email}") String contactEmail,
                                       @Value("${btms.transport.contact-phones}") String contactPhones,
                                       @Value("${btms.college.address}") String collegeAddress) {
         this.emailService = emailService;
+        this.brandingService = brandingService;
         this.enabled = enabled;
         this.contactEmail = contactEmail;
         this.contactPhones = contactPhones;
@@ -78,9 +81,7 @@ public class PaymentReceiptEmailService {
         return """
                 <!doctype html><html><body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#1f2937">
                 <div style="max-width:680px;margin:24px auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
-                  <div style="background:#1e40af;color:#fff;padding:22px;text-align:center">
-                    <h2 style="margin:10px 0 2px">LBRCE BUS</h2><div>Transportation Fee Payment Receipt</div>
-                  </div>
+                  %s
                   <div style="padding:24px">
                     <p>Dear <strong>%s</strong>,</p>
                     <p>Your transportation fee payment has been verified and recorded successfully.</p>
@@ -93,10 +94,12 @@ public class PaymentReceiptEmailService {
                     <p style="margin-top:22px;font-size:13px;color:#4b5563">For assistance, contact %s or call %s.</p>
                     <p style="font-size:12px;color:#6b7280">%s</p>
                   </div>
+                  %s
                 </div></body></html>
                 """.formatted(
-                escape(event.studentName()), rows(event, paidAt), escape(event.transactionStatus()),
-                event.passEligible() ? "Eligible" : "Not yet eligible", escape(contactEmail), escape(contactPhones), escape(collegeAddress));
+                brandingService.emailHeader("Transportation Fee Payment Receipt"), escape(event.studentName()),
+                rows(event, paidAt), escape(event.transactionStatus()), event.passEligible() ? "Eligible" : "Not yet eligible",
+                escape(contactEmail), escape(contactPhones), escape(collegeAddress), brandingService.emailFooter());
     }
 
     private String rows(PaymentReceiptEvent e, String paidAt) {

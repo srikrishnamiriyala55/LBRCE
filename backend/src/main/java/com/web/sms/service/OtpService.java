@@ -35,15 +35,18 @@ public class OtpService {
 
     private final OtpChallengeRepository repository;
     private final TransactionalEmailService emailService;
+    private final OfficialBrandingService brandingService;
     private final boolean enabled;
     private final String hashSecret;
 
     public OtpService(OtpChallengeRepository repository,
                       TransactionalEmailService emailService,
+                      OfficialBrandingService brandingService,
                       @Value("${otp.enabled:false}") boolean enabled,
                       @Value("${otp.hash-secret:}") String hashSecret) {
         this.repository = repository;
         this.emailService = emailService;
+        this.brandingService = brandingService;
         this.enabled = enabled;
         this.hashSecret = hashSecret;
     }
@@ -122,13 +125,16 @@ public class OtpService {
 
     private String sendEmail(String recipient, String otp, String purpose) {
         try {
+            String verificationType = REGISTRATION.equals(purpose) ? "student registration" : "login";
             return emailService.sendHtml(recipient, "Your LBRCE BUS verification code", """
                     <!doctype html><html><body style="font-family:Arial,sans-serif;background:#f3f4f6;padding:24px">
                     <div style="max-width:560px;margin:auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb">
-                      <div style="background:#1e40af;color:white;text-align:center;padding:20px"><h2 style="margin:8px 0 0">LBRCE BUS</h2></div>
-                      <div style="padding:24px;text-align:center"><p>Use this code to complete your %s verification:</p><div style="font-size:32px;letter-spacing:8px;font-weight:bold;color:#1e3a8a;margin:22px">%s</div><p>This OTP is valid for 5 minutes and can be used only once.</p><p style="font-size:12px;color:#6b7280">If you did not request this code, do not share it with anyone.</p></div>
+                      %s
+                      <div style="padding:24px;text-align:center"><p>Use this code to complete your %s verification:</p><div style="font-size:32px;letter-spacing:8px;font-weight:bold;color:#1e3a8a;margin:22px">%s</div><p>This OTP is valid for <strong>5 minutes</strong> and can be used only once.</p><p style="font-size:12px;color:#6b7280">If you did not request this code, do not share it with anyone.</p></div>
+                      %s
                     </div></body></html>
-                    """.formatted(REGISTRATION.equals(purpose) ? "student registration" : "login", otp));
+                    """.formatted(brandingService.emailHeader("Email Verification"), verificationType, otp,
+                            brandingService.emailFooter()));
         } catch (ServiceUnavailableException exception) {
             throw exception;
         } catch (Exception exception) {

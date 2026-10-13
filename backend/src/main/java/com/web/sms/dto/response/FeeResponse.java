@@ -1,6 +1,7 @@
 package com.web.sms.dto.response;
 
 import com.web.sms.entity.Fee;
+import java.time.LocalDateTime;
 
 public class FeeResponse {
     private Long id;
@@ -13,6 +14,8 @@ public class FeeResponse {
     private boolean passEligible;
     private String rollNumber;
     private String studentName;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public static FeeResponse fromFee(Fee f) {
         FeeResponse r = new FeeResponse();
@@ -28,6 +31,8 @@ public class FeeResponse {
         r.setPaidPercentage(f.getPaidPercentage());
         r.setStatus(f.getStatus());
         r.setPassEligible(f.isPassEligible());
+        r.setCreatedAt(f.getCreatedAt());
+        r.setUpdatedAt(f.getUpdatedAt());
         return r;
     }
 
@@ -51,4 +56,8 @@ public class FeeResponse {
     public void setRollNumber(String rollNumber) { this.rollNumber = rollNumber; }
     public String getStudentName() { return studentName; }
     public void setStudentName(String studentName) { this.studentName = studentName; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
