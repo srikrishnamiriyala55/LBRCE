@@ -3,6 +3,8 @@ package com.web.sms.controller;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
@@ -62,6 +64,8 @@ import com.web.sms.entity.TransportAllocation;
 import com.web.sms.enums.ApplicationStatus;
 import com.web.sms.enums.EntityStatus;
 import com.web.sms.enums.TransferStatus;
+import com.web.sms.enums.PaymentStatus;
+import com.web.sms.exception.BadRequestException;
 import com.web.sms.exception.ResourceNotFoundException;
 import com.web.sms.repository.AcademicYearRepository;
 import com.web.sms.repository.AdminRepository;
@@ -491,7 +495,31 @@ public class AdminController {
     @GetMapping("/transfers/summary") public Map<String, Long> transferSummary(){Map<String,Long> summary=new LinkedHashMap<>();summary.put("total",transferRepo.count());summary.put("accepted",transferRepo.countByStatus(TransferStatus.TRANSFER_COMPLETED));summary.put("rejected",transferRepo.countByStatus(TransferStatus.OLD_INCHARGE_REJECTED)+transferRepo.countByStatus(TransferStatus.NEW_INCHARGE_REJECTED));return summary;}
     @PostMapping("/transfers/{id}/approve") public TransferResponse approveTransfer(@PathVariable Long id){return transferService.approveByAdmin(id,getCurrentUser().getUsername());}
 
-    @GetMapping("/payments") public List<PaymentResponse> payments(@RequestParam(required = false) Long academicYearId){return paymentRepo.findAll().stream().filter(p -> academicYearId == null || (p.getFee() != null && p.getFee().getAcademicYear() != null && p.getFee().getAcademicYear().getId().equals(academicYearId))).map(PaymentResponse::fromPayment).toList();}
+    @GetMapping("/payments")
+    public List<PaymentResponse> payments(@RequestParam(required = false) Long academicYearId,
+                                          @RequestParam(required = false) LocalDate fromDate,
+                                          @RequestParam(required = false) LocalDate toDate,
+                                          @RequestParam(required = false) String status,
+                                          @RequestParam(required = false) String mode,
+                                          @RequestParam(required = false) String search) {
+        if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+            throw new BadRequestException("From date must not be after To date");
+        }
+        PaymentStatus paymentStatus = null;
+        if (status != null && !status.isBlank()) {
+            try { paymentStatus = PaymentStatus.valueOf(status.trim().toUpperCase()); }
+            catch (IllegalArgumentException exception) { throw new BadRequestException("Invalid payment status"); }
+        }
+        String normalizedMode = mode == null || mode.isBlank() ? null : mode.trim().toUpperCase();
+        if (normalizedMode != null && !List.of("RAZORPAY", "ADMIN_MANUAL").contains(normalizedMode)) {
+            throw new BadRequestException("Invalid payment mode");
+        }
+        String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
+        LocalDateTime from = fromDate == null ? null : fromDate.atStartOfDay();
+        LocalDateTime toExclusive = toDate == null ? null : toDate.plusDays(1).atStartOfDay();
+        return paymentRepo.findForAdminReport(academicYearId, from, toExclusive, paymentStatus, normalizedMode, normalizedSearch)
+                .stream().map(PaymentResponse::fromPayment).toList();
+    }
     @GetMapping("/passes") public List<PassResponse> passes(@RequestParam(required=false) String search,@RequestParam(required=false) Long academicYearId){return passRepo.searchList(search==null?null:search.trim()).stream().filter(p -> academicYearId == null || p.getAcademicYear().getId().equals(academicYearId)).map(PassResponse::fromBusPass).toList();}
     @GetMapping("/passes/{id}") public PassResponse pass(@PathVariable Long id){return passService.getPassForAdmin(id);}
     @GetMapping("/passes/{id}/photo") public ResponseEntity<byte[]> passPhoto(@PathVariable Long id){return passService.passPhotoForAdmin(id);}

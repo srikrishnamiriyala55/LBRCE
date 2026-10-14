@@ -15,6 +15,7 @@ import com.web.sms.entity.TransferRequest;
 import com.web.sms.enums.ApplicationStatus;
 import com.web.sms.enums.EntityStatus;
 import com.web.sms.enums.PassStatus;
+import com.web.sms.enums.PaymentStatus;
 import com.web.sms.repository.AcademicYearRepository;
 import com.web.sms.repository.BusApplicationRepository;
 import com.web.sms.repository.BusPassRepository;
@@ -26,6 +27,7 @@ import com.web.sms.repository.BusInchargeAssignmentRepository;
 import com.web.sms.repository.StudentAcademicDetailsRepository;
 import com.web.sms.exception.ForbiddenException;
 import com.web.sms.exception.ResourceNotFoundException;
+import com.web.sms.exception.BadRequestException;
 import com.web.sms.security.UserPrincipal;
 import com.web.sms.service.ApplicationService;
 import com.web.sms.service.InchargeService;
@@ -59,6 +61,8 @@ import org.springframework.http.*;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 @RestController
@@ -343,8 +347,30 @@ public class InchargeController {
     }
 
     @GetMapping("/payments")
-    public List<PaymentResponse> payments(@RequestParam(required = false) Long academicYearId) {
-        return paymentRepo.findForIncharge(requireAssignedBus().getId(), academicYearId).stream()
+    public List<PaymentResponse> payments(@RequestParam(required = false) Long academicYearId,
+                                          @RequestParam(required = false) LocalDate fromDate,
+                                          @RequestParam(required = false) LocalDate toDate,
+                                          @RequestParam(required = false) String status,
+                                          @RequestParam(required = false) String mode,
+                                          @RequestParam(required = false) String search) {
+        if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+            throw new BadRequestException("From date must not be after To date");
+        }
+        PaymentStatus paymentStatus = null;
+        if (status != null && !status.isBlank()) {
+            try { paymentStatus = PaymentStatus.valueOf(status.trim().toUpperCase()); }
+            catch (IllegalArgumentException exception) { throw new BadRequestException("Invalid payment status"); }
+        }
+        String normalizedMode = mode == null || mode.isBlank() ? null : mode.trim().toUpperCase();
+        if (normalizedMode != null && !List.of("RAZORPAY", "ADMIN_MANUAL").contains(normalizedMode)) {
+            throw new BadRequestException("Invalid payment mode");
+        }
+        String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
+        LocalDateTime from = fromDate == null ? null : fromDate.atStartOfDay();
+        LocalDateTime toExclusive = toDate == null ? null : toDate.plusDays(1).atStartOfDay();
+        Bus bus = academicYearId == null ? requireAssignedBus() : requireAssignedBus(academicYearId);
+        return paymentRepo.findForInchargeReport(bus.getId(), academicYearId, from, toExclusive,
+                        paymentStatus, normalizedMode, normalizedSearch).stream()
                 .map(PaymentResponse::fromPayment)
                 .toList();
     }

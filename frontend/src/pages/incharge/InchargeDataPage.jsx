@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CreditCard } from 'lucide-react';
+import { CreditCard, Download, FileSpreadsheet } from 'lucide-react';
 import api from '../../utils/axios';
 import DataTable from '../../components/common/DataTable';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -8,6 +8,7 @@ import Modal from '../../components/common/Modal';
 import { useToast } from '../../components/common/Toast';
 import { formatINR } from '../../utils/currency';
 import { apiMessage, openRazorpayCheckout } from '../../utils/razorpay';
+import { downloadPaymentsCsv, downloadPaymentsPdf } from '../../utils/paymentRecordsExport';
 
 const feeFilters = { search: '', academicYear: '', payment: '', passEligible: '' };
 const paymentState = fee => {
@@ -21,6 +22,8 @@ export default function InchargeDataPage({ type }) {
   const [data, setData] = useState([]), [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState(feeFilters);
   const [passSearch, setPassSearch] = useState(''), [passAcademicYear, setPassAcademicYear] = useState('');
+  const [paymentFilters, setPaymentFilters] = useState({ fromDate: '', toDate: '', status: '', mode: '' });
+  const [exportingPayments, setExportingPayments] = useState(false);
   const [academicYears, setAcademicYears] = useState([]);
   const [selectedPass, setSelectedPass] = useState(null), [photoUrl, setPhotoUrl] = useState(''), [downloading, setDownloading] = useState(false);
   const [onlineFee, setOnlineFee] = useState(null), [onlineAmount, setOnlineAmount] = useState(''), [onlineProcessing, setOnlineProcessing] = useState(false);
@@ -101,7 +104,23 @@ export default function InchargeDataPage({ type }) {
       && (!filters.payment || paymentState(fee) === filters.payment) && (!filters.passEligible || String(Boolean(fee.passEligible)) === filters.passEligible);
   }), [data, filters]);
   const filteredPasses = useMemo(() => { const term = passSearch.trim().toLowerCase(); return data.filter(row => (!term || [row.studentName, row.rollNumber, row.passNumber, row.busNumber, row.boardingPoint, row.status].filter(Boolean).join(' ').toLowerCase().includes(term)) && (!passAcademicYear || row.academicYear === passAcademicYear)); }, [data, passSearch, passAcademicYear]);
-  const filteredPayments = useMemo(() => { const term = passSearch.trim().toLowerCase(); return data.filter(row => (!term || [row.studentName, row.rollNumber, row.orderId, row.transactionId, row.amount, row.status].filter(value => value !== null && value !== undefined).join(' ').toLowerCase().includes(term)) && (!passAcademicYear || row.academicYear === passAcademicYear)); }, [data, passSearch, passAcademicYear]);
+  const filteredPayments = useMemo(() => {
+    const term = passSearch.trim().toLowerCase();
+    const from = paymentFilters.fromDate ? new Date(`${paymentFilters.fromDate}T00:00:00`) : null;
+    const to = paymentFilters.toDate ? new Date(`${paymentFilters.toDate}T23:59:59.999`) : null;
+    return data.filter(row => {
+      const paidDate = row.paidAt || row.createdAt ? new Date(row.paidAt || row.createdAt) : null;
+      const searchable = [row.studentName, row.rollNumber, row.email, row.phoneNumber, row.branch, row.year,
+        row.semester, row.academicYear, row.orderId, row.transactionId, row.gatewayName, row.amount,
+        row.totalFee, row.paidTillNow, row.pendingAmount, row.status].filter(value => value !== null && value !== undefined).join(' ').toLowerCase();
+      return (!term || searchable.includes(term))
+        && (!passAcademicYear || row.academicYear === passAcademicYear)
+        && (!from || (paidDate && paidDate >= from))
+        && (!to || (paidDate && paidDate <= to))
+        && (!paymentFilters.status || row.status === paymentFilters.status)
+        && (!paymentFilters.mode || row.gatewayName === paymentFilters.mode);
+    });
+  }, [data, passSearch, passAcademicYear, paymentFilters]);
   const feeCounts = useMemo(() => fees.reduce((counts, fee) => ({ ...counts, [paymentState(fee)]: counts[paymentState(fee)] + 1 }), { PAID: 0, PARTIALLY_PAID: 0, PENDING: 0 }), [fees]);
   const yearOptions = academicYears.length ? academicYears.map(year => year.yearName) : [...new Set(data.map(row => row.academicYear).filter(Boolean))];
 
@@ -114,9 +133,17 @@ export default function InchargeDataPage({ type }) {
       { key: 'actions', label: 'Action', render: row => row.remainingAmount > 0 ? <button type="button" className="text-sm font-medium text-blue-700 hover:underline" onClick={() => { setOnlineFee(row); setOnlineAmount(String(row.remainingAmount)); }}>Pay Online</button> : <span className="text-sm text-gray-400">Fully paid</span> }
     ],
     payments: [
-      { key: 'createdAt', label: 'Date', render: row => new Date(row.paidAt || row.createdAt).toLocaleString() }, { key: 'studentName', label: 'Student' },
-      { key: 'rollNumber', label: 'Roll Number' }, { key: 'academicYear', label: 'Academic Year' }, { key: 'orderId', label: 'Receipt / Order ID', render: row => row.orderId || '—' },
-      { key: 'transactionId', label: 'Payment ID', render: row => row.transactionId || '—' }, { key: 'amount', label: 'Amount', render: row => formatINR(row.amount) }, { key: 'status', label: 'Status', render: row => <StatusBadge status={row.status} /> }
+      { key: 'rollNumber', label: 'Roll Number' },
+      { key: 'studentName', label: 'Student Details', render: row => <div><div className="font-medium">{row.studentName || '—'}</div><div className="text-xs text-gray-500">{row.branch || '—'} / {row.year || '—'} / {row.semester || '—'}</div><div className="text-xs text-gray-500">{row.phoneNumber || '—'} · {row.email || '—'}</div></div> },
+      { key: 'academicYear', label: 'Academic Year' },
+      { key: 'createdAt', label: 'Payment Date', render: row => row.paidAt || row.createdAt ? new Date(row.paidAt || row.createdAt).toLocaleString('en-IN') : '—' },
+      { key: 'amount', label: 'Transaction Amount', render: row => formatINR(row.amount) },
+      { key: 'transactionId', label: 'Transaction ID', render: row => row.transactionId || '—' },
+      { key: 'gatewayName', label: 'Mode', render: row => row.gatewayName === 'ADMIN_MANUAL' ? 'Admin Manual' : (row.gatewayName || '—') },
+      { key: 'totalFee', label: 'Total Fee', render: row => formatINR(row.totalFee) },
+      { key: 'paidTillNow', label: 'Paid Till Now', render: row => formatINR(row.paidTillNow) },
+      { key: 'pendingAmount', label: 'Pending', render: row => formatINR(row.pendingAmount) },
+      { key: 'status', label: 'Status', render: row => <StatusBadge status={row.status} /> }
     ],
     passes: [
       { key: 'studentName', label: 'Student' }, { key: 'rollNumber', label: 'Roll Number' }, { key: 'academicYear', label: 'Academic Year', render: row => row.academicYear || '—' },
@@ -134,7 +161,19 @@ export default function InchargeDataPage({ type }) {
     <div className="card space-y-5">
       <div className="flex items-center justify-between"><h2 className="text-xl font-bold capitalize">{type}</h2><button type="button" className="btn-secondary" onClick={load}>Refresh</button></div>
       {type === 'fees' && <><div className="grid grid-cols-1 gap-3 sm:grid-cols-3"><div className="rounded-lg border p-3"><p className="text-xs text-gray-500">Paid</p><p className="text-xl font-bold text-green-700">{feeCounts.PAID}</p></div><div className="rounded-lg border p-3"><p className="text-xs text-gray-500">Partially paid</p><p className="text-xl font-bold text-amber-700">{feeCounts.PARTIALLY_PAID}</p></div><div className="rounded-lg border p-3"><p className="text-xs text-gray-500">Pending</p><p className="text-xl font-bold text-red-700">{feeCounts.PENDING}</p></div></div><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"><input className="input-field" placeholder="Search any fee attribute" value={filters.search} onChange={event => setFilters({ ...filters, search: event.target.value })}/><select className="input-field" value={filters.academicYear} onChange={event => setFilters({ ...filters, academicYear: event.target.value })}><option value="">All academic years</option>{yearOptions.map(year => <option key={year} value={year}>{year}</option>)}</select><select className="input-field" value={filters.payment} onChange={event => setFilters({ ...filters, payment: event.target.value })}><option value="">All payment states</option><option value="PAID">Paid</option><option value="PARTIALLY_PAID">Partially paid</option><option value="PENDING">Pending</option></select><select className="input-field" value={filters.passEligible} onChange={event => setFilters({ ...filters, passEligible: event.target.value })}><option value="">All pass eligibility</option><option value="true">Pass eligible</option><option value="false">Not pass eligible</option></select></div></>}
-      {['passes', 'payments'].includes(type) && <div className="flex flex-col gap-3 sm:flex-row"><input className="input-field flex-1" placeholder={type === 'payments' ? 'Search student, roll number, receipt, amount or status...' : 'Search student, roll, pass ID, bus or boarding point...'} value={passSearch} onChange={event => setPassSearch(event.target.value)}/><select className="input-field sm:w-56" value={passAcademicYear} onChange={event => setPassAcademicYear(event.target.value)}><option value="">All academic years</option>{yearOptions.map(year => <option key={year} value={year}>{year}</option>)}</select></div>}
+      {type === 'passes' && <div className="flex flex-col gap-3 sm:flex-row"><input className="input-field flex-1" placeholder="Search student, roll, pass ID, bus or boarding point..." value={passSearch} onChange={event => setPassSearch(event.target.value)}/><select className="input-field sm:w-56" value={passAcademicYear} onChange={event => setPassAcademicYear(event.target.value)}><option value="">All academic years</option>{yearOptions.map(year => <option key={year} value={year}>{year}</option>)}</select></div>}
+      {type === 'payments' && <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <input className="input-field xl:col-span-2" placeholder="Search student, roll number, transaction ID, contact or amount..." value={passSearch} onChange={event => setPassSearch(event.target.value)}/>
+          <select className="input-field" value={passAcademicYear} onChange={event => setPassAcademicYear(event.target.value)}><option value="">All academic years</option>{yearOptions.map(year => <option key={year} value={year}>{year}</option>)}</select>
+          <label className="text-xs font-medium text-gray-600">From date<input type="date" className="input-field mt-1" value={paymentFilters.fromDate} max={paymentFilters.toDate || undefined} onChange={event => setPaymentFilters(current => ({ ...current, fromDate: event.target.value }))}/></label>
+          <label className="text-xs font-medium text-gray-600">To date<input type="date" className="input-field mt-1" value={paymentFilters.toDate} min={paymentFilters.fromDate || undefined} onChange={event => setPaymentFilters(current => ({ ...current, toDate: event.target.value }))}/></label>
+          <select className="input-field" aria-label="Payment status" value={paymentFilters.status} onChange={event => setPaymentFilters(current => ({ ...current, status: event.target.value }))}><option value="">All statuses</option>{['SUCCESS','INITIATED','PENDING','FAILED','CANCELLED','REFUNDED'].map(status => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}</select>
+          <select className="input-field" aria-label="Payment mode" value={paymentFilters.mode} onChange={event => setPaymentFilters(current => ({ ...current, mode: event.target.value }))}><option value="">All modes</option><option value="RAZORPAY">Razorpay</option><option value="ADMIN_MANUAL">Admin Manual</option></select>
+          <button type="button" className="btn-secondary" onClick={() => { setPassSearch(''); setPassAcademicYear(''); setPaymentFilters({ fromDate: '', toDate: '', status: '', mode: '' }); }}>Clear filters</button>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-gray-600">Showing {filteredPayments.length} payment transaction{filteredPayments.length === 1 ? '' : 's'} for your assigned bus</p><div className="flex gap-2"><button type="button" className="btn-secondary flex items-center gap-2" disabled={exportingPayments || !filteredPayments.length} onClick={() => downloadPaymentsCsv(filteredPayments)}><FileSpreadsheet size={17}/>Download Excel</button><button type="button" className="btn-primary flex items-center gap-2" disabled={exportingPayments || !filteredPayments.length} onClick={async () => { setExportingPayments(true); try { await downloadPaymentsPdf(filteredPayments, paymentFilters); } finally { setExportingPayments(false); } }}><Download size={17}/>{exportingPayments ? 'Preparing…' : 'Download PDF'}</button></div></div>
+      </div>}
       <DataTable columns={configs[type]} data={displayedData} loading={loading} searchable={false}/>
     </div>
     <PassViewerModal pass={selectedPass} photoUrl={photoUrl} onClose={closePass} onDownload={downloadPass} downloading={downloading}/>
